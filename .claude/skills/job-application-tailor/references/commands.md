@@ -79,6 +79,17 @@ for ti, t in enumerate(doc.tables):
 "
 ```
 
+## Verify Fact Base Against Raw CV
+
+### Catch contamination from job offer keywords
+```bash
+cd "$SKILL_BASE" && python scripts/verify_fact_base.py "$PROJECT_ROOT/resources/MASTER_CV.docx" "$PREP_DIR/cv_fact_base.json"
+```
+
+If this fails (exit code 1), technologies or methodologies were fabricated.
+Remove the flagged items from `cv_fact_base.json` and re-run verification before proceeding.
+Warnings about skills are non-blocking — review them but they may be valid abstractions.
+
 ## Validation
 
 ### Validate any JSON against its schema

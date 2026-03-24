@@ -32,3 +32,9 @@ Key points:
 - Do not merge different roles
 - Full-time training periods that have specific dates must appear in the experience array so the timeline has no gaps
 - List all experiences in strict reverse chronological order
+
+## CRITICAL — Contamination prevention
+If a job offer is present in context, **ignore it completely** when extracting the fact base. The `technologies` and `methodologies` arrays must contain ONLY items that appear as written text in the CV. A verification script will cross-check every item against the raw CV text and block the pipeline if fabrications are detected. Common contamination patterns to avoid:
+- Adding a framework because the job asks for it (e.g. EntityFramework, ASP.NET MVC) when the CV doesn't list it
+- Adding a language because the job requires it (e.g. PHP, PowerShell) when the CV doesn't mention it
+- Upgrading "adjacent exposure" to "direct skill" to improve the match

@@ -71,6 +71,17 @@ Extract text from the DOCX. See `references/commands.md` § CV Caching for the r
 
 Check the cache first. If valid, copy `cv_fact_base.json` into `$PREP_DIR` and skip ahead. If stale, read `prompts/extract_cv_data.md`, generate the fact base, validate against `schemas/cv_fact_base.schema.json`, then save the cache for future runs. See `references/commands.md` § CV Caching.
 
+### Step 2.5 — Verify fact base against raw CV
+
+**This step is mandatory and must not be skipped.** It exists because the LLM can unconsciously contaminate the fact base with keywords from the job offer, especially when both are processed in the same context window.
+
+Run `scripts/verify_fact_base.py` with the master CV and the fact base. See `references/commands.md` § Verify Fact Base Against Raw CV.
+
+- **If verification fails** (exit code 1): technologies or methodologies were fabricated. Remove the flagged items from `cv_fact_base.json`, re-run verification, and only proceed once it passes. If the cache was just saved, re-save it after fixing.
+- **Warnings** about skills are non-blocking — review them but they are often valid abstractions of role descriptions.
+
+This step must complete **before** the job offer is analysed, so the fact base is locked before job-offer keywords enter the context.
+
 ### Step 3 — Analyse the job offer
 
 If `$ARGUMENTS` is a URL, fetch it with WebFetch first. Read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, validate against `schemas/job_offer_analysis.schema.json`. Note the `detected_language` — it drives the language of all subsequent output.
@@ -114,9 +125,9 @@ After validation, **rename the output folder** with a fit-level prefix (`low` / 
 
 Read `prompts/tailor_cv.md`. Use the match analysis and company research to guide emphasis. The prompt includes company-size awareness rules — small companies get expanded versatility bullets, large companies get focused technical depth. Validate against `schemas/tailored_cv.schema.json`.
 
-### Steps 6, 7, 8 — Letter, LinkedIn, Interview Prep (parallel)
+### Steps 6, 7 — Letter and LinkedIn (parallel agents)
 
-These three steps are independent once the tailored CV exists. **Spawn three Agent subagents simultaneously** to generate them in parallel — this cuts wall-clock time significantly:
+These two steps are independent once the tailored CV exists. **Spawn two Agent subagents simultaneously** to generate them in parallel:
 
 **Subagent 1 — Motivation letter:**
 Read `prompts/generate_motivation_letter.md`. Use the CV fact base, job offer analysis, match analysis, and company research as context. Save as `$PREP_DIR/letter.json`. Validate against `schemas/letter.schema.json`. Then generate the **short version** (500-750 characters body): read `prompts/generate_short_letter.md`, pass it the full letter as context, save as `$PREP_DIR/short_letter.json`. Validate against the same schema.
@@ -124,10 +135,13 @@ Read `prompts/generate_motivation_letter.md`. Use the CV fact base, job offer an
 **Subagent 2 — LinkedIn messages:**
 Read `prompts/generate_linkedin_message.md`. Use the CV fact base, job offer analysis, match analysis, and company research (especially the Contacts section) as context. Save as `$PREP_DIR/linkedin.json`. Validate against `schemas/linkedin.schema.json`.
 
-**Subagent 3 — Interview prep:**
-Read `prompts/generate_interview_prep.md`. Use all available context (CV fact base, job offer analysis, match analysis, company research). Include a quick reference block (job URL from `$ARGUMENTS`, output folder path, application date), fit score banner, and company context section. Save as `$PREP_DIR/interview_prep.md`.
+Wait for both subagents to complete before proceeding to Step 8.
 
-Wait for all three subagents to complete before proceeding to Step 9.
+### Step 8 — Interview prep (foreground)
+
+**Do not use a background agent for this step.** Interview prep is markdown-only (no schema validation via Bash), and background agents can encounter permission issues that silently fail. Generate this in the main context instead.
+
+Read `prompts/generate_interview_prep.md`. Use all available context (CV fact base, job offer analysis, match analysis, company research). Include a quick reference block (job URL from `$ARGUMENTS`, output folder path, application date), fit score banner, and company context section. Save as `$PREP_DIR/interview_prep.md`.
 
 ### Step 9 — Generate output files
 
