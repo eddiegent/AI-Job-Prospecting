@@ -25,5 +25,9 @@ resources/cv_fact_base.json
 # Job history database
 resources/job_history.db
 
+# Example files with personal data
+.claude/skills/job-application-tailor/scripts/example_*.json
+.claude/skills/job-application-tailor/scripts/example_*.md
+
 # Generated outputs
 output/
