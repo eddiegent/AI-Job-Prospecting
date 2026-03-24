@@ -17,6 +17,7 @@ Desktop.ini
 # Personal data (do not publish)
 resources/MASTER_CV.docx
 resources/*.docx
+resources/cv-text/
 
 # Skill cache (auto-generated)
 resources/.cv_hash
