@@ -1,0 +1,22 @@
+[
+  {"query": "I just found this job posting for a Senior .NET Developer at Sopra Steria in Paris, here's the link: https://careers.soprasteria.com/job/12345 — can you prepare my application?", "should_trigger": true},
+  {"query": "hey so i saw this role on linkedin for a devops engineer at OVHcloud, they want someone with kubernetes and terraform experience. the description is pretty long let me paste it here... [pasted job description]. can you tailor my cv for this?", "should_trigger": true},
+  {"query": "Développeur Full Stack React/Node.js chez Doctolib — CDI Paris 10e. Je voudrais postuler, voici l'annonce complète que j'ai copiée du site.", "should_trigger": true},
+  {"query": "match my CV to this offer: https://www.welcometothejungle.com/fr/companies/alan/jobs/backend-engineer", "should_trigger": true},
+  {"query": "I need to apply for a position at Thales — it's a C++ embedded systems role in Bordeaux. I have the job description as a PDF in my downloads folder. Help me prepare everything", "should_trigger": true},
+  {"query": "write a cover letter for this job at BNP Paribas. They're looking for a data engineer with Spark and Databricks. Here's what they posted on Indeed...", "should_trigger": true},
+  {"query": "can you check how well I fit this role? it's a product manager position at Criteo, i just want to see the score before i commit to applying", "should_trigger": true},
+  {"query": "j'ai trouvé une offre intéressante pour un poste d'architecte cloud AWS chez Capgemini. Est-ce que tu peux préparer ma candidature ? Voici le lien de l'annonce.", "should_trigger": true},
+  {"query": "I'm applying to 3 different companies today — here's the first one, a QA engineer role at Ubisoft Montreal. Prepare my application pack please.", "should_trigger": true},
+  {"query": "help me apply for this — it's a junior frontend dev role and honestly i'm not sure i'm qualified but let's see what the fit score says https://jobs.lever.co/company/abc123", "should_trigger": true},
+  {"query": "I need to update my master CV — can you help me rewrite my experience section to be more impactful? I want to add my latest project at work.", "should_trigger": false},
+  {"query": "can you review my existing cover letter and give me feedback? it's in output/letter.docx. I wrote it myself and want to know if it sounds professional", "should_trigger": false},
+  {"query": "what's the average salary for a .NET developer in Paris? I want to know before I negotiate with this recruiter who contacted me on LinkedIn", "should_trigger": false},
+  {"query": "help me prepare for my interview at Datadog tomorrow — I already applied and got called back, I need to practice answering behavioral questions", "should_trigger": false},
+  {"query": "I want to build a job board scraper that automatically finds C# positions on Indeed and LinkedIn and saves them to a spreadsheet", "should_trigger": false},
+  {"query": "can you write a Python script that parses job descriptions from HTML and extracts the required skills into a structured JSON format?", "should_trigger": false},
+  {"query": "I need to send a follow-up email to the recruiter at Atos — it's been 2 weeks since I applied and I haven't heard back. Can you draft something?", "should_trigger": false},
+  {"query": "compare these two job offers side by side — one is at Dassault Systèmes and the other at Schneider Electric. Which one should I prioritize based on my profile?",  "should_trigger": false},
+  {"query": "my boss asked me to write a job description for a new senior developer position we're hiring for. Can you help me draft one?", "should_trigger": false},
+  {"query": "I want to create a skills matrix spreadsheet that maps my technical skills to different job families so I can identify which career paths suit me best", "should_trigger": false}
+]

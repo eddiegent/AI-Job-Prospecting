@@ -1,0 +1,55 @@
+fr:
+  cv_sections:
+    profile: "Profil professionnel"
+    skills: "Compétences"
+    experience: "Expérience professionnelle"
+    education: "Formation"
+    languages: "Langues"
+  letter_labels:
+    subject_prefix: "Objet"
+    greeting: "Madame, Monsieur,"
+    signoff: "Cordialement,"
+  interview_labels:
+    fit_score: "Fit Score"
+    company_context: "Contexte entreprise"
+    role_summary: "Résumé du poste"
+    fit_narrative: "Pourquoi votre profil est pertinent"
+    direct_matches: "Correspondances directes"
+    adjacent_matches: "Points transférables"
+    gaps: "Points à gérer honnêtement"
+    questions: "Questions probables et angles de réponse"
+    transition: "Votre narration de transition"
+    smart_questions: "Questions intelligentes à poser"
+  fit_levels:
+    very_good: "TRÈS BON"
+    good: "BON"
+    medium: "MOYEN"
+    low: "FAIBLE"
+
+en:
+  cv_sections:
+    profile: "Professional Profile"
+    skills: "Skills"
+    experience: "Professional Experience"
+    education: "Education"
+    languages: "Languages"
+  letter_labels:
+    subject_prefix: "Subject"
+    greeting: "Dear Hiring Manager,"
+    signoff: "Kind regards,"
+  interview_labels:
+    fit_score: "Fit Score"
+    company_context: "Company Context"
+    role_summary: "Role Summary"
+    fit_narrative: "Why Your Profile Fits"
+    direct_matches: "Direct Matches"
+    adjacent_matches: "Transferable Skills"
+    gaps: "Gaps to Address Honestly"
+    questions: "Likely Questions & Talking Points"
+    transition: "Your Transition Narrative"
+    smart_questions: "Smart Questions to Ask"
+  fit_levels:
+    very_good: "VERY GOOD"
+    good: "GOOD"
+    medium: "MEDIUM"
+    low: "LOW"

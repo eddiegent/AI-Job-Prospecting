@@ -1,0 +1,163 @@
+```
+     _       _       _        _ _
+    (_) ___ | |__   | |_ __ _(_) | ___  _ __
+    | |/ _ \| '_ \  | __/ _` | | |/ _ \| '__|
+    | | (_) | |_) | | || (_| | | | (_) | |
+   _/ |\___/|_.__/   \__\__,_|_|_|\___/|_|
+  |__/
+```
+
+# job-tailor
+
+A Claude Code plugin that takes a job offer and a master CV, then generates a complete, tailored application pack. Every claim in the output is grounded in the source CV — nothing is invented.
+
+## What it produces
+
+| File | Format | Purpose |
+|------|--------|---------|
+| Tailored CV | DOCX + PDF | CV restructured to emphasise relevant experience |
+| Motivation letter | DOCX | Full cover letter (3-4 paragraphs) |
+| Short motivation letter | TXT | Concise version (500-750 chars) for online forms |
+| LinkedIn messages | TXT | Personalised messages with real contact names and LinkedIn URLs |
+| Interview prep | MD | Fit score, company context, anticipated questions, talking points |
+| Run summary | JSON | Fit %, match counts, file paths |
+
+Output folders are prefixed with the fit level: `very_good-`, `good-`, `medium-`, or `low-`.
+
+## Hard rule
+
+**Never invent experience, skills, certifications, achievements, or responsibilities that are not in the source CV.** Gaps are handled honestly — de-emphasised, bridged with adjacent experience, or acknowledged as a learning trajectory.
+
+## How it works
+
+The skill runs a 10-step pipeline:
+
+1. **Pre-flight** — verify dependencies, init job history database, check company blacklist
+2. **Read master CV** — extract text from DOCX
+3. **Extract CV fact base** — structured extraction, cached by file hash
+4. **Analyse job offer** — extract requirements, skills, signals, detect language
+5. **Duplicate & history check** — query SQLite database (URL match, company+title match, 80% skill overlap)
+6. **Research company** — web search for size, culture, tech stack, key contacts
+7. **Match/gap analysis** — requirement-by-requirement matrix, fit score. Below 50% = stop
+8. **Tailor CV** — restructure emphasis based on match analysis and company size
+9. **Generate letter, short letter, LinkedIn messages, interview prep** (parallel)
+10. **Generate output files** — DOCX/PDF/TXT/MD via Python scripts
+11. **Record in database** — store for future duplicate detection and reporting
+
+## Job history database
+
+Applications are tracked in `resources/job_history.db` (SQLite). This enables:
+
+- **Duplicate detection** — prevents reprocessing the same job (matches by URL, company+title, or 80% skill overlap)
+- **Re-application context** — surfaces previous applications to the same company
+- **Status tracking** — track each application through: `generated` > `applied` > `interview` > `offer` / `rejected`
+- **Company blacklist/whitelist** — block or prioritise specific companies
+- **Reporting** — stats by fit level, status, domain, skill gap trends
+- **CSV export** — dump all applications for external use
+
+### Related commands
+
+- `/job-status` — update application status, manage company lists
+- `/job-stats` — dashboard, reports, skill trends, CSV export
+
+## Folder structure
+
+```
+job-application-tailor/
+├── SKILL.md                    # Main skill instructions (read by Claude)
+├── README.md                   # This file
+├── requirements.txt            # Python dependencies
+├── config/
+│   ├── settings.yaml           # Formatting, fit thresholds, behaviour flags
+│   ├── naming_rules.yaml       # Output filename patterns (FR/EN)
+│   └── languages.yaml          # Section labels by language
+├── prompts/
+│   ├── extract_cv_data.md      # CV fact base extraction
+│   ├── analyze_job_offer.md    # Job offer analysis
+│   ├── match_analysis.md       # Requirement-by-requirement matching
+│   ├── tailor_cv.md            # CV tailoring instructions
+│   ├── generate_motivation_letter.md
+│   ├── generate_short_letter.md
+│   ├── generate_linkedin_message.md
+│   └── generate_interview_prep.md
+├── schemas/                    # JSON Schema validation for every intermediate file
+│   ├── cv_fact_base.schema.json
+│   ├── job_offer_analysis.schema.json
+│   ├── match_analysis.schema.json
+│   ├── tailored_cv.schema.json
+│   ├── letter.schema.json
+│   └── linkedin.schema.json
+├── scripts/
+│   ├── generate_outputs.py     # DOCX/PDF/TXT generation pipeline
+│   ├── docx_generator.py       # CV and letter DOCX styling
+│   ├── validate.py             # JSON schema validation
+│   ├── common.py               # Shared utilities (caching, naming, fit levels)
+│   ├── job_history_db.py       # SQLite database for application tracking
+│   ├── backfill_history.py     # Import existing output folders into database
+│   └── run_skill.py            # CLI runner (scaffolding)
+├── templates/
+│   └── interview_prep_template.md
+└── references/
+    └── commands.md             # Exact bash commands for every operation
+```
+
+## Project-level layout
+
+The skill expects this structure in the project root:
+
+```
+project/
+├── resources/
+│   ├── MASTER_CV.docx          # Your source CV
+│   ├── cv_fact_base.json       # Cached extraction (auto-managed)
+│   ├── .cv_hash                # Cache key (auto-managed)
+│   └── job_history.db          # Application history database (auto-managed)
+├── output/
+│   ├── very_good-23032026-Job-Title-Company/
+│   │   ├── CV_Name_Title.docx
+│   │   ├── CV_Name_Title.pdf
+│   │   ├── Lettre_de_motivation_Name_Title.docx
+│   │   ├── Lettre_courte_Name_Title.txt
+│   │   ├── LinkedIn_message_Name_Title.txt
+│   │   ├── Interview_prep_Name_Title.md
+│   │   ├── run_summary.json
+│   │   └── _prep/              # Intermediate JSON files
+│   └── ...
+└── .claude/skills/job-application-tailor/   # This skill
+```
+
+## Dependencies
+
+```
+python-docx>=1.1.2
+pyyaml>=6.0.2
+jsonschema>=4.21.0
+docx2pdf>=0.1.8
+```
+
+Install with: `pip install -r .claude/skills/job-application-tailor/requirements.txt`
+
+## Usage
+
+Invoke via Claude Code:
+
+```
+/job-application-tailor https://example.com/job-posting
+```
+
+Or paste a job description directly:
+
+```
+/job-application-tailor <paste job description text>
+```
+
+The skill auto-detects language (FR/EN) from the job offer and generates all output in the matching language.
+
+## Fit levels
+
+| Level | Threshold | What happens |
+|-------|-----------|-------------|
+| very_good | 85%+ | Full pack generated |
+| good | 70-84% | Full pack generated |
+| medium | 50-69% | Full pack generated |
+| low | <50% | **Stops after match analysis** — no CV/letter generated |

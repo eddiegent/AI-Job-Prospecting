@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LinkedIn Messages",
+  "type": "object",
+  "required": ["variants"],
+  "properties": {
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["target", "message"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": ["recruiter", "hiring_manager", "internal_contact"]
+          },
+          "contact_name": { "type": "string" },
+          "linkedin_url": { "type": "string" },
+          "subject_hint": { "type": "string" },
+          "message": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

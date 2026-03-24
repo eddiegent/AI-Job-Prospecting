@@ -1,0 +1,29 @@
+# Claude Code
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Personal data (do not publish)
+resources/MASTER_CV.docx
+resources/*.docx
+
+# Skill cache (auto-generated)
+resources/.cv_hash
+resources/cv_fact_base.json
+
+# Job history database
+resources/job_history.db
+
+# Generated outputs
+output/

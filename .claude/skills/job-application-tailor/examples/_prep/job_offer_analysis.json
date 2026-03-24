@@ -1,0 +1,65 @@
+{
+  "job_title": "Senior Full-Stack Developer",
+  "company_name": "Acme Technologies",
+  "location": "Paris, France (hybrid: 2 days remote/week)",
+  "seniority": "Senior",
+  "company_size": "medium",
+  "required_skills": [
+    "C# / .NET Core",
+    "React or Angular",
+    "SQL Server / PostgreSQL",
+    "REST API design",
+    "Agile / Scrum methodology",
+    "Git version control",
+    "CI/CD pipelines",
+    "Unit testing"
+  ],
+  "preferred_skills": [
+    "Azure cloud services",
+    "Docker / Kubernetes",
+    "GraphQL",
+    "Team leadership experience"
+  ],
+  "responsibilities": [
+    "Design and develop full-stack web applications",
+    "Collaborate with product and design teams",
+    "Mentor junior developers",
+    "Participate in architecture decisions",
+    "Maintain and improve CI/CD pipelines"
+  ],
+  "technologies": [
+    "C#",
+    ".NET Core",
+    "React",
+    "SQL Server",
+    "Azure",
+    "Docker"
+  ],
+  "domain": "SaaS / Enterprise Software",
+  "languages": [
+    "English",
+    "French"
+  ],
+  "ats_keywords": [
+    "C#",
+    ".NET Core",
+    "React",
+    "SQL Server",
+    "Azure",
+    "Docker",
+    "REST API",
+    "Agile",
+    "Scrum",
+    "CI/CD",
+    "full-stack",
+    "unit testing",
+    "Git"
+  ],
+  "signals": [
+    "Growing team (hiring 3 developers): opportunity for impact",
+    "Product-driven company with strong engineering culture",
+    "Hybrid work model with flexibility",
+    "Mentoring valued: leadership path available"
+  ],
+  "detected_language": "en"
+}

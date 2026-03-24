@@ -1,0 +1,7 @@
+This is a placeholder. Replace this file with your actual CV:
+
+1. Save your CV as a .docx file
+2. Rename it to MASTER_CV.docx (removing the .example extension)
+3. Place it in this resources/ folder
+
+The skill will extract and cache a structured fact base from your CV on first run.

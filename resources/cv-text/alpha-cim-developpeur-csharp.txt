@@ -1,0 +1,76 @@
+Description du poste
+automatisme &
+informatique industrielle
+
+1989
+
+Alpha-cim
+PLUS DE 30 ANS DE PASSION POUR L'AUTOMATISATION
+Chez ALPHA-CIM, notre mission est la conception et la réalisation des projets d’automatisme et d’informatique industrielle clefs en main, quel que soit le secteur concerné. C’est cette mission qui nous anime depuis 1989, date de notre fondation.
+
+Nos efforts se concentrent sur la qualité et la fiabilité de nos solutions et un service client réactif. Nos équipes constituées de collaborateurs passionnés, nous permettent de répondre aux besoins les plus complexes de nos clients.
+
+Une entreprise, c’est avant tout des femmes et des hommes. Ceux sont leurs qualités ainsi que leur implication, qui font la valeur ajoutée d’ALPHA-CIM. Ces mêmes efforts quotidiens qui nous permettent de repousser nos limites, nous rappelle aussi la source de nos succès : notre passion pour l’excellence.
+
+Nous avons été guidés par notre passion pour l’automatisme et l’informatique industrielle dédiés à des process exigeants, qui demeure la pierre angulaire de cette entreprise. ALPHA-CIM, une entreprise avec un passé fier et un brillant avenir ! Je vous invite à explorer notre site et à en savoir plus sur notre expertise.
+
+Restons passionnés et exigeants !
+
+
+Secteurs d'expertises
+GTB, GTC, GTE
+SURETE & SECURITE
+INDUSTRIE
+ENVIRONNEMENT
+DEFENSE
+AEROPORT
+
+INTÉGRATEUR CERTIFIÉ
+ALPHA-CIM et ses équipes sont certifiés en automatismes, systèmes de supervision, électrotechnique ainsi qu’en informatique, réseau et cybersécurité. Nos compétences nous permettent de vous proposer des projets clefs en main pour augmenter vos performances.
+
+
+SERVICES ALPHA-CIM
+SERVICES ALPHA-CIM - De la formation, la maintenance applicative ou préventive jusqu’à l’astreinte, ALPHA-CIM vous propose des services d’automatisme et d’informatique industrielle de qualité et une disponibilité 7/7 H24 sur site ou à distance.
+
+
+CLIENTS ALPHA-CIM
+NOS CLIENTS EN AUTOMATISME & INFORMATIQUE
+INDUSTRIELLE SONT NOTRE FIERTÉ
+Comme eux, confiez-nous vos projets. Nous prenons en charge l’ensemble des étapes et à vos côtés définissons les meilleures solutions selon vos besoins.
+Livrés clés en main, dans les temps, en respectant le budget et avec un temps de coupure d’exploitation minimal, vos projets prennent vie et avec eux, nos succès ! Tournés vers l'avenir, nous explorons en permanence les nouvelles technologies pour façonner le paysage environnemental à venir.
+
+Supervision des passerelles de l'aéroport d'Oslo
+Système de tri bagages de l'aéroport de Paris-Orly
+Automatisation portes d’embarquement de l'aéroport de Roissy CDG
+
+Vous cherchez une entreprise où votre épanouissement compte ? Où projets novateurs et valorisants se conjuguent ? Un lieu où vos efforts sont reconnus et la formation essentielle ? Des opportunités d'avancement claires ? Saisissez l'occasion de croître au sein d'un environnement dynamique et enthousiaste. ALPHA-CIM vous accueille, que vous soyez jeune diplômé, apprenti, stagiaire ou manager expérimenté. Rejoignez une entreprise en pleine croissance, avec un chiffre d'affaires triplé récemment. Guidé par nos managers, développez vos compétences, travaillez sur des projets enrichissants. Joignez-vous à nous dès aujourd'hui pour une aventure stimulante !
+
+Developpeur C#, .NET
+
+Poste à pourvoir
+Dans le cadre du développement de son activité digitale, ALPHA-CIM recherche un développeur en informatique industrielle C#.NET.
+
+Vous intégrerez une équipe projet pour la réalisation de solutions logicielles temps réel et multi plateformes. Vous participerez à l’ensemble des phases du projet, essentiellement en nos locaux et sous la responsabilité d’un Chef de Projet. Vous bénéficierez également d’un jour de télétravail par semaine.
+
+Vos missions seront les suivantes :
+
+Etudes technique et logicielle des solutions (fonctionnelles, organiques, architecture, etc..)
+Du développement informatique sous C#, .NET, C++, avec les spécificités du temps réel
+Du développement de SGBRD (SQL)
+Des tests d’intégration en plateforme du logiciel
+Du déploiement, de la mise en service et de la recette sur site
+Vos projets s’articuleront autour de l’informatique industrielle et l’automatisation de process, tels que la gestion du tri des bagages aéroportuaire, systèmes de balisage, salle de contrôle de process industriel, banc de tests, sécurité informatique, ERP.
+
+Profil recherché
+Diplômé(e) en informatique Bac+5, vous maitrisez l’environnement de programmation Visual Studio, vous maitrisez et connaissez les bonnes pratiques de C#, SQL, temps réel et multithreading et utilisez GIT.
+
+Bon relationnel, autonome, curieux de la technologie, force de proposition et doté d’une ouverture d’esprit, vous êtes désireux de vous intégrer dans une entreprise à taille humaine.
+
+
+COMMENT SE RENDRE CHEZ ALPHA-CIM ?
+Adresse : 8-10 Rue du Bois Sauvage, 91000 Évry-Courcouronnes, France
+
+RER D, gare EVRY-COURCOURONNES
+puis bus ligne 407 arrêt Route de Mennecy
+En voiture : A6, A5, N104, N7
+

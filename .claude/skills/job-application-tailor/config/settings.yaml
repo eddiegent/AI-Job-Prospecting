@@ -1,0 +1,37 @@
+default_language: auto
+fallback_language: fr
+
+paths:
+  database: resources/job_history.db
+  cv_folder: resources
+  output_folder: output
+
+formatting:
+  font_name: Calibri
+  body_font_size_pt: 11
+  heading_font_size_pt: 13
+  title_font_size_pt: 18
+  line_spacing: 1.08
+  space_after_paragraph_pt: 6
+  space_before_section_pt: 10
+
+outputs:
+  generate_cv_docx: true
+  generate_letter_docx: true
+  generate_linkedin_txt: true
+  generate_interview_prep_md: true
+  generate_summary_json: true
+
+behaviour:
+  prefer_explicit_cv_filename: true
+  cv_filename_keyword: CV
+  keep_recent_roles_detailed: true
+  keep_older_roles_compact: true
+  skip_company_research: false  # set to true to skip the WebSearch step (faster, but no contact names or company context)
+  dry_run: false  # set to true to stop after match analysis (fit score only, no CV/letter generation)
+
+fit_levels:
+  very_good: 85
+  good: 70
+  medium: 50
+  # below medium threshold = "low"

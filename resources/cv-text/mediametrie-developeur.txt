@@ -1,0 +1,40 @@
+Description du poste
+Descriptif de l'offre
+Rejoignez Glance, BU internationale de Médiamétrie, spécialiste de l’analyse et de la veille de contenus audiovisuels. Nos solutions offrent des insights stratégiques sur les tendances de consommation vidéo, les stratégies de programmation et les comportements d’audience à travers le monde.
+
+Grâce à des services innovants, nous accompagnons producteurs, distributeurs et diffuseurs dans l’évaluation des contenus et la préparation des marchés internationaux.
+
+**MISSIONS**
+
+En tant que Développeur au sein de l’équipe IT, vous participerez au développement et à l’évolution de nos outils et frameworks dédiés à l’automatisation du traitement et du contrôle des données d’audience internationales.
+
+Vous contribuerez également à la création d’interfaces de restitution et d’aide à la décision utilisées par nos équipes internes et par nos clients à l’international.
+
+Au quotidien, vous ferez évoluer nos solutions et API, développerez des dashboards performants et optimiserez nos pipelines d’intégration de données.
+
+En ce sens, vos principales missions consistent à :
+
+Concevoir, développer et maintenir des outils backend autour des données d’audience (API, traitements automatisés, dashboards, reporting)
+Optimiser les requêtes et procédures sur des bases Oracle de grande volumétrie
+Participer à l’évolution des frameworks internes et à la modernisation de nos outils
+Assister les équipes internes dans la formalisation de leurs besoins et la mise en place de solutions adaptées
+Contribuer au déploiement de bonnes pratiques de développement : tests automatisés, CI/CD, documentation technique
+Maintenir ponctuellement certaines applications historiques développées en C#
+Profil recherché
+Titulaire d'un Bac+5 dans le domaine information, vous justifiez d'une première expérience significative en CDI/ CDD.
+Vous êtes à l’aise avec SQL et avez une solide expérience sur Oracle (optimisation de requêtes, gestion de gros volumes, compréhension des plans d’exécution)
+Vous maîtrisez Node.js et avez déjà développé des API ou des outils backend. Des expériences sur les frameworks NestJS et Angular serait apprécié
+Vous êtes autonome, curieux et appréciez travailler dans une petite équipe polyvalente où chacun contribue à plusieurs aspects du projet
+Vous êtes capable d’interagir en anglais, tant à l’écrit qu’à l’oral (environnement international)
+Vous êtes sensible aux bonnes pratiques de développement et souhaitez participer à une transformation technique : automatisation, industrialisation, qualité du code.
+Vous appréciez travailler en équipe.
+**Environnement technique :**
+
+Base de données : Oracle (PL/SQL, requêtes complexes, optimisation)
+Langages : TypeScript (principal), C# (.NET) pour maintenance ponctuelle
+Frameworks & outils : Node.js, NestJS, Angular, Git, REST APIs
+Information complémentaires
+Expérience:
+> 3 ans
+Niveau d'étude :
+Bac +5 / Master

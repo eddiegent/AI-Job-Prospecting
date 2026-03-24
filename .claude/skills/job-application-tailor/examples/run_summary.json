@@ -1,0 +1,18 @@
+{
+  "output_folder": "output/good-24032026-Senior-Full-Stack-Developer-Acme-Technologies",
+  "cv_file": "CV_Jane_Doe_Senior_Full_Stack_Developer.docx",
+  "cv_pdf_file": "CV_Jane_Doe_Senior_Full_Stack_Developer.pdf",
+  "letter_file": "Cover_letter_Jane_Doe_Senior_Full_Stack_Developer.docx",
+  "short_letter_file": "Short_cover_letter_Jane_Doe_Senior_Full_Stack_Developer.txt",
+  "linkedin_file": "LinkedIn_message_Jane_Doe_Senior_Full_Stack_Developer.txt",
+  "interview_file": "Interview_prep_Jane_Doe_Senior_Full_Stack_Developer.md",
+  "job_title": "Senior Full-Stack Developer",
+  "candidate_name": "Jane Doe",
+  "overall_fit_pct": 82.5,
+  "match_summary": {
+    "direct_count": 10,
+    "transferable_count": 5,
+    "gap_count": 2,
+    "overall_fit_pct": 82.5
+  }
+}

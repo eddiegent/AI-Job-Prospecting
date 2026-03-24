@@ -1,0 +1,27 @@
+You are analysing a job offer for the purpose of creating a truthful, tailored application pack.
+
+## Mission
+Extract the role requirements and likely ATS signals without inventing or over-interpreting.
+
+## Extract
+- job title, company name, location, seniority level
+- required skills, preferred skills
+- responsibilities
+- technologies / tools / methods
+- domain / industry
+- language requirements
+- keywords likely to matter for ATS
+- company size signals (explicit headcount, "petite équipe", "startup", "ESN", "grand groupe", or inferred from context)
+- hiring signals about culture, autonomy, communication, architecture, testing, delivery
+
+## Output format
+Return valid JSON matching `schemas/job_offer_analysis.schema.json`. Read that schema file for the exact structure.
+
+Key points:
+- `company_size` should be one of: `"small"`, `"medium"`, `"large"`, `"unknown"`
+- Include a `detected_language` field (ISO 639-1 code, e.g. `"fr"`, `"en"`) — this drives the language of all subsequent outputs
+
+## Rules
+- If something is not explicit, use an empty string or empty list
+- Do not hallucinate the job title
+- Use concise phrases

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "job_title": {"type": "string", "minLength": 1},
+    "company_name": {"type": "string"},
+    "location": {"type": "string"},
+    "seniority": {"type": "string"},
+    "required_skills": {"type": "array", "items": {"type": "string"}},
+    "preferred_skills": {"type": "array", "items": {"type": "string"}},
+    "responsibilities": {"type": "array", "items": {"type": "string"}},
+    "technologies": {"type": "array", "items": {"type": "string"}},
+    "domain": {"type": "string"},
+    "languages": {"type": "array", "items": {"type": "string"}},
+    "ats_keywords": {"type": "array", "items": {"type": "string"}},
+    "signals": {"type": "array", "items": {"type": "string"}},
+    "detected_language": {"type": "string", "description": "ISO 639-1 language code of the job offer, e.g. fr, en"}
+  },
+  "required": [
+    "job_title", "company_name", "required_skills", "preferred_skills",
+    "responsibilities", "technologies", "ats_keywords"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "match_summary": {
+    "direct_count": 10,
+    "transferable_count": 5,
+    "gap_count": 2,
+    "overall_fit_pct": 82.5
+  },
+  "matches": [
+    {
+      "requirement": "C# / .NET Core",
+      "category": "required_skill",
+      "match_type": "direct",
+      "evidence": "10+ years of C# and .NET experience. Migrated legacy .NET Framework applications to .NET Core.",
+      "notes": "Core strength"
+    },
+    {
+      "requirement": "React or Angular",
+      "category": "required_skill",
+      "match_type": "transferable",
+      "evidence": "3 years of Angular experience. Basic React knowledge from side projects.",
+      "notes": "Angular experience transfers well, React would require ramp-up"
+    },
+    {
+      "requirement": "SQL Server / PostgreSQL",
+      "category": "required_skill",
+      "match_type": "direct",
+      "evidence": "Extensive SQL Server experience across multiple roles. Designed and optimised database schemas.",
+      "notes": "Strong match"
+    },
+    {
+      "requirement": "REST API design",
+      "category": "required_skill",
+      "match_type": "direct",
+      "evidence": "Designed RESTful APIs serving 50k+ requests/day. Implemented versioning and documentation with Swagger.",
+      "notes": ""
+    },
+    {
+      "requirement": "Docker / Kubernetes",
+      "category": "preferred_skill",
+      "match_type": "gap",
+      "evidence": "No direct experience with container orchestration.",
+      "notes": "Learning opportunity — could highlight willingness to learn"
+    }
+  ]
+}

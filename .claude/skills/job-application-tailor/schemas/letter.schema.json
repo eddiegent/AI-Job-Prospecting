@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Motivation Letter",
+  "type": "object",
+  "required": ["greeting", "paragraphs", "signoff", "name"],
+  "properties": {
+    "sender_name": { "type": "string" },
+    "sender_address": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recipient_name": { "type": "string" },
+    "recipient_address": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "date_line": { "type": "string" },
+    "subject_line": { "type": "string" },
+    "greeting": { "type": "string", "minLength": 1 },
+    "paragraphs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "signoff": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,33 @@
+{
+  "name": "job-tailor",
+  "version": "1.0.0",
+  "description": "Generate tailored application packs (CV, cover letters, LinkedIn messages, interview prep) from a job offer and your master CV. Includes application tracking, duplicate detection, and reporting.",
+  "author": "Eddie Gent",
+  "skills": [
+    "job-application-tailor",
+    "job-status",
+    "job-stats"
+  ],
+  "required_tools": [
+    "Read",
+    "Write",
+    "Edit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "WebSearch"
+  ],
+  "dependencies": {
+    "python": ">=3.10",
+    "packages": [
+      "python-docx>=1.1.2",
+      "pyyaml>=6.0.2",
+      "jsonschema>=4.21.0",
+      "docx2pdf>=0.1.8"
+    ]
+  },
+  "setup": {
+    "instructions": "Place your master CV as MASTER_CV.docx in the resources/ folder."
+  }
+}

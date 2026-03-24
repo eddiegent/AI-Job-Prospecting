@@ -1,0 +1,37 @@
+folder:
+  pattern: "{date}-{job_title}"
+  date_format: "%d%m%Y"
+
+filenames:
+  fr:
+    cv: "CV_{candidate_name}_{job_title}.docx"
+    cv_pdf: "CV_{candidate_name}_{job_title}.pdf"
+    letter: "Lettre_de_motivation_{candidate_name}_{job_title}.docx"
+    short_letter: "Lettre_courte_{candidate_name}_{job_title}.txt"
+    linkedin: "LinkedIn_message_{candidate_name}_{job_title}.txt"
+    interview: "Interview_prep_{candidate_name}_{job_title}.md"
+    summary: "run_summary.json"
+  en:
+    cv: "CV_{candidate_name}_{job_title}.docx"
+    cv_pdf: "CV_{candidate_name}_{job_title}.pdf"
+    letter: "Cover_letter_{candidate_name}_{job_title}.docx"
+    short_letter: "Short_cover_letter_{candidate_name}_{job_title}.txt"
+    linkedin: "LinkedIn_message_{candidate_name}_{job_title}.txt"
+    interview: "Interview_prep_{candidate_name}_{job_title}.md"
+    summary: "run_summary.json"
+
+sanitize:
+  replace_chars:
+    - "/"
+    - "\\"
+    - ":"
+    - "*"
+    - "?"
+    - "\""
+    - "<"
+    - ">"
+    - "|"
+  replacement: "-"
+  collapse_spaces: true
+  collapse_dashes: true
+  trim_chars: " .-_"

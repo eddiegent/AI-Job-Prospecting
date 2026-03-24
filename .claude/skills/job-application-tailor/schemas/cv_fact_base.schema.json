@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "candidate_name": {"type": "string"},
+    "headline": {"type": "string"},
+    "contact": {
+      "type": "object",
+      "properties": {
+        "email": {"type": "string"},
+        "phone": {"type": "string"},
+        "linkedin": {"type": "string"}
+      }
+    },
+    "summary": {"type": "string"},
+    "skills": {"type": "array", "items": {"type": "string"}},
+    "technologies": {"type": "array", "items": {"type": "string"}},
+    "methodologies": {"type": "array", "items": {"type": "string"}},
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "company": {"type": "string"},
+          "location": {"type": "string"},
+          "role": {"type": "string"},
+          "dates": {"type": "string"},
+          "type": {"type": "string", "enum": ["role", "training"]},
+          "details": {"type": "array", "items": {"type": "string"}},
+          "metrics": {"type": "array", "items": {"type": "string"}},
+          "international_signals": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["company", "role", "dates"]
+      }
+    },
+    "education": {"type": "array", "items": {"type": "string"}},
+    "languages": {"type": "array", "items": {"type": "string"}},
+    "constraints": {"type": "array", "items": {"type": "string"}},
+    "transition_signals": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["candidate_name", "experience"]
+}

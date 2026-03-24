@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "match_summary": {
+      "type": "object",
+      "properties": {
+        "direct_count": {"type": "integer"},
+        "transferable_count": {"type": "integer"},
+        "gap_count": {"type": "integer"},
+        "overall_fit_pct": {"type": "number", "minimum": 0, "maximum": 100}
+      },
+      "required": ["direct_count", "transferable_count", "gap_count", "overall_fit_pct"]
+    },
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requirement": {"type": "string"},
+          "category": {"type": "string", "enum": ["required_skill", "preferred_skill", "technology", "responsibility"]},
+          "match_type": {"type": "string", "enum": ["direct", "transferable", "gap"]},
+          "evidence": {"type": "string"},
+          "notes": {"type": "string"}
+        },
+        "required": ["requirement", "category", "match_type"]
+      }
+    }
+  },
+  "required": ["match_summary", "matches"]
+}
