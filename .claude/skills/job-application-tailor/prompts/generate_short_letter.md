@@ -13,6 +13,8 @@ Create a punchy, short version of the motivation letter suitable for online appl
 - Keep the same language as the full letter
 - Prioritise: who you are, your strongest match to the role, and a call to action
 - Every sentence must earn its place — cut anything that doesn't directly strengthen the candidacy
+- Keep the same natural, direct tone as the full letter — no corporate jargon or stiff formulas
+- Signoff: "Cordialement," or "Bien cordialement," — nothing more formal
 
 ## Structure
 - Greeting (same as the full letter)
