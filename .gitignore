@@ -32,3 +32,9 @@ resources/job_history.db
 
 # Generated outputs
 output/
+
+# Skill creator workspace
+job-application-tailor-workspace/
+
+# Stray config
+resources/.claude/
