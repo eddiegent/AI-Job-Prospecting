@@ -12,6 +12,10 @@
         "linkedin": {"type": "string"}
       }
     },
+    "candidate_location": {
+      "type": "string",
+      "description": "Candidate's residential location as shown in the CV header, e.g. 'Brunoy (91)', 'London, UK', 'Austin, TX'"
+    },
     "summary": {"type": "string"},
     "skills": {"type": "array", "items": {"type": "string"}},
     "technologies": {"type": "array", "items": {"type": "string"}},

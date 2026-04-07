@@ -4,7 +4,8 @@ You are analysing a job offer for the purpose of creating a truthful, tailored a
 Extract the role requirements and likely ATS signals without inventing or over-interpreting.
 
 ## Extract
-- job title, company name, location, seniority level
+- job title, company name, location (city/area as stated in the offer), seniority level
+- **work mode** — `onsite`, `hybrid`, `remote`, or `unknown`. Look for signals like "télétravail", "remote", "présentiel", "sur site", "X jours par semaine", "full remote", "hybride", "work from home", etc.
 - required skills, preferred skills
 - responsibilities
 - technologies / tools / methods

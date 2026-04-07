@@ -16,6 +16,9 @@ Adapt the level of detail based on company size. This matters because small comp
 - **Mid-size company (50–500)**: balance depth and breadth. Emphasize the core technical match but also highlight collaboration, integration, and autonomy.
 - **Large company / ESN (> 500)**: focus on depth. Emphasize technical expertise, methodology (SOLID, tests, CI/CD), and the ability to work within structured teams and processes.
 
+## Candidate location
+Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Location is valuable on a CV — it tells the recruiter at a glance whether the candidate is local, nearby, or would need to relocate. Keep the original format from the CV (e.g. "Brunoy (91)", "London, UK").
+
 ## Allowed changes
 - Rewrite the title / headline / summary to align with the target role
 - Reorder skills to lead with the most relevant

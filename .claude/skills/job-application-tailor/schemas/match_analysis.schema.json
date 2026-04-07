@@ -12,6 +12,17 @@
       },
       "required": ["direct_count", "transferable_count", "gap_count", "overall_fit_pct"]
     },
+    "location_analysis": {
+      "type": "object",
+      "description": "Geographic feasibility assessment comparing candidate and job locations",
+      "properties": {
+        "candidate_location": {"type": "string"},
+        "job_location": {"type": "string"},
+        "work_mode": {"type": "string"},
+        "commute_assessment": {"type": "string", "description": "Brief assessment: easy commute, long commute, relocation needed, remote so N/A, etc."},
+        "notes": {"type": "string", "description": "Any relevant details — e.g. same metro area, different country, relocation considerations"}
+      }
+    },
     "matches": {
       "type": "array",
       "items": {

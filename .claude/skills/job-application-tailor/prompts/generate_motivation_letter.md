@@ -1,7 +1,8 @@
 Write a short, concise motivation letter based on:
-1. a structured CV fact base
-2. a structured job offer analysis
-3. company research (if available) — use company context to make the letter feel targeted, not generic
+1. a structured CV fact base (includes `candidate_location`)
+2. a structured job offer analysis (includes `location` and `work_mode`)
+3. the match analysis (includes `location_analysis` with commute assessment)
+4. company research (if available) — use company context to make the letter feel targeted, not generic
 
 ## Goal
 Create a credible, natural-sounding application letter. The reader should feel a real person wrote this for their specific role — not that a template was filled in.
@@ -29,6 +30,7 @@ Recruiters read dozens of letters a day. The ones that stand out feel genuine, n
 - No empty flattery or generic buzzwords
 - No exaggerated passion story
 - **Don't imply solo work** — phrases like "en autonomie complète" or "j'ai piloté seul" suggest the candidate did everything alone. In reality, most work happened within a team. Only mention autonomy if the CV fact base explicitly marks a period as solo/autonomous, and even then scope it to that specific period, not the whole tenure.
+- If the candidate lives near the job location, it's worth mentioning naturally (e.g. "basé à Brunoy, à proximité de vos locaux" or "based locally in..."). Geographic proximity is a real advantage — recruiters prefer candidates who won't need relocation. But don't force it if the role is fully remote or if the candidate is far away.
 - Keep it short (3-4 paragraphs max)
 - Paragraphs should be 2-4 sentences, not dense blocks
 - Signoff must be "Cordialement," or "Bien cordialement," — nothing more formal

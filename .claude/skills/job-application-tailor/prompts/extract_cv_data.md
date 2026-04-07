@@ -5,6 +5,7 @@ Create a structured fact base from the CV so later steps can tailor truthfully.
 
 ## Extract
 - candidate name, headline / title, contact details
+- **candidate location** — the candidate's residential location as it appears in the CV header or contact section (e.g. "Brunoy (91)", "London, UK", "Austin, TX"). Keep the original formatting. This is used later for commute and distance analysis against job locations.
 - summary
 - skills, tools / technologies, methodologies
 - experience by role (company, location, role, dates, details, metrics, international signals)

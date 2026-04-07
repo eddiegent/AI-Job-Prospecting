@@ -26,6 +26,9 @@ Key points:
 - `match_type` must be one of: `"direct"`, `"transferable"`, `"gap"`
 - `category` must be one of: `"required_skill"`, `"preferred_skill"`, `"technology"`, `"responsibility"`
 
+## Geographic assessment
+In addition to the skills matrix, produce a `location_analysis` object that compares the candidate's residential location (from the CV fact base `candidate_location` field) against the job's `location` and `work_mode`. Use your general knowledge of geography to assess commute feasibility — you don't need exact distances, just a sensible estimate (same city, same metro area, different region, different country, etc.). If the role is fully remote, note that distance is not a factor. This helps the candidate understand at a glance whether the job is geographically practical.
+
 ## Rules
 - Only claim "direct" if the CV explicitly names the skill or a very close synonym
 - "transferable" must include a concrete explanation of why the experience transfers

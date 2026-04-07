@@ -15,7 +15,8 @@ Help the candidate walk into the interview confident and prepared. Every talking
    ## Quick Reference
    - **Job offer**: [job title](URL) — or the URL as plain text if no markdown rendering
    - **Company**: company name — company career page URL if found during research
-   - **Location**: location and work mode (remote/hybrid/onsite)
+   - **Location**: job location and work mode (remote/hybrid/onsite)
+   - **Commute**: brief commute assessment from the match analysis `location_analysis` (e.g. "Same metro area — easy commute", "Different region — relocation likely needed", "Fully remote — N/A")
    - **Applied on**: today's date
    - **Output folder**: the path to the output folder for this run
    ```

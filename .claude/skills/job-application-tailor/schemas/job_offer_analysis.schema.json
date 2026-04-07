@@ -5,6 +5,11 @@
     "job_title": {"type": "string", "minLength": 1},
     "company_name": {"type": "string"},
     "location": {"type": "string"},
+    "work_mode": {
+      "type": "string",
+      "enum": ["onsite", "hybrid", "remote", "unknown"],
+      "description": "Whether the role is onsite, hybrid, remote, or not specified"
+    },
     "seniority": {"type": "string"},
     "required_skills": {"type": "array", "items": {"type": "string"}},
     "preferred_skills": {"type": "array", "items": {"type": "string"}},
