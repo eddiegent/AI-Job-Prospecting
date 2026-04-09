@@ -35,6 +35,7 @@ These exist because recruiters and hiring managers spot fabrications instantly, 
 - **Complete timeline** — every role and training period from the master CV appears in the output (compressed if less relevant, but never removed) so there are no visible gaps
 - **Chronological integrity** — strict reverse-chronological order, no reordering
 - **Honest gap handling** — if a requirement isn't evidenced, de-emphasise it, surface adjacent experience truthfully, or acknowledge a learning trajectory
+- **Structural consistency** — CV formatting derived from the master CV (contact labels, skills section granularity, experience line order, education date format, languages format) must be identical across all runs. Only content emphasis changes between applications, never the structural layout. See `prompts/tailor_cv.md` § Structural consistency for details.
 
 ## Infrastructure
 

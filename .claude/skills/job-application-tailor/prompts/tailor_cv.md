@@ -28,6 +28,26 @@ Include the candidate's residential location (from `candidate_location` in the C
 ## Preserving skill sections
 The master CV may contain dedicated skill/competency sections beyond the main technical skills table (e.g. "Développement assisté par IA", "Leadership", "Domain expertise"). These sections are part of the candidate's professional identity. Every such section must appear in the tailored CV's `skills_sections` array — you may reorder them for relevance but never drop them entirely. Check the CV fact base `technologies` and the raw CV structure to ensure no dedicated section is lost.
 
+## Structural consistency — these formats must never vary between runs
+
+The following formatting rules are derived from the master CV and must be applied identically regardless of the target job:
+
+### Contact line
+Use the labeled format from the master CV:
+`Email: <email> | Tel: <phone> | LinkedIn: <linkedin> | <location>`
+
+### Skills sections
+Preserve the master CV's granular skill categories as separate `skills_sections` entries. Each category from the skills table becomes its own section with its own heading (e.g. "Langages", "Plateformes & Frameworks", "Services & Communication", "Données", "Tests", "Outils & Environnements", "Architecture & Méthodes", "Systèmes"). Do not consolidate multiple categories into a single section. Dedicated sections outside the table (e.g. "Développement assisté par IA") are also preserved as separate entries. You may reorder sections for relevance but never merge or drop them.
+
+### Experience line format
+Role comes first, then company: `Role — Company, Location`. This matches the master CV's style hierarchy (RoleStyle above CompanyStyle). Never reverse this to `Company — Role`.
+
+### Education dates
+Reproduce date formatting as it appears in the master CV. Do not reformat dates (e.g. don't expand 2-digit years to 4-digit, don't change separators).
+
+### Languages
+Reproduce the languages section as it appears in the master CV. If the CV uses a single consolidated line (e.g. "Bilingue Français / Anglais"), keep it as one entry. Do not split into separate entries.
+
 ## Forbidden
 - Inventing projects, achievements, tools, certifications, or leadership claims
 - Adding keywords not evidenced in the CV
