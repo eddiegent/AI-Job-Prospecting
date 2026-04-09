@@ -15,7 +15,12 @@ Generate reports and insights from the job application history database.
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"
 DB_PATH="$PROJECT_ROOT/resources/job_history.db"
-CLI="python scripts/cli.py --db $DB_PATH"
+```
+
+**Important**: Paths may contain spaces. Always quote variables in commands — use `"$DB_PATH"`, `"$SKILL_BASE"`, etc. Do NOT store compound commands in a variable (e.g. `CLI="python ... $DB_PATH"`) because spaces in the path will break argument splitting. Instead, write the full command each time:
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" <command> [args...]
 ```
 
 ## Available reports
@@ -25,29 +30,29 @@ Parse `$ARGUMENTS` to determine which report(s) the user wants. If no specific r
 ### Overview dashboard
 
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type all
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all
 ```
 
 ### Individual reports
 
 By status only:
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type status
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type status
 ```
 
 By fit level:
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type fit
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type fit
 ```
 
 By company:
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type company
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type company
 ```
 
 By domain:
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type domain
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type domain
 ```
 
 ### Skill gap trends
@@ -55,7 +60,7 @@ cd "$SKILL_BASE" && $CLI stats --type domain
 Shows which required skills appear most often across applications, helping identify what to learn next:
 
 ```bash
-cd "$SKILL_BASE" && $CLI skills --limit 20
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" skills --limit 20
 ```
 
 ### Time-based filtering
@@ -63,7 +68,7 @@ cd "$SKILL_BASE" && $CLI skills --limit 20
 If the user asks about recent activity (e.g. "this week", "last 30 days", "since March"), add `--since`:
 
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type all --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --since 30d
 ```
 
 Map natural-language time expressions to `--since` values:
@@ -79,7 +84,7 @@ The `--since` flag works on all commands: `stats`, `skills`, and `count`.
 
 For structured output, add `--json` to any command:
 ```bash
-cd "$SKILL_BASE" && $CLI stats --type all --json
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --json
 ```
 
 ### CSV export
@@ -87,14 +92,14 @@ cd "$SKILL_BASE" && $CLI stats --type all --json
 Export all applications to a CSV file:
 
 ```bash
-cd "$SKILL_BASE" && $CLI export-csv --output "$PROJECT_ROOT/output/applications_export.csv"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" export-csv --output "$PROJECT_ROOT/output/applications_export.csv"
 ```
 
 ### Quick count
 
 ```bash
-cd "$SKILL_BASE" && $CLI count
-cd "$SKILL_BASE" && $CLI count --since 7d
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count --since 7d
 ```
 
 ## Display format

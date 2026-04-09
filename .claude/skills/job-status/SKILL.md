@@ -15,7 +15,12 @@ Update application statuses and manage company lists in the job history database
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"
 DB_PATH="$PROJECT_ROOT/resources/job_history.db"
-CLI="python scripts/cli.py --db $DB_PATH"
+```
+
+**Important**: Paths may contain spaces. Always quote variables in commands — use `"$DB_PATH"`, `"$SKILL_BASE"`, etc. Do NOT store compound commands in a variable (e.g. `CLI="python ... $DB_PATH"`) because spaces in the path will break argument splitting. Instead, write the full command each time:
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" <command> [args...]
 ```
 
 ## What it does
@@ -32,27 +37,27 @@ This skill interacts with the SQLite database at `resources/job_history.db` (man
 
 List all recent applications (default limit 50):
 ```bash
-cd "$SKILL_BASE" && $CLI list
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list
 ```
 
 Filter by status (e.g. only rejected, only applied):
 ```bash
-cd "$SKILL_BASE" && $CLI list --status rejected
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --status rejected
 ```
 
 Filter by company:
 ```bash
-cd "$SKILL_BASE" && $CLI list --company "Cegid"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --company "Cegid"
 ```
 
 Combine filters:
 ```bash
-cd "$SKILL_BASE" && $CLI list --status applied --company "OPEN" --limit 10
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --status applied --company "OPEN" --limit 10
 ```
 
 If the user mentions a time period (e.g. "this week", "last 30 days"), add `--since`:
 ```bash
-cd "$SKILL_BASE" && $CLI list --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --since 30d
 ```
 
 Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO date (`2026-03-01`).
@@ -68,34 +73,34 @@ Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO da
 4. Once confirmed, update:
 
 ```bash
-cd "$SKILL_BASE" && $CLI update-status <app_id> <new_status>
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-status <app_id> <new_status>
 ```
 
 To look up an application's current details first:
 ```bash
-cd "$SKILL_BASE" && $CLI get <app_id>
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" get <app_id>
 ```
 
 ### If the user wants to manage company lists
 
 Show blacklist and whitelist:
 ```bash
-cd "$SKILL_BASE" && $CLI company-list
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-list
 ```
 
 Check if a specific company is listed:
 ```bash
-cd "$SKILL_BASE" && $CLI company-check "<company_name>"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-check "<company_name>"
 ```
 
 Add to blacklist or whitelist:
 ```bash
-cd "$SKILL_BASE" && $CLI company-add "<company_name>" --list-type blacklist --reason "optional reason"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-add "<company_name>" --list-type blacklist --reason "optional reason"
 ```
 
 Remove from lists:
 ```bash
-cd "$SKILL_BASE" && $CLI company-remove "<company_name>"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-remove "<company_name>"
 ```
 
 ## Display format

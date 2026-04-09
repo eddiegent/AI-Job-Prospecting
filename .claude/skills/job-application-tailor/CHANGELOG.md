@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.1.0] - 2026-04-09
+
+### Changed
+- **Template-based CV generation** — CVs are now rendered from a pre-styled DOCX template (`docxtpl`) instead of being built programmatically. All formatting (fonts, colours, spacing, borders) lives in the template file, not in code.
+- **ATS-compliant design** — single-column layout, Calibri font, paragraph borders (no tables/text boxes/images), standard French section order
+- **Visual improvements** — blue section heading borders, compact contact line, optimised spacing for 2-page fit
+
+### Added
+- `scripts/create_cv_template.py` — generates the CV DOCX templates (run once or to refresh design)
+- `templates/cv_template_fr.docx` / `cv_template_en.docx` — pre-styled CV templates with Jinja2 tags
+- `docxtpl>=0.18.0` dependency
+
+### Fixed
+- **CV tailoring prompt** — title/headline must now stay grounded in the master CV's identity, not be replaced with job offer language (e.g. "Backend" when the CV says "Services & Intégration")
+- **Skill section preservation** — dedicated sections from the master CV (e.g. "Développement assisté par IA") can no longer be dropped during tailoring
+- **Spaces-in-paths bug** — satellite skills (`/job-status`, `/job-stats`) no longer use `$CLI` variable pattern that broke with paths containing spaces; all commands now use inline `python scripts/cli.py --db "$DB_PATH"` with proper quoting
+
+### Notes
+- The `generate_cv_docx()` function signature is unchanged — no changes needed in calling code
+- To customise the CV design: edit `create_cv_template.py` and re-run, or open the template in Word directly
+
 ## [1.0.0] - 2026-03-24
 
 ### Features

@@ -6,6 +6,8 @@ All commands assume these variables are set:
 - `OUTPUT_DIR` — the output folder for this run (set in Step 0d)
 - `PREP_DIR` — `$OUTPUT_DIR/_prep`
 
+**Important — paths with spaces**: These paths may contain spaces (e.g. `Job Prospecting`). Always double-quote variable references in bash (`"$PROJECT_ROOT"`, `"$SKILL_BASE"`, etc.). Never store compound commands in a variable — write the full command inline instead.
+
 ## Setup
 
 ### Resolve paths

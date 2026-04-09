@@ -16,7 +16,7 @@ pip install -r .claude/skills/job-application-tailor/requirements.txt
 
 Verify it worked:
 ```bash
-python -c "import docx, yaml, jsonschema; print('OK')"
+python -c "import docx, docxtpl, yaml, jsonschema; print('OK')"
 ```
 
 ## Step 2 — Add your master CV
@@ -76,6 +76,8 @@ All settings live in `.claude/skills/job-application-tailor/config/settings.yaml
 | `fit_levels.medium` | `50` | Below this = "low", generation stops |
 
 ## Troubleshooting
+
+**"CV template not found"** — the CV template needs to be generated once. Run: `python .claude/skills/job-application-tailor/scripts/create_cv_template.py`
 
 **"No DOCX CV file found"** — make sure your CV is saved as `.docx` (not `.pdf` or `.doc`) in the `resources/` folder.
 
