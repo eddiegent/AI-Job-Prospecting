@@ -14,7 +14,8 @@ Generate reports and insights from the job application history database.
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"
-DB_PATH="$PROJECT_ROOT/resources/job_history.db"  # configurable in config/settings.yaml → paths.database
+DB_PATH="$PROJECT_ROOT/resources/job_history.db"
+CLI="python scripts/cli.py --db $DB_PATH"
 ```
 
 ## Available reports
@@ -23,40 +24,30 @@ Parse `$ARGUMENTS` to determine which report(s) the user wants. If no specific r
 
 ### Overview dashboard
 
-Run all summary queries and present a combined view:
-
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io, json
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
+cd "$SKILL_BASE" && $CLI stats --type all
+```
 
-total = db.total_count()
-print(f'Total applications: {total}')
+### Individual reports
 
-print('\n--- By Status ---')
-for r in db.stats_by_status():
-    print(f\"  {r['status']:12s} {r['count']}\")
+By status only:
+```bash
+cd "$SKILL_BASE" && $CLI stats --type status
+```
 
-print('\n--- By Fit Level ---')
-for r in db.stats_by_fit_level():
-    print(f\"  {r['fit_level']:12s} {r['count']}\")
+By fit level:
+```bash
+cd "$SKILL_BASE" && $CLI stats --type fit
+```
 
-print('\n--- By Company ---')
-for r in db.stats_by_company():
-    print(f\"  {r['company_name']:30s} {r['count']}\")
+By company:
+```bash
+cd "$SKILL_BASE" && $CLI stats --type company
+```
 
-print('\n--- By Domain ---')
-for r in db.stats_by_domain():
-    print(f\"  {r['domain']:40s} {r['count']}\")
-
-print('\n--- Most Requested Skills (across all applications) ---')
-for r in db.skill_gap_trends(limit=15):
-    print(f\"  {r['skill']:40s} appears in {r['appearances']} apps (avg fit: {r['avg_fit_pct']}%)\")
-
-db.close()
-"
+By domain:
+```bash
+cd "$SKILL_BASE" && $CLI stats --type domain
 ```
 
 ### Skill gap trends
@@ -64,17 +55,31 @@ db.close()
 Shows which required skills appear most often across applications, helping identify what to learn next:
 
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
-trends = db.skill_gap_trends(limit=20)
-print('Skills most frequently required across your applications:')
-for r in trends:
-    print(f\"  {r['skill']:40s} {r['appearances']} apps, avg fit {r['avg_fit_pct']}%\")
-db.close()
-"
+cd "$SKILL_BASE" && $CLI skills --limit 20
+```
+
+### Time-based filtering
+
+If the user asks about recent activity (e.g. "this week", "last 30 days", "since March"), add `--since`:
+
+```bash
+cd "$SKILL_BASE" && $CLI stats --type all --since 30d
+```
+
+Map natural-language time expressions to `--since` values:
+- "this week" -> `this-week`
+- "last 7 days" / "last week" -> `7d`
+- "last 30 days" / "last month" -> `30d`
+- "this month" -> `this-month`
+- "since March" -> `2026-03-01` (first of the referenced month)
+
+The `--since` flag works on all commands: `stats`, `skills`, and `count`.
+
+### JSON output
+
+For structured output, add `--json` to any command:
+```bash
+cd "$SKILL_BASE" && $CLI stats --type all --json
 ```
 
 ### CSV export
@@ -82,19 +87,14 @@ db.close()
 Export all applications to a CSV file:
 
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-from pathlib import Path
-db = JobHistoryDB('$DB_PATH')
-PROJECT_ROOT = '$(git rev-parse --show-toplevel 2>/dev/null || pwd)'
-export_path = Path(PROJECT_ROOT) / 'output' / 'applications_export.csv'
-db.export_csv(export_path)
-count = db.total_count()
-db.close()
-print(f'Exported {count} applications to {export_path}')
-"
+cd "$SKILL_BASE" && $CLI export-csv --output "$PROJECT_ROOT/output/applications_export.csv"
+```
+
+### Quick count
+
+```bash
+cd "$SKILL_BASE" && $CLI count
+cd "$SKILL_BASE" && $CLI count --since 7d
 ```
 
 ## Display format

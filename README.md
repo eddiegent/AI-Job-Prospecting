@@ -18,8 +18,8 @@ Every claim in the output is grounded in your source CV — nothing is invented.
 
 | Skill | Description |
 |-------|-------------|
-| `/job-status` | Update application statuses (applied, rejected, interview, offer) and manage company blacklist/whitelist |
-| `/job-stats` | View application statistics, trends, skill gap analysis, and export data |
+| `/job-status` | Update application statuses (applied, rejected, interview, offer), filter by status/company, and manage company blacklist/whitelist |
+| `/job-stats` | View application statistics with time filtering, trends, skill gap analysis, and export data |
 
 ## Project Structure
 
@@ -35,15 +35,19 @@ Every claim in the output is grounded in your source CV — nothing is invented.
 │       ├── Interview_prep_*.md
 │       ├── LinkedIn_message_*.txt
 │       └── run_summary.json
-└── .claude/skills/job-application-tailor/
-    ├── SKILL.md                       # Main skill definition
-    ├── prompts/                       # Step-by-step generation prompts
-    ├── schemas/                       # JSON schemas for validation
-    ├── scripts/                       # Python utilities (DOCX generation, validation)
-    ├── config/                        # Language labels, formatting rules
-    ├── templates/                     # Interview prep template
-    ├── skills/                        # Satellite skills (job-status, job-stats)
-    └── requirements.txt               # Python dependencies
+└── .claude/skills/
+    ├── job-application-tailor/
+    │   ├── SKILL.md                   # Main skill definition
+    │   ├── prompts/                   # Step-by-step generation prompts
+    │   ├── schemas/                   # JSON schemas for validation
+    │   ├── scripts/                   # Python utilities (DOCX generation, validation, CLI)
+    │   ├── config/                    # Language labels, formatting rules
+    │   ├── templates/                 # Interview prep template
+    │   └── requirements.txt           # Python dependencies
+    ├── job-status/
+    │   └── SKILL.md                   # Application status management
+    └── job-stats/
+        └── SKILL.md                   # Reporting and analytics
 ```
 
 ## Prerequisites
@@ -74,7 +78,17 @@ Applications are tracked in a local SQLite database (`resources/job_history.db`)
 
 ```
 > /job-status Acme Corp applied
+> /job-status list rejected
 > /job-stats summary
+> /job-stats last 30 days
+```
+
+A CLI tool (`scripts/cli.py`) is also available for direct database access:
+
+```bash
+cd .claude/skills/job-application-tailor
+python scripts/cli.py --db ../../../resources/job_history.db list --status applied
+python scripts/cli.py --db ../../../resources/job_history.db stats --since 30d
 ```
 
 ## Privacy

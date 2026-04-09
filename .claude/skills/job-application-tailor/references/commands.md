@@ -105,6 +105,7 @@ Schema mapping:
 | `match_analysis.json` | `match_analysis.schema.json` |
 | `tailored_cv.json` | `tailored_cv.schema.json` |
 | `letter.json` | `letter.schema.json` |
+| `short_letter.json` | `letter.schema.json` |
 | `linkedin.json` | `linkedin.schema.json` |
 
 ## Folder Rename (after match analysis)
@@ -150,10 +151,10 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from scripts.job_history_db import JobHistoryDB
 db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
 dupes = db.find_duplicates(
-    company_name='<company_name>',
-    job_title='<job_title>',
-    source_url='<source_url_or_None>',
-    required_skills=<list_of_required_skills>,
+    company_name=job['company_name'],
+    job_title=job['job_title'],
+    source_url=job.get('source_url'),
+    required_skills=job.get('required_skills', []),
 )
 if dupes:
     for d in dupes:
@@ -209,7 +210,7 @@ app_id = db.add_application(
     company_name=job['company_name'],
     job_title=job['job_title'],
     location=job.get('location'),
-    source_url='<source_url_or_None>',
+    source_url=job.get('source_url'),
     domain=job.get('domain'),
     seniority=job.get('seniority'),
     fit_level=fit_level,

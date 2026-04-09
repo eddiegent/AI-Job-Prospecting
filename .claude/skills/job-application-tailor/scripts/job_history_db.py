@@ -307,6 +307,7 @@ class JobHistoryDB:
         status: str | None = None,
         company: str | None = None,
         limit: int = 50,
+        since: str | None = None,
     ) -> list[dict[str, Any]]:
         query = "SELECT * FROM applications WHERE 1=1"
         params: list[Any] = []
@@ -316,6 +317,9 @@ class JobHistoryDB:
         if company:
             query += " AND company_norm = ?"
             params.append(normalise_company(company))
+        if since:
+            query += " AND created_at >= ?"
+            params.append(since)
         query += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         return [dict(r) for r in self._conn.execute(query, params).fetchall()]
@@ -329,27 +333,42 @@ class JobHistoryDB:
 
     # -- reporting -----------------------------------------------------------
 
-    def stats_by_fit_level(self) -> list[dict[str, Any]]:
+    def stats_by_fit_level(self, since: str | None = None) -> list[dict[str, Any]]:
+        where = "WHERE created_at >= ?" if since else ""
+        params = (since,) if since else ()
         rows = self._conn.execute(
-            "SELECT fit_level, COUNT(*) as count FROM applications GROUP BY fit_level ORDER BY count DESC"
+            f"SELECT fit_level, COUNT(*) as count FROM applications {where} GROUP BY fit_level ORDER BY count DESC",
+            params,
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def stats_by_status(self) -> list[dict[str, Any]]:
+    def stats_by_status(self, since: str | None = None) -> list[dict[str, Any]]:
+        where = "WHERE created_at >= ?" if since else ""
+        params = (since,) if since else ()
         rows = self._conn.execute(
-            "SELECT status, COUNT(*) as count FROM applications GROUP BY status ORDER BY count DESC"
+            f"SELECT status, COUNT(*) as count FROM applications {where} GROUP BY status ORDER BY count DESC",
+            params,
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def stats_by_domain(self) -> list[dict[str, Any]]:
+    def stats_by_domain(self, since: str | None = None) -> list[dict[str, Any]]:
+        base_where = "WHERE domain IS NOT NULL"
+        params: tuple = ()
+        if since:
+            base_where += " AND created_at >= ?"
+            params = (since,)
         rows = self._conn.execute(
-            "SELECT domain, COUNT(*) as count FROM applications WHERE domain IS NOT NULL GROUP BY domain ORDER BY count DESC"
+            f"SELECT domain, COUNT(*) as count FROM applications {base_where} GROUP BY domain ORDER BY count DESC",
+            params,
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def stats_by_company(self) -> list[dict[str, Any]]:
+    def stats_by_company(self, since: str | None = None) -> list[dict[str, Any]]:
+        where = "WHERE created_at >= ?" if since else ""
+        params = (since,) if since else ()
         rows = self._conn.execute(
-            "SELECT company_name, COUNT(*) as count FROM applications GROUP BY company_norm ORDER BY count DESC"
+            f"SELECT company_name, COUNT(*) as count FROM applications {where} GROUP BY company_norm ORDER BY count DESC",
+            params,
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -368,23 +387,24 @@ class JobHistoryDB:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def skill_gap_trends(self, limit: int = 10) -> list[dict[str, Any]]:
+    def skill_gap_trends(self, limit: int = 10, since: str | None = None) -> list[dict[str, Any]]:
         """Find required skills from gap matches across all applications.
 
         Looks at match_analysis data via the job_skills table combined with
         application fit data to identify recurring gaps.
         """
-        # Skills that appear across many applications but where fit is often low
+        since_clause = "AND a.created_at >= ?" if since else ""
+        params: tuple = (limit,) if not since else (since, limit)
         rows = self._conn.execute(
-            """SELECT js.skill, COUNT(DISTINCT js.application_id) as appearances,
+            f"""SELECT js.skill, COUNT(DISTINCT js.application_id) as appearances,
                       ROUND(AVG(a.fit_pct), 1) as avg_fit_pct
                FROM job_skills js
                JOIN applications a ON a.id = js.application_id
-               WHERE js.skill_type = 'required'
+               WHERE js.skill_type = 'required' {since_clause}
                GROUP BY js.skill_norm
                ORDER BY appearances DESC
                LIMIT ?""",
-            (limit,),
+            params,
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -448,6 +468,9 @@ class JobHistoryDB:
             Path(output_path).write_text(content, encoding="utf-8")
         return content
 
-    def total_count(self) -> int:
-        row = self._conn.execute("SELECT COUNT(*) as c FROM applications").fetchone()
+    def total_count(self, since: str | None = None) -> int:
+        if since:
+            row = self._conn.execute("SELECT COUNT(*) as c FROM applications WHERE created_at >= ?", (since,)).fetchone()
+        else:
+            row = self._conn.execute("SELECT COUNT(*) as c FROM applications").fetchone()
         return row["c"]

@@ -165,3 +165,35 @@ All files land in `$PROJECT_ROOT/output/[fit_level]-[date]-[job-slug]/`:
 | Run summary | JSON (fit %, match counts, file paths) |
 
 Filename patterns are language-aware (FR: `Lettre_de_motivation_...`, EN: `Cover_letter_...`) — configured in `config/naming_rules.yaml`.
+
+## Re-running individual steps
+
+If the user asks to regenerate a specific output (e.g. "redo the LinkedIn messages", "regenerate the letter for Eddyfi"), you don't need to re-run the full pipeline. Each step's inputs and outputs are in `$PREP_DIR` (`$OUTPUT_DIR/_prep`).
+
+### Input/output mapping
+
+| Step | Reads from `_prep/` | Writes to `_prep/` |
+|------|---------------------|---------------------|
+| 5 — Tailor CV | cv_fact_base.json, job_offer_analysis.json, match_analysis.json, company_research.md | tailored_cv.json |
+| 6 — Letter | cv_fact_base.json, job_offer_analysis.json, match_analysis.json, company_research.md | letter.json, short_letter.json |
+| 7 — LinkedIn | cv_fact_base.json, job_offer_analysis.json, match_analysis.json, company_research.md | linkedin.json |
+| 8 — Interview prep | All of the above | interview_prep.md |
+
+### Detecting which step to re-run
+
+Parse the user's request for keywords:
+- "CV", "resume", "tailored CV" -> Step 5
+- "letter", "cover letter", "motivation letter" -> Step 6
+- "short letter", "short version" -> Step 6 (short letter part only)
+- "LinkedIn", "messages", "InMail" -> Step 7
+- "interview", "prep", "preparation" -> Step 8
+- "all outputs", "everything" -> Step 9 only (re-generate DOCX/PDF from existing JSON)
+
+### How to re-run a step
+
+1. **Find the output folder** — ask the user which application, or find the most recent folder in `output/` matching their description.
+2. Set `$OUTPUT_DIR` to that folder and `$PREP_DIR` to `$OUTPUT_DIR/_prep`.
+3. **Read the required input files** from `$PREP_DIR` — if any are missing, inform the user which earlier step needs to run first.
+4. **Read the prompt file** for the target step (e.g. `prompts/generate_motivation_letter.md`) and follow its instructions using the existing `_prep/` files as context.
+5. **Validate** the generated JSON against its schema (same as the original step).
+6. **Re-run Step 9** to produce updated DOCX/PDF/TXT files from the new JSON. Use the full command from `references/commands.md` § Generate Final Output Files — it requires all JSON paths, settings, naming rules, and language.

@@ -14,7 +14,8 @@ Update application statuses and manage company lists in the job history database
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"
-DB_PATH="$PROJECT_ROOT/resources/job_history.db"  # configurable in config/settings.yaml → paths.database
+DB_PATH="$PROJECT_ROOT/resources/job_history.db"
+CLI="python scripts/cli.py --db $DB_PATH"
 ```
 
 ## What it does
@@ -27,79 +28,74 @@ This skill interacts with the SQLite database at `resources/job_history.db` (man
 
 ## Workflow
 
+### If the user wants to list applications
+
+List all recent applications (default limit 50):
+```bash
+cd "$SKILL_BASE" && $CLI list
+```
+
+Filter by status (e.g. only rejected, only applied):
+```bash
+cd "$SKILL_BASE" && $CLI list --status rejected
+```
+
+Filter by company:
+```bash
+cd "$SKILL_BASE" && $CLI list --company "Cegid"
+```
+
+Combine filters:
+```bash
+cd "$SKILL_BASE" && $CLI list --status applied --company "OPEN" --limit 10
+```
+
+If the user mentions a time period (e.g. "this week", "last 30 days"), add `--since`:
+```bash
+cd "$SKILL_BASE" && $CLI list --since 30d
+```
+
+Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO date (`2026-03-01`).
+
 ### If the user wants to update a status
 
 1. Parse `$ARGUMENTS` for a company name, job title, or application ID, plus the new status.
 2. If ambiguous, list matching applications and ask the user to pick one.
-3. Update the status using the database module.
+3. **Before executing the update**, show the user the current application details and the proposed change:
+   > Application #<id>: <company> — <title> (currently: <old_status>)
+   > Change status to: <new_status>?
+   Ask for confirmation before proceeding.
+4. Once confirmed, update:
 
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
-# List recent applications
-apps = db.list_applications(limit=20)
-for a in apps:
-    fit = a['fit_level'] or 'n/a'
-    pct = a['fit_pct'] if a['fit_pct'] is not None else 0.0
-    print(f\"#{a['id']} | {a['status']:10s} | {fit:9s} | {pct:5.1f}% | {a['company_name']} — {a['job_title']}\")
-db.close()
-"
+cd "$SKILL_BASE" && $CLI update-status <app_id> <new_status>
 ```
 
-To update:
+To look up an application's current details first:
 ```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
-db.update_status(<app_id>, '<new_status>')
-db.close()
-print('Status updated')
-"
+cd "$SKILL_BASE" && $CLI get <app_id>
 ```
 
 ### If the user wants to manage company lists
 
-Add to blacklist/whitelist:
+Show blacklist and whitelist:
 ```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
-db.add_company_to_list('<company_name>', '<blacklist_or_whitelist>', reason='<optional reason>')
-db.close()
-print('Done')
-"
+cd "$SKILL_BASE" && $CLI company-list
 ```
 
-Remove from list:
+Check if a specific company is listed:
 ```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
-db.remove_company_from_list('<company_name>')
-db.close()
-print('Removed')
-"
+cd "$SKILL_BASE" && $CLI company-check "<company_name>"
 ```
 
-Show lists:
+Add to blacklist or whitelist:
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$DB_PATH')
-for lt in ['blacklist', 'whitelist']:
-    entries = db.get_company_list(lt)
-    if entries:
-        print(f'\n{lt.upper()}:')
-        for e in entries:
-            reason = f\" — {e['reason']}\" if e.get('reason') else ''
-            print(f\"  {e['company_name']}{reason}\")
-db.close()
-"
+cd "$SKILL_BASE" && $CLI company-add "<company_name>" --list-type blacklist --reason "optional reason"
+```
+
+Remove from lists:
+```bash
+cd "$SKILL_BASE" && $CLI company-remove "<company_name>"
 ```
 
 ## Display format
