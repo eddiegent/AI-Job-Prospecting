@@ -42,7 +42,9 @@ db = JobHistoryDB('$DB_PATH')
 # List recent applications
 apps = db.list_applications(limit=20)
 for a in apps:
-    print(f\"#{a['id']} | {a['status']:10s} | {a['fit_level']:9s} | {a['fit_pct']:5.1f}% | {a['company_name']} — {a['job_title']}\")
+    fit = a['fit_level'] or 'n/a'
+    pct = a['fit_pct'] if a['fit_pct'] is not None else 0.0
+    print(f\"#{a['id']} | {a['status']:10s} | {fit:9s} | {pct:5.1f}% | {a['company_name']} — {a['job_title']}\")
 db.close()
 "
 ```
