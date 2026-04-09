@@ -60,6 +60,26 @@ Reproduce the languages section as it appears in the master CV. If the CV uses a
 ## Output format
 Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema file for the exact structure.
 
+**Example structure** (abbreviated):
+```json
+{
+  "candidate_name": "Jane Doe",
+  "title": "Ingénieur Logiciel Senior C# / .NET",
+  "contact_line": "Email: jane@example.com | Tel: +33 6 00 00 00 00 | LinkedIn: linkedin.com/in/janedoe | Paris (75)",
+  "tagline": "Applications critiques • Architecture de services • Qualité logicielle",
+  "summary_paragraphs": ["Paragraph 1...", "Paragraph 2..."],
+  "skills_sections": [
+    {"heading": "Langages", "items": ["C#", "Java", "SQL"]},
+    {"heading": "Plateformes & Frameworks", "items": [".NET", ".NET Core", "WPF"]}
+  ],
+  "experience": [
+    {"company_role_line": "Senior Developer — Acme Corp, Paris", "date_line": "Jan 2020 – Present", "bullets": ["Developed...", "Migrated..."]}
+  ],
+  "education": ["2015 : University X – MSc Computer Science"],
+  "languages": ["Bilingue Français / Anglais"]
+}
+```
+
 ## Language
 - Write all CV content in the same language as the job offer, unless a target language is explicitly specified
 - JSON field names must remain in English

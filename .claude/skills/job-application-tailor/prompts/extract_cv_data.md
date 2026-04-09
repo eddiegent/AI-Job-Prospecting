@@ -18,6 +18,26 @@ Create a structured fact base from the CV so later steps can tailor truthfully.
 ## Output format
 Return valid JSON matching `schemas/cv_fact_base.schema.json`. Read that schema file for the exact structure.
 
+**Example structure** (abbreviated):
+```json
+{
+  "candidate_name": "Jane Doe",
+  "headline": "Senior Software Engineer",
+  "contact": {"email": "jane@example.com", "phone": "+33 6 00 00 00 00", "linkedin": "linkedin.com/in/janedoe"},
+  "candidate_location": "Paris (75)",
+  "summary": "...",
+  "skills": ["System design", "API integration"],
+  "technologies": ["C#", ".NET", "SQL Server"],
+  "methodologies": ["Scrum", "Clean Code", "SOLID"],
+  "experience": [
+    {"company": "Acme Corp", "location": "Paris", "role": "Senior Developer", "dates": "Jan 2020 – Present", "type": "role", "details": ["..."], "metrics": ["..."], "international_signals": ["..."]}
+  ],
+  "education": ["2015 : University X – MSc Computer Science"],
+  "languages": ["Bilingue Français / Anglais"],
+  "transition_signals": ["Currently learning cloud architectures"]
+}
+```
+
 Key points:
 - Each experience item has a `type` field: `"role"` or `"training"`
 - Training periods with specific dates belong in both `experience` (for timeline continuity) and `education`

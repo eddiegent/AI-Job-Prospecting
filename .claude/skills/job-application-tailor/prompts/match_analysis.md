@@ -34,3 +34,22 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 - "transferable" must include a concrete explanation of why the experience transfers
 - Be honest about gaps — do not stretch transferability
 - Write evidence and notes in the same language as the job offer
+
+**Example structure** (abbreviated):
+```json
+{
+  "match_summary": {"direct_count": 8, "transferable_count": 3, "gap_count": 2, "overall_fit_pct": 73},
+  "location_analysis": {
+    "candidate_location": "Brunoy (91)",
+    "job_location": "Paris",
+    "work_mode": "hybrid",
+    "commute_assessment": "Trajet faisable",
+    "notes": "40-50 min en RER D, gérable en hybride"
+  },
+  "matches": [
+    {"requirement": "C#", "category": "required_skill", "match_type": "direct", "evidence": "15 ans en C#/.NET chez Oodrive", "notes": ""},
+    {"requirement": "Docker", "category": "preferred_skill", "match_type": "transferable", "evidence": "Conteneurisation Docker chez Oodrive", "notes": "Utilisé pour CI/CD, pas en production"},
+    {"requirement": "Kubernetes", "category": "technology", "match_type": "gap", "evidence": "", "notes": "Non mentionné dans le CV"}
+  ]
+}
+```

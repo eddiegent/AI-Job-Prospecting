@@ -152,6 +152,20 @@ Run `scripts/generate_outputs.py` with `--output-dir` pointing to `$OUTPUT_DIR`.
 
 After all output files are generated, record this application in the database. See `references/commands.md` § Record Application. This stores the company, title, skills, fit score, and output folder path so future runs can detect duplicates and surface history.
 
+## Error recovery & fallbacks
+
+1. **Company research unavailable** — If WebSearch is denied or fails, skip Step 3.6 gracefully. LinkedIn messages will use placeholder names (e.g. "Hiring Manager"). All other outputs work normally without company research data.
+
+2. **Schema validation failure** — Fix the JSON and re-validate. Do not proceed to the next step until validation passes. Common causes: missing required fields, wrong enum values, malformed arrays.
+
+3. **Fact base verification failure** — Remove flagged items from `cv_fact_base.json` and re-verify. If the cache was just saved, re-save it after fixing. This usually means job offer keywords leaked into the fact base during extraction.
+
+4. **Database missing or corrupted** — If `job_history.db` doesn't exist, it's created automatically on first run. If corrupted, delete it and re-run — the backfill script can reimport from existing output folders.
+
+5. **DOCX generation failure** — Check that all required JSON files exist in `_prep/`. Common cause: missing `letter.json` or `linkedin.json`. Re-run the missing step before retrying Step 9.
+
+6. **PDF conversion failure** — PDF generation requires Microsoft Word. If unavailable, DOCX files are still generated successfully. The user can convert manually.
+
 ## Output
 
 All files land in `$PROJECT_ROOT/output/[fit_level]-[date]-[job-slug]/`:

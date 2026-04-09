@@ -22,6 +22,27 @@ Key points:
 - `company_size` should be one of: `"small"`, `"medium"`, `"large"`, `"unknown"`
 - Include a `detected_language` field (ISO 639-1 code, e.g. `"fr"`, `"en"`) — this drives the language of all subsequent outputs
 
+**Example structure** (abbreviated):
+```json
+{
+  "job_title": "Développeur C# / .NET",
+  "company_name": "Acme Corp",
+  "location": "Paris",
+  "work_mode": "hybrid",
+  "seniority": "Confirmé (5+ ans)",
+  "company_size": "medium",
+  "required_skills": ["C#", ".NET", "Scrum"],
+  "preferred_skills": ["Docker", "CI/CD"],
+  "responsibilities": ["Concevoir et développer des applications"],
+  "technologies": ["C#", ".NET", "SQL Server"],
+  "domain": "SaaS / Cloud",
+  "languages": ["Français", "Anglais courant"],
+  "ats_keywords": ["C#", ".NET", "agile", "Scrum"],
+  "signals": ["Startup culture", "Remote-friendly"],
+  "detected_language": "fr"
+}
+```
+
 ## Rules
 - If something is not explicit, use an empty string or empty list
 - Do not hallucinate the job title
