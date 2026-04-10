@@ -14,15 +14,10 @@ from common import (
     safe_filename,
 )
 from docx_generator import generate_cv_docx, generate_letter_docx
+from pdf_pipeline import PdfConversionError, convert_docx_to_pdf
 from validate import validate
 
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
-
-try:
-    from docx2pdf import convert as docx2pdf_convert
-    HAS_DOCX2PDF = True
-except ImportError:
-    HAS_DOCX2PDF = False
 
 
 def main() -> None:
@@ -93,16 +88,13 @@ def main() -> None:
     cv_path = generate_cv_docx(out_dir / cv_name, cv_data, settings, language=args.language)
     letter_path = generate_letter_docx(out_dir / letter_name, letter_data, settings)
 
-    # Generate PDF version of the CV
+    # Generate PDF version of the CV via the cross-platform pipeline
+    # (docx2pdf → LibreOffice → pandoc). The DOCX is always preserved.
     cv_pdf_path = None
-    if HAS_DOCX2PDF:
-        try:
-            cv_pdf = cv_path.with_suffix(".pdf")
-            docx2pdf_convert(str(cv_path), str(cv_pdf))
-        except Exception:
-            pass  # Word.Application.Quit often fails but conversion succeeds
-        if cv_pdf.exists():
-            cv_pdf_path = cv_pdf
+    try:
+        cv_pdf_path = convert_docx_to_pdf(cv_path)
+    except PdfConversionError as exc:
+        print(f"PDF conversion skipped: {exc}", file=sys.stderr)
 
     lines = []
     for variant in linkedin_data["variants"]:

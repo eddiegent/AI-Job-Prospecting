@@ -153,19 +153,19 @@ Any layout change (Phase 3) or migration (Phase 4.5) that touches these files wi
 
 ### Tests to write first
 
-- [ ] `test_pdf_pipeline_tries_docx2pdf_first` — mock the three converters, assert the call order is docx2pdf → libreoffice → pandoc.
-- [ ] `test_pdf_pipeline_falls_through_on_failure` — mock docx2pdf to raise, assert libreoffice is attempted next and the PDF is produced.
-- [ ] `test_pdf_pipeline_all_fail_raises_actionable_error` — mock all three to fail, assert the error message names all three tools and tells the user which to install.
-- [ ] `test_pdf_pipeline_docx_always_produced_even_if_pdf_fails` — mock all three PDF converters to fail, assert the DOCX file still exists on disk after the pipeline runs.
-- [ ] `test_detect_libreoffice_on_path` — mock `shutil.which('soffice')` to return a path, assert the libreoffice fallback is enabled; mock to return None, assert it's skipped.
-- [ ] `test_libreoffice_invocation_uses_headless_flag` — mock `subprocess.run`, assert the call contains `--headless --convert-to pdf`.
+- [x] `test_pdf_pipeline_tries_docx2pdf_first` — all 6 tests pass against `scripts/pdf_pipeline.py`.
+- [x] `test_pdf_pipeline_falls_through_on_failure`.
+- [x] `test_pdf_pipeline_all_fail_raises_actionable_error` — message names docx2pdf, LibreOffice, pandoc and the DOCX path.
+- [x] `test_pdf_pipeline_docx_always_produced_even_if_pdf_fails` — verified byte-identical DOCX after failed conversion.
+- [x] `test_detect_libreoffice_on_path` — both branches (soffice present / absent) covered.
+- [x] `test_libreoffice_invocation_uses_headless_flag` — asserts `--headless --convert-to pdf` and DOCX path in argv.
 
 ### Tasks
 
-- [ ] **Audit current PDF path** in `scripts/generate_outputs.py` — where is `docx2pdf` called, what's the fallback behaviour today?
-- [ ] **Add a LibreOffice fallback**: detect `soffice` in PATH, call `soffice --headless --convert-to pdf --outdir <dir> <file.docx>`. Works on Mac (if LibreOffice installed) and most Linux distros.
-- [ ] **Add a pandoc fallback** as tertiary: `pandoc file.docx -o file.pdf` (needs a LaTeX engine; lower quality but universal).
-- [ ] **Strategy:** try `docx2pdf` first (works on Windows + Mac with Word), fall back to `soffice`, fall back to `pandoc`, fall back to no PDF with a clear message to the user naming the available options.
+- [x] **Audit current PDF path** in `scripts/generate_outputs.py` — was a 7-line inline `docx2pdf` block (lines 97-105 pre-refactor) with no fallback and a silent `except: pass` around `Word.Application.Quit` noise.
+- [x] **Add a LibreOffice fallback** — `_try_libreoffice()` in `scripts/pdf_pipeline.py`: `shutil.which('soffice')` then `soffice --headless --convert-to pdf --outdir <dir> <file.docx>` with a 120 s timeout.
+- [x] **Add a pandoc fallback** as tertiary — `_try_pandoc()` using `pandoc <docx> -o <pdf>`.
+- [x] **Strategy** — `convert_docx_to_pdf()` walks `(_try_docx2pdf, _try_libreoffice, _try_pandoc)` at call time, returning on first success. On total failure it raises `PdfConversionError` with an actionable message naming all three tools and the DOCX path.
 - [ ] **Update `requirements.txt` notes** — LibreOffice and pandoc are optional external binaries, not pip packages.
 - [ ] **Test matrix** (manual, one-time): Windows+Word, Mac+Word, Mac+LibreOffice, Linux+LibreOffice, Linux+pandoc.
 
@@ -413,6 +413,7 @@ When you make a judgment call on this roadmap, append a line here so future sess
 - *2026-04-10 — Phase 1 ships user customization as two files: `resources/cv_addendum.md` (markdown, merged into the in-memory fact base at Step 5) and `resources/user_prefs.yaml` (loaded once at Step 0, passed into tailor_cv/letter/linkedin prompts). Both gitignored so per-user data never enters the repo. Loader lives in `scripts/user_customization.py`. Enforcement is split: the prompts describe the rules (so the model honours them) AND pure-Python validators (`find_forbidden_title_label_violations`, `find_team_context_solo_phrasing`) can run on the produced outputs as a belt-and-braces check. The validators follow the same pattern as `scripts/tailor_invariants.py` — no model calls needed in tests.*
 - *2026-04-10 — Fact base cache cleanup: `resources/cv_fact_base.json` had the Fortran-to-C++ bullet baked in from the now-obsolete "save the enriched fact base back to the cache" instruction in the old Fortran memory. That violated Phase 1's invariant (cache = raw docx only). Removed the bullet from the JFC 1994 entry; verify_fact_base still passes; the addendum re-injects the bullet on every run. This means from here on the cache is ground truth against the docx, and the addendum is the sole mutable user layer.*
 - *2026-04-10 — Phase T regression tests implemented via a pure-Python validator module (`scripts/tailor_invariants.py`) rather than direct snapshot comparison against produced `tailored_cv.json`. Rationale: the compression and training-in-education rules live in the `tailor_cv.md` prompt, not in Python — so there is no function to unit-test directly, and snapshot tests would require invoking the model (slow, non-deterministic, expensive). The validator encodes each rule as a pure check function that returns violation messages; fixtures exercise good and deliberately-broken tailored CVs. Future integration tests can run the model once per change and then reuse these validators on the output. Caught one real bug during bring-up: the load-bearing check was fooled by a company name appearing inside the consolidated "Earlier experience" line.*
+- *2026-04-10 — Phase 2 PDF pipeline extracted from `generate_outputs.py` into its own module `scripts/pdf_pipeline.py` with three private helpers (`_try_docx2pdf`, `_try_libreoffice`, `_try_pandoc`). `convert_docx_to_pdf` resolves them at call time via module globals so tests can monkeypatch each converter independently without touching the loop. Total-failure path raises `PdfConversionError` (a new subclass of `RuntimeError`) with a multi-line message naming all three tools AND the DOCX path — the old code silently swallowed every failure. Still TODO: `requirements.txt` notes and the manual 5-platform smoke matrix, both of which don't belong in TDD and are tracked as open boxes on the roadmap.*
 
 ---
 
