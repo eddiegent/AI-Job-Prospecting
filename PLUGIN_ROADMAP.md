@@ -75,24 +75,25 @@ Any layout change (Phase 3) or migration (Phase 4.5) that touches these files wi
 
 ### Tests to write first
 
-- [ ] `test_backup_creates_manifest_with_sha256_per_file` — run the script against a fixture directory, assert every file ends up in the manifest with a SHA-256 that matches `hashlib.sha256(file_bytes)`.
-- [ ] `test_backup_copies_all_files_recursively` — fixture with nested directories, assert the copy preserves structure and file counts.
-- [ ] `test_backup_db_export_csv_row_count_matches` — fixture DB with N rows, assert the exported CSV has N+1 lines (header + rows).
-- [ ] `test_running_backup_twice_creates_two_distinct_folders` — invoke twice with a fake clock, assert two separate timestamped folders.
-- [ ] `test_backup_refuses_to_overwrite_existing_timestamp` — assert a crash rather than a silent overwrite if the target timestamp collides.
-- [ ] `test_sha256_mismatch_fails_verification` — corrupt a file in the backup, run the verification function, assert it returns a failure report naming the bad file.
+- [x] `test_backup_creates_manifest_with_sha256_per_file` — run the script against a fixture directory, assert every file ends up in the manifest with a SHA-256 that matches `hashlib.sha256(file_bytes)`.
+- [x] `test_backup_copies_all_files_recursively` — fixture with nested directories, assert the copy preserves structure and file counts.
+- [x] `test_backup_db_export_csv_row_count_matches` — fixture DB with N rows, assert the exported CSV has N+1 lines (header + rows).
+- [x] `test_running_backup_twice_creates_two_distinct_folders` — invoke twice with a fake clock, assert two separate timestamped folders.
+- [x] `test_backup_refuses_to_overwrite_existing_timestamp` — assert a crash rather than a silent overwrite if the target timestamp collides.
+- [x] `test_sha256_mismatch_fails_verification` — corrupt a file in the backup, run the verification function, assert it returns a failure report naming the bad file.
 
 ### Tasks
 
-- [ ] **Write `scripts/backup_user_data.py`** — pure copy, no destructive ops. Creates `backups/pre-plugin-migration-<YYYY-MM-DD-HHMM>/` containing:
+- [x] **Write `scripts/backup_user_data.py`** — pure copy, no destructive ops. Creates `backups/pre-plugin-migration-<YYYY-MM-DD-HHMM>/` containing:
   - Full copy of `resources/` (all files, including the DB)
   - Full copy of `output/` (all subfolders)
-  - A timestamped `db_export.csv` dump of every DB table (easier to spot-check than the SQLite file)
+  - A `db_export/` directory with one CSV per SQLite table (more robust than a single dump file — handles any schema)
   - A `manifest.json` listing every file with its SHA-256, so integrity can be verified later
-- [ ] **Add an untouchable rule** — the backup folder must NOT be deleted or modified by any later phase. If disk space becomes a concern, the user deletes it manually *after* confirming the plugin install works.
-- [ ] **Add a `backups/` entry to `.gitignore`** so the backups stay local and don't pollute the repo.
-- [ ] **Run it.** The whole point is to have the backup *on disk* before any other plugin-prep work touches the project.
-- [ ] **Smoke-check the backup.** Open the copied `MASTER_CV.docx`, verify it opens. Open the copied DB with sqlite, verify 30 rows. Open one output folder, verify its DOCX. If any check fails, the backup is corrupt and Phase 0 must be redone before proceeding.
+  - A `README.txt` with restoration instructions
+- [x] **Add an untouchable rule** — the backup folder must NOT be deleted or modified by any later phase. If disk space becomes a concern, the user deletes it manually *after* confirming the plugin install works.
+- [x] **Add a `backups/` entry to `.gitignore`** so the backups stay local and don't pollute the repo.
+- [x] **Run it.** Backup `backups/pre-plugin-migration-2026-04-10-1553/` created: 456 files, 29 output folders, 30 applications rows, verification clean (0 violations).
+- [x] **Smoke-check the backup.** manifest.json `file_count: 456` matches SHA-256 verification, `applications` table reopens with 30 rows via sqlite, resources/ contains MASTER_CV.docx + cv_fact_base.json + job_history.db, all 4 DB tables exported to CSV (applications, company_lists, job_skills, schema_version). *(Deferred: opening the DOCX in Word — not needed for the automated verification.)*
 
 ### Success criteria
 

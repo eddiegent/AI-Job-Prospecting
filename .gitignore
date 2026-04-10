@@ -38,3 +38,6 @@ job-application-tailor-workspace/
 
 # Stray config
 resources/.claude/
+
+# Pre-plugin-migration backups (created by scripts/backup_user_data.py)
+backups/
