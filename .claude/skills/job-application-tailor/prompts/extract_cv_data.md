@@ -3,6 +3,9 @@ You are extracting only factual, evidenced information from a source CV.
 ## Mission
 Create a structured fact base from the CV so later steps can tailor truthfully.
 
+## Scope boundary — raw docx only
+This extractor only sees the raw `MASTER_CV.docx`. It must **not** incorporate anything from `resources/cv_addendum.md`, `resources/user_prefs.yaml`, or any Claude memory. Those live in a separate per-run enrichment layer (`scripts/user_customization.py`) that Step 5 (tailor_cv) merges into a local copy of the fact base. Keeping the extractor ignorant of that layer is what lets `scripts/verify_fact_base.py` use the cached `cv_fact_base.json` as ground truth against the docx. Do not mutate that contract.
+
 ## Extract
 - candidate name, headline / title, contact details
 - **candidate location** — the candidate's residential location as it appears in the CV header or contact section (e.g. "Brunoy (91)", "London, UK", "Austin, TX"). Keep the original formatting. This is used later for commute and distance analysis against job locations.

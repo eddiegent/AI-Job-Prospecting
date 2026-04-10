@@ -114,33 +114,26 @@ Any layout change (Phase 3) or migration (Phase 4.5) that touches these files wi
 
 ### Tests to write first
 
-- [ ] `test_addendum_missing_returns_empty_context` — no `cv_addendum.md` file exists; assert the loader returns an empty dict without raising.
-- [ ] `test_addendum_parses_additional_experience_entries` — fixture addendum with one role enrichment; assert the loader returns it keyed by company+dates.
-- [ ] `test_addendum_content_reaches_tailor_cv_context` — integration: run the Step 5 prompt assembly, assert the addendum bullets appear in the context passed to the model.
-- [ ] `test_addendum_never_writes_to_fact_base_cache` — invoke the loader, then assert `resources/cv_fact_base.json` bytes are unchanged (via SHA-256 compare). This pins the invariant that the addendum is a per-run layer, not a mutator.
-- [ ] `test_user_prefs_forbidden_title_labels_blocks_label` — prefs file lists "Backend" as forbidden; run tailor_cv against a job whose ats_keywords include "Backend"; assert the resulting `title` does not contain "Backend".
-- [ ] `test_user_prefs_team_context_companies_prevents_solo_phrasing` — prefs lists "Oodrive" under `team_context_companies`; run letter generation; assert the letter does not use solo-work phrasing about Oodrive. (This one is fuzzy — use a keyword check like `/je seul|seul développeur|solo/` returning no match.)
-- [ ] `test_missing_prefs_file_is_not_an_error` — no `user_prefs.yaml`; assert the skill runs end-to-end with sensible defaults.
-- [ ] `test_addendum_does_not_contaminate_verify_fact_base` — add a technology to the addendum that isn't in the raw CV; run `verify_fact_base.py`; assert it still passes (because the addendum doesn't enter the `technologies` array).
+- [x] `test_addendum_missing_returns_empty_context` — implemented in `tests/test_user_customization.py`.
+- [x] `test_addendum_parses_additional_experience_entries` — implemented.
+- [x] `test_addendum_content_reaches_tailor_cv_context` — implemented as a `merge_addendum_into_fact_base()` round-trip (the merged fact base is what gets passed to the tailor_cv prompt).
+- [x] `test_addendum_never_writes_to_fact_base_cache` — implemented via SHA-256 before/after compare.
+- [x] `test_user_prefs_forbidden_title_labels_blocks_label` — implemented via pure-Python `find_forbidden_title_label_violations()` validator (same validator-as-test pattern used in Phase T).
+- [x] `test_user_prefs_team_context_companies_prevents_solo_phrasing` — implemented via `find_team_context_solo_phrasing()` with a proximity-based regex check.
+- [x] `test_missing_prefs_file_is_not_an_error` — implemented.
+- [x] `test_addendum_does_not_contaminate_verify_fact_base` — implemented by asserting the merged fact base's `technologies` array is byte-identical to the input's.
+- [x] **Bonus** `test_addendum_merge_normalizes_dashes_in_dates` — caught during bring-up: the extractor emits unicode en dashes in date strings but users type ASCII hyphens. Added `_normalize_dashes()` in the merger.
 
 ### Tasks
 
-- [ ] **Create `resources/cv_addendum.md`** (user-owned). Structured markdown with sections like:
-  - `## Additional experience entries` — bullets the user wants added to specific roles, keyed by company+dates.
-  - `## Hidden skills` — things they know but didn't put on the docx.
-  - `## Off-CV facts to remember` — catch-all.
-  Read after fact-base extraction, merged into the in-memory fact base *before* `tailored_cv.json` is built. Does NOT update the cached fact base file (the cache reflects the raw docx; the addendum is a per-run enrichment layer). Does NOT enter the `technologies`/`methodologies` arrays (so it can't fail `verify_fact_base.py`).
-- [ ] **Create `resources/user_prefs.yaml`** (user-owned). Keys:
-  - `preferred_title_labels: [...]` — what the user calls themselves, never to be replaced by job-offer language.
-  - `forbidden_title_labels: [...]` — labels to never apply (e.g. "Backend" for a Desktop & Services person).
-  - `tone_directives: [...]` — free-form style notes for the letter generator ("natural and conversational, not formal", etc.).
-  - `team_context_companies: [...]` — companies where the user was part of a team; the letter generator must not phrase contributions as solo work.
-  - `default_language: auto` — honour job-detected language (current behaviour), but users can pin.
-- [ ] **Add a loader** `scripts/user_customization.py` that reads both files and returns a merged context dict. Called once at Step 0.
-- [ ] **Pass the customization context into Step 5 (tailor_cv), Step 6 (letter), Step 7 (LinkedIn)** — update each prompt file to honour the relevant keys.
-- [ ] **Update `prompts/extract_cv_data.md`** to note that the addendum is a separate layer; the extractor only sees the raw docx.
-- [ ] **Update SKILL.md Step 0** to describe the new files and their role.
-- [ ] **Delete or neutralise** `project_cv_fortran_experience.md`, `feedback_no_backend_label.md`, `feedback_motivation_letter_tone.md` in Eddie's memory store, replaced by entries in his own `cv_addendum.md` and `user_prefs.yaml`. Keep the memory files as pointers to the new canonical location.
+- [x] **Create `resources/cv_addendum.md`** (user-owned) — gitignored. Eddie's Fortran → C++ conversion bullet is the first real entry (migrated from `project_cv_fortran_experience.md`).
+- [x] **Create `resources/user_prefs.yaml`** (user-owned) — gitignored. Populated with Eddie's `forbidden_title_labels` (Backend variants), `preferred_title_labels` (Services, Intégration & Architectures Applicatives), letter `tone_directives`, and `team_context_companies: [Oodrive, Oodrive SA]`.
+- [x] **Add a loader** `scripts/user_customization.py` — exposes `load_customization_context()`, `merge_addendum_into_fact_base()`, `find_forbidden_title_label_violations()`, `find_team_context_solo_phrasing()`.
+- [x] **Pass the customization context into Step 5 (tailor_cv), Step 6 (letter), Step 7 (LinkedIn)** — prompt files updated to document the new inputs and their semantics. Actual runtime wiring happens when Claude executes SKILL.md Step 0 (documented there).
+- [x] **Update `prompts/extract_cv_data.md`** — added a "Scope boundary — raw docx only" section explicitly isolating the extractor from the addendum layer.
+- [x] **Update SKILL.md Step 0** — added a "Load user customization layer" subsection with the loader call; Step 5 now documents the `merge_addendum_into_fact_base()` call and an optional post-generation forbidden-label check; Steps 6/7 note that the subagents must receive `$CUSTOMIZATION`.
+- [x] **Neutralise** `project_cv_fortran_experience.md`, `feedback_no_backend_label.md`, `feedback_motivation_letter_tone.md` — rewritten as short pointer files that explain the new canonical location and warn future sessions not to reapply the content from memory.
+- [x] **One-time cache cleanup** — `resources/cv_fact_base.json` had the Fortran bullet baked in from the old memory-enrichment flow. Removed the bullet so the cache reflects the raw docx only. `verify_fact_base.py` passes against the updated cache.
 
 ### Success criteria
 
@@ -417,6 +410,8 @@ When you make a judgment call on this roadmap, append a line here so future sess
 - *2026-04-10 — Put user data under OS-standard dirs (XDG / Library / APPDATA), not `~/.claude/...`, because Claude's own config dir is for Claude Code settings, not third-party plugin data.*
 - *2026-04-10 — CV addendum is a per-run enrichment layer, NOT a fact base cache mutator. Keeping them separate protects the verification script invariant that the cache reflects the raw docx.*
 - *2026-04-10 — Adopted TDD for every phase. Rule: no implementation until the test exists, is runnable, and fails for the right reason. Rationale: the vital user data is gitignored, so a silent bug in path resolution or migration is unrecoverable from git alone. Writing the test first forces the safety invariant to be explicit. Added a Phase T (test harness baseline) that must complete before Phase 0.*
+- *2026-04-10 — Phase 1 ships user customization as two files: `resources/cv_addendum.md` (markdown, merged into the in-memory fact base at Step 5) and `resources/user_prefs.yaml` (loaded once at Step 0, passed into tailor_cv/letter/linkedin prompts). Both gitignored so per-user data never enters the repo. Loader lives in `scripts/user_customization.py`. Enforcement is split: the prompts describe the rules (so the model honours them) AND pure-Python validators (`find_forbidden_title_label_violations`, `find_team_context_solo_phrasing`) can run on the produced outputs as a belt-and-braces check. The validators follow the same pattern as `scripts/tailor_invariants.py` — no model calls needed in tests.*
+- *2026-04-10 — Fact base cache cleanup: `resources/cv_fact_base.json` had the Fortran-to-C++ bullet baked in from the now-obsolete "save the enriched fact base back to the cache" instruction in the old Fortran memory. That violated Phase 1's invariant (cache = raw docx only). Removed the bullet from the JFC 1994 entry; verify_fact_base still passes; the addendum re-injects the bullet on every run. This means from here on the cache is ground truth against the docx, and the addendum is the sole mutable user layer.*
 - *2026-04-10 — Phase T regression tests implemented via a pure-Python validator module (`scripts/tailor_invariants.py`) rather than direct snapshot comparison against produced `tailored_cv.json`. Rationale: the compression and training-in-education rules live in the `tailor_cv.md` prompt, not in Python — so there is no function to unit-test directly, and snapshot tests would require invoking the model (slow, non-deterministic, expensive). The validator encodes each rule as a pure check function that returns violation messages; fixtures exercise good and deliberately-broken tailored CVs. Future integration tests can run the model once per change and then reuse these validators on the output. Caught one real bug during bring-up: the load-bearing check was fooled by a company name appearing inside the consolidated "Earlier experience" line.*
 
 ---

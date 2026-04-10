@@ -32,7 +32,7 @@ Resolve both at the start. See `references/commands.md` § Setup.
 These exist because recruiters and hiring managers spot fabrications instantly, and a single invented skill or inflated title can disqualify an otherwise strong application:
 
 - **Truthfulness first** — never invent experience, tools, certifications, domains, or achievements
-- **Complete timeline** — every role and training period from the master CV appears in the output (compressed if less relevant, but never removed) so there are no visible gaps
+- **Recent timeline is complete** — every role from the cutoff year (configurable in `config/settings.yaml` → `behaviour.experience_compression_cutoff_year`) onward appears in the output. Roles that ended before that cutoff may be consolidated into a single dateless "Earlier experience" line — *unless* they are load-bearing for the target job, in which case they are kept fully. See `prompts/tailor_cv.md` § Earlier-experience compression. The goal is to respect recruiter attention span on senior profiles while never dropping evidence the job actually relies on.
 - **Chronological integrity** — strict reverse-chronological order, no reordering
 - **Honest gap handling** — if a requirement isn't evidenced, de-emphasise it, surface adjacent experience truthfully, or acknowledge a learning trajectory
 - **Structural consistency** — CV formatting derived from the master CV (contact labels, skills section granularity, experience line order, education date format, languages format) must be identical across all runs. Only content emphasis changes between applications, never the structural layout. See `prompts/tailor_cv.md` § Structural consistency for details.
@@ -61,6 +61,18 @@ Once confirmed, create the output folder with `_prep/` subfolder. Language defau
 **Initialise the job history database** — ensure `resources/job_history.db` exists. Only run the backfill script if the database is empty AND the `output/` folder exists and contains subdirectories with `_prep/job_offer_analysis.json` files. For a fresh install with no prior output, skip backfill entirely. See `references/commands.md` § Job History Database.
 
 **Check company blacklist** — if the company name is already known (e.g. from the URL or user input), check the blacklist before proceeding. If blacklisted, inform the user and stop unless they explicitly override. See `references/commands.md` § Company Lists.
+
+**Load user customization layer** — read the optional user-owned files `resources/cv_addendum.md` and `resources/user_prefs.yaml` via `scripts/user_customization.py`:
+
+```python
+from scripts.user_customization import load_customization_context
+ctx = load_customization_context("resources")  # -> {"addendum": {...}, "prefs": {...}}
+```
+
+Both files are optional; missing files return typed empty defaults. Store the returned dict as `$CUSTOMIZATION` for later steps. This is the canonical place for:
+
+- **Addendum** — additional experience bullets, hidden skills, off-CV facts. Merged into the in-memory fact base by `merge_addendum_into_fact_base()` at Step 5 (tailor_cv). The addendum is a per-run in-memory layer only — it never mutates `resources/cv_fact_base.json`.
+- **User prefs** — `preferred_title_labels`, `forbidden_title_labels`, `tone_directives`, `team_context_companies`, `default_language`. Passed into tailor_cv (Step 5), the motivation letter (Step 6), and LinkedIn messages (Step 7). Replaces what used to live in user-specific Claude memories.
 
 Store `$OUTPUT_DIR` and `$PREP_DIR` for later steps.
 
@@ -124,11 +136,29 @@ After validation, **rename the output folder** with a fit-level prefix (`low` / 
 
 ### Step 5 — Tailor the CV
 
-Read `prompts/tailor_cv.md`. Use the match analysis and company research to guide emphasis. The prompt includes company-size awareness rules — small companies get expanded versatility bullets, large companies get focused technical depth. Validate against `schemas/tailored_cv.schema.json`.
+Read `prompts/tailor_cv.md`. Use the match analysis and company research to guide emphasis. The prompt includes company-size awareness rules — small companies get expanded versatility bullets, large companies get focused technical depth. It also includes an "Earlier-experience compression" rule: before invoking the prompt, read `config/settings.yaml` → `behaviour.experience_compression_cutoff_year` and pass it to the tailoring step as the cutoff year. The prompt explains how the tailoring step uses the cutoff to decide whether each pre-cutoff role stays full or gets folded into a consolidated line. Validate against `schemas/tailored_cv.schema.json`.
+
+**Before invoking the prompt**, merge the user's addendum into the in-memory fact base and pass the user prefs in as context:
+
+```python
+from scripts.user_customization import merge_addendum_into_fact_base
+fact_base_for_tailoring = merge_addendum_into_fact_base(fact_base, $CUSTOMIZATION["addendum"])
+# Pass to the prompt: fact_base_for_tailoring, $CUSTOMIZATION["prefs"]
+```
+
+The merged fact base must NOT be written back to `resources/cv_fact_base.json`. It's used only for this tailoring run.
+
+After the tailored CV is produced, optionally run the invariant checker from `scripts/user_customization.py` to catch forbidden title labels the model might have slipped through:
+
+```python
+from scripts.user_customization import find_forbidden_title_label_violations
+violations = find_forbidden_title_label_violations(tailored_cv, $CUSTOMIZATION["prefs"])
+# if violations: surface them and regenerate
+```
 
 ### Steps 6, 7 — Letter and LinkedIn (parallel agents)
 
-These two steps are independent once the tailored CV exists. **Spawn two Agent subagents simultaneously** to generate them in parallel:
+These two steps are independent once the tailored CV exists. **Spawn two Agent subagents simultaneously** to generate them in parallel. Both subagents must receive `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` as additional context — the letter generator honours `tone_directives` and `team_context_companies`, the LinkedIn generator honours `tone_directives`.
 
 **Subagent 1 — Motivation letter:**
 Read `prompts/generate_motivation_letter.md`. Use the CV fact base, job offer analysis, match analysis, and company research as context. Save as `$PREP_DIR/letter.json`. Validate against `schemas/letter.schema.json`. Then generate the **short version** (500-750 characters body): read `prompts/generate_short_letter.md`, pass it the full letter as context, save as `$PREP_DIR/short_letter.json`. Validate against the same schema.

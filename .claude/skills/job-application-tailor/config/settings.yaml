@@ -29,6 +29,11 @@ behaviour:
   keep_older_roles_compact: true
   skip_company_research: false  # set to true to skip the WebSearch step (faster, but no contact names or company context)
   dry_run: false  # set to true to stop after match analysis (fit score only, no CV/letter generation)
+  # Roles whose end date is strictly before January of this year are consolidated
+  # into a single dateless "Earlier experience" line — unless they are load-bearing
+  # for the target job (see prompts/tailor_cv.md § Earlier-experience compression).
+  # Set to null to disable compression entirely.
+  experience_compression_cutoff_year: 2005
 
 fit_levels:
   very_good: 85

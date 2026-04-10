@@ -1,8 +1,12 @@
 Write a short, concise motivation letter based on:
-1. a structured CV fact base (includes `candidate_location`)
+1. a structured CV fact base (includes `candidate_location`; may also include `addendum_off_cv_facts` if the user has off-CV facts worth surfacing)
 2. a structured job offer analysis (includes `location` and `work_mode`)
 3. the match analysis (includes `location_analysis` with commute assessment)
 4. company research (if available) — use company context to make the letter feel targeted, not generic
+5. the **user prefs** dict from `resources/user_prefs.yaml` (may be empty). Honour these keys:
+   - `tone_directives` — a list of short free-form style notes. Read them verbatim and apply them. Examples of what a user might put here: "natural and conversational, not formal", "no corporate buzzwords", "first person, active voice". These override the generic defaults below when they conflict.
+   - `team_context_companies` — a list of companies where the candidate was part of a team. When writing about any of these companies, the letter must never use solo-work phrasing (no "seul développeur", "single-handedly", "as the only developer", "j'ai développé seul", "by myself"). Frame contributions as part of a team even if the specific achievement was the candidate's own.
+   - `default_language` — if `fr` or `en`, override auto-detection; if `auto` (or unset), follow the job-offer language.
 
 ## Goal
 Create a credible, natural-sounding application letter. The reader should feel a real person wrote this for their specific role — not that a template was filled in.
@@ -29,7 +33,7 @@ Recruiters read dozens of letters a day. The ones that stand out feel genuine, n
 - No invented experience — every claim must be grounded in the CV
 - No empty flattery or generic buzzwords
 - No exaggerated passion story
-- **Don't imply solo work** — phrases like "en autonomie complète" or "j'ai piloté seul" suggest the candidate did everything alone. In reality, most work happened within a team. Only mention autonomy if the CV fact base explicitly marks a period as solo/autonomous, and even then scope it to that specific period, not the whole tenure.
+- **Don't imply solo work** — phrases like "en autonomie complète" or "j'ai piloté seul" suggest the candidate did everything alone. In reality, most work happened within a team. Only mention autonomy if the CV fact base explicitly marks a period as solo/autonomous, and even then scope it to that specific period, not the whole tenure. Companies listed in `user_prefs.yaml → team_context_companies` are a hard no for any solo-work phrasing, regardless of what the CV bullets say.
 - If the candidate lives near the job location, it's worth mentioning naturally (e.g. "basé à Brunoy, à proximité de vos locaux" or "based locally in..."). Geographic proximity is a real advantage — recruiters prefer candidates who won't need relocation. But don't force it if the role is fully remote or if the candidate is far away.
 - Keep it short (3-4 paragraphs max)
 - Paragraphs should be 2-4 sentences, not dense blocks

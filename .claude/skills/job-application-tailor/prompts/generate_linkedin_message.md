@@ -2,6 +2,10 @@ Write short LinkedIn messages based on:
 1. the tailored application positioning
 2. the job offer analysis
 3. company research (if available) — especially the **Contacts** section for real names and LinkedIn profiles
+4. the **user prefs** dict from `resources/user_prefs.yaml` (may be empty). Honour these keys:
+   - `tone_directives` — read verbatim and apply. Overrides the generic defaults below when they conflict.
+   - `team_context_companies` — if the message mentions work at one of these companies, never use solo-work phrasing.
+   - `default_language` — if `fr` or `en`, override auto-detection.
 
 ## Goal
 Produce **3 message variants**, each targeting a different recipient:

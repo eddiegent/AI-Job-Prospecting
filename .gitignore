@@ -23,6 +23,10 @@ resources/cv-text/
 resources/.cv_hash
 resources/cv_fact_base.json
 
+# User-owned customization layer (Phase 1 — per-user, never committed)
+resources/cv_addendum.md
+resources/user_prefs.yaml
+
 # Job history database
 resources/job_history.db
 

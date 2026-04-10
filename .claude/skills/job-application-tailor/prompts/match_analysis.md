@@ -34,6 +34,7 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 - "transferable" must include a concrete explanation of why the experience transfers
 - Be honest about gaps — do not stretch transferability
 - Write evidence and notes in the same language as the job offer
+- **Name the role in the evidence** — when the evidence comes from a specific experience entry (especially an older one), include the company name and date range in the `evidence` field (e.g. "Conversions Fortran → C++ chez JFC Informatique & Média, Asnières (1994–2001)"). The CV tailoring step later uses these mentions to decide whether an older role should be kept in full or folded into a consolidated "Earlier experience" line. If the evidence is anchored to a specific pre-cutoff role and you don't name it, that role risks being hidden.
 
 **Example structure** (abbreviated):
 ```json
