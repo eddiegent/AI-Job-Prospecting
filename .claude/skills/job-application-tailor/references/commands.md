@@ -242,7 +242,7 @@ cd "$SKILL_BASE/scripts" && python generate_outputs.py \
   --match-analysis-json "$PREP_DIR/match_analysis.json" \
   --output-dir "$OUTPUT_DIR" \
   --job-title "<detected job title>" \
-  --settings "$SKILL_BASE/config/settings.yaml" \
+  --settings "$SKILL_BASE/config/settings.default.yaml" \
   --naming-rules "$SKILL_BASE/config/naming_rules.yaml" \
   --language "<detected language>"
 ```

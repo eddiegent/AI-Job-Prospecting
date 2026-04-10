@@ -31,13 +31,14 @@ def main() -> None:
     parser.add_argument("--output-dir", help="Exact output directory — use as-is, no subfolder created")
     parser.add_argument("--job-title", required=True)
     parser.add_argument("--date-override")
-    parser.add_argument("--settings", default="config/settings.yaml")
+    parser.add_argument("--settings", default="config/settings.default.yaml")
     parser.add_argument("--naming-rules", default="config/naming_rules.yaml")
     parser.add_argument("--match-analysis-json", default=None, help="Path to match_analysis.json for run summary enrichment")
     parser.add_argument("--language", default="fr")
     args = parser.parse_args()
 
-    settings = load_yaml(Path(args.settings))
+    from scripts.paths import load_settings
+    settings = load_settings(defaults_path=Path(args.settings))
     naming = load_yaml(Path(args.naming_rules))
 
     cv_data = load_json(Path(args.tailored_cv_json))

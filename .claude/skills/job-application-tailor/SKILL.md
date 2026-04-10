@@ -32,7 +32,7 @@ Resolve both at the start. See `references/commands.md` § Setup.
 These exist because recruiters and hiring managers spot fabrications instantly, and a single invented skill or inflated title can disqualify an otherwise strong application:
 
 - **Truthfulness first** — never invent experience, tools, certifications, domains, or achievements
-- **Recent timeline is complete** — every role from the cutoff year (configurable in `config/settings.yaml` → `behaviour.experience_compression_cutoff_year`) onward appears in the output. Roles that ended before that cutoff may be consolidated into a single dateless "Earlier experience" line — *unless* they are load-bearing for the target job, in which case they are kept fully. See `prompts/tailor_cv.md` § Earlier-experience compression. The goal is to respect recruiter attention span on senior profiles while never dropping evidence the job actually relies on.
+- **Recent timeline is complete** — every role from the cutoff year (configurable in `config/settings.default.yaml` → `behaviour.experience_compression_cutoff_year`) onward appears in the output. Roles that ended before that cutoff may be consolidated into a single dateless "Earlier experience" line — *unless* they are load-bearing for the target job, in which case they are kept fully. See `prompts/tailor_cv.md` § Earlier-experience compression. The goal is to respect recruiter attention span on senior profiles while never dropping evidence the job actually relies on.
 - **Chronological integrity** — strict reverse-chronological order, no reordering
 - **Honest gap handling** — if a requirement isn't evidenced, de-emphasise it, surface adjacent experience truthfully, or acknowledge a learning trajectory
 - **Structural consistency** — CV formatting derived from the master CV (contact labels, skills section granularity, experience line order, education date format, languages format) must be identical across all runs. Only content emphasis changes between applications, never the structural layout. See `prompts/tailor_cv.md` § Structural consistency for details.
@@ -50,7 +50,7 @@ The skill bundles Python scripts, JSON schemas, and prompt files. Use them — t
 
 ### Step 0 — Pre-flight
 
-Verify dependencies and read config (`config/settings.yaml`, `config/naming_rules.yaml`).
+Verify dependencies and read config (`config/settings.default.yaml` merged with the optional user override at `<user-data-dir>/settings.yaml`, plus `config/naming_rules.yaml`).
 
 **Check for master CV** — if `resources/MASTER_CV.docx` does not exist, do not proceed. Instead, guide the user:
 > "No master CV found. To get started, save your CV as a `.docx` file at `resources/MASTER_CV.docx`, then run this command again. See `resources/README.md` for details."
@@ -116,7 +116,7 @@ The check uses three layers:
 
 ### Step 3.6 — Research the company
 
-Check `config/settings.yaml` → `behaviour.skip_company_research`. If `true`, skip this step entirely and proceed to Step 4. If WebSearch is unavailable (user hasn't granted permission), skip gracefully and note it in the output — the rest of the pipeline works fine without company research, just without personalised contact names in LinkedIn messages.
+Check `config/settings.default.yaml` → `behaviour.skip_company_research`. If `true`, skip this step entirely and proceed to Step 4. If WebSearch is unavailable (user hasn't granted permission), skip gracefully and note it in the output — the rest of the pipeline works fine without company research, just without personalised contact names in LinkedIn messages.
 
 If a company name was found and research is enabled, use **WebSearch in the foreground** (background agents can't get approval for web tools) to find:
 - Size, ownership, recent news, culture signals, tech stack
@@ -128,15 +128,15 @@ Save as `$PREP_DIR/company_research.md` with a `## Contacts` section. If the res
 
 Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (direct / transferable / gap). Validate against `schemas/match_analysis.schema.json`.
 
-After validation, **rename the output folder** with a fit-level prefix (`low` / `medium` / `good` / `very_good`) based on `overall_fit_pct`. Thresholds are in `config/settings.yaml`. See `references/commands.md` § Folder Rename. Update `$OUTPUT_DIR` and `$PREP_DIR`.
+After validation, **rename the output folder** with a fit-level prefix (`low` / `medium` / `good` / `very_good`) based on `overall_fit_pct`. Thresholds are in `config/settings.default.yaml`. See `references/commands.md` § Folder Rename. Update `$OUTPUT_DIR` and `$PREP_DIR`.
 
 **If `overall_fit_pct` is below 50%, STOP here.** Do not proceed to CV tailoring or any further steps. Inform the user of the fit score, summarise the key gaps, and explain why the application was not generated. The match analysis and renamed output folder are kept so the user can review the assessment.
 
-**Dry-run mode**: check `config/settings.yaml` → `behaviour.dry_run`. If `true`, stop here after displaying the fit score and match summary — do not generate CV, letters, or any output files. This is useful for quickly scanning multiple job offers to assess fit before committing to full generation. The match analysis is still saved and the application is still recorded in the database. The user can also trigger dry-run by including "dry run" or "just the score" in their request.
+**Dry-run mode**: check `config/settings.default.yaml` → `behaviour.dry_run`. If `true`, stop here after displaying the fit score and match summary — do not generate CV, letters, or any output files. This is useful for quickly scanning multiple job offers to assess fit before committing to full generation. The match analysis is still saved and the application is still recorded in the database. The user can also trigger dry-run by including "dry run" or "just the score" in their request.
 
 ### Step 5 — Tailor the CV
 
-Read `prompts/tailor_cv.md`. Use the match analysis and company research to guide emphasis. The prompt includes company-size awareness rules — small companies get expanded versatility bullets, large companies get focused technical depth. It also includes an "Earlier-experience compression" rule: before invoking the prompt, read `config/settings.yaml` → `behaviour.experience_compression_cutoff_year` and pass it to the tailoring step as the cutoff year. The prompt explains how the tailoring step uses the cutoff to decide whether each pre-cutoff role stays full or gets folded into a consolidated line. Validate against `schemas/tailored_cv.schema.json`.
+Read `prompts/tailor_cv.md`. Use the match analysis and company research to guide emphasis. The prompt includes company-size awareness rules — small companies get expanded versatility bullets, large companies get focused technical depth. It also includes an "Earlier-experience compression" rule: before invoking the prompt, read `config/settings.default.yaml` → `behaviour.experience_compression_cutoff_year` and pass it to the tailoring step as the cutoff year. The prompt explains how the tailoring step uses the cutoff to decide whether each pre-cutoff role stays full or gets folded into a consolidated line. Validate against `schemas/tailored_cv.schema.json`.
 
 **Before invoking the prompt**, merge the user's addendum into the in-memory fact base and pass the user prefs in as context:
 

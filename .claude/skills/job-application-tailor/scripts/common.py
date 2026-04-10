@@ -65,12 +65,16 @@ _DEFAULT_FIT_LEVELS = {"very_good": 85, "good": 70, "medium": 50}
 
 
 def _load_fit_levels() -> dict[str, int]:
-    """Load fit level thresholds from settings.yaml, falling back to defaults."""
-    settings_path = Path(__file__).resolve().parent.parent / "config" / "settings.yaml"
-    if settings_path.exists():
-        settings = load_yaml(settings_path)
-        return settings.get("fit_levels", _DEFAULT_FIT_LEVELS)
-    return _DEFAULT_FIT_LEVELS
+    """Load fit level thresholds from layered settings, falling back to defaults."""
+    # Local import to avoid a circular dependency: paths.py imports yaml but
+    # never touches common.py, and common.py only needs this one function.
+    from scripts.paths import load_settings
+
+    try:
+        settings = load_settings()
+    except Exception:
+        return _DEFAULT_FIT_LEVELS
+    return settings.get("fit_levels", _DEFAULT_FIT_LEVELS)
 
 
 def fit_level(pct: int) -> str:
