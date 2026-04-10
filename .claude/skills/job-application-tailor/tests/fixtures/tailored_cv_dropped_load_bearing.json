@@ -1,0 +1,22 @@
+{
+  "candidate_name": "Alex Dupont",
+  "title": "Senior Software Engineer",
+  "experience": [
+    {
+      "company_role_line": "Senior Engineer — Acme Corp, Paris",
+      "date_line": "Janvier 2018 - Present",
+      "bullets": ["Led API platform migration."]
+    },
+    {
+      "company_role_line": "Software Engineer — Midway Systems, Lyon",
+      "date_line": "2010 - 2017",
+      "bullets": ["Built distributed services."]
+    },
+    {
+      "company_role_line": "Expériences antérieures — OldCo Media, TinyShop",
+      "date_line": "",
+      "bullets": ["C++ MFC et débuts en développement logiciel."]
+    }
+  ],
+  "education": []
+}

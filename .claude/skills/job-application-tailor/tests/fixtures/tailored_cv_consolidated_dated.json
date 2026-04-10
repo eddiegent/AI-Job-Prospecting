@@ -1,0 +1,22 @@
+{
+  "candidate_name": "Alex Dupont",
+  "title": "Senior Software Engineer",
+  "experience": [
+    {
+      "company_role_line": "Senior Engineer — Acme Corp, Paris",
+      "date_line": "Janvier 2018 - Present",
+      "bullets": ["Led API platform migration."]
+    },
+    {
+      "company_role_line": "C++ Developer — OldCo Media, Paris",
+      "date_line": "1998 - 2004",
+      "bullets": ["Fortran to C++ migrations."]
+    },
+    {
+      "company_role_line": "Expériences antérieures — TinyShop",
+      "date_line": "Avant 1998",
+      "bullets": ["Premiers postes en développement logiciel."]
+    }
+  ],
+  "education": []
+}

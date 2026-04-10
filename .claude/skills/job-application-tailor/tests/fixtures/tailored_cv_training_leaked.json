@@ -1,0 +1,17 @@
+{
+  "candidate_name": "Alex Dupont",
+  "title": "Senior Software Engineer",
+  "experience": [
+    {
+      "company_role_line": "Senior Engineer — Acme Corp, Paris",
+      "date_line": "Janvier 2018 - Present",
+      "bullets": ["Led API platform migration."]
+    },
+    {
+      "company_role_line": "Product Builder No-Code (Formation) — École Cube, Paris",
+      "date_line": "2025",
+      "bullets": ["RNCP Niveau 6."]
+    }
+  ],
+  "education": []
+}

@@ -1,0 +1,49 @@
+{
+  "candidate_name": "Alex Dupont",
+  "headline": "Senior Software Engineer",
+  "experience": [
+    {
+      "company": "Acme Corp",
+      "location": "Paris",
+      "role": "Senior Engineer",
+      "dates": "Janvier 2018 - Present",
+      "type": "role",
+      "details": ["Led API platform migration."]
+    },
+    {
+      "company": "Midway Systems",
+      "location": "Lyon",
+      "role": "Software Engineer",
+      "dates": "2010 - 2017",
+      "type": "role",
+      "details": ["Built distributed services."]
+    },
+    {
+      "company": "OldCo Media",
+      "location": "Paris",
+      "role": "C++ Developer",
+      "dates": "1998 - 2004",
+      "type": "role",
+      "details": ["C++ MFC desktop applications.", "Fortran to C++ migrations."]
+    },
+    {
+      "company": "TinyShop",
+      "location": "Marseille",
+      "role": "Junior Developer",
+      "dates": "1996 - 1998",
+      "type": "role",
+      "details": ["First professional role."]
+    },
+    {
+      "company": "École Cube",
+      "location": "Paris",
+      "role": "Product Builder No-Code",
+      "dates": "2025",
+      "type": "training",
+      "details": ["RNCP Niveau 6 certification."]
+    }
+  ],
+  "education": [
+    "1996 - MSc Computer Science, University X"
+  ]
+}

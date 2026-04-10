@@ -1,0 +1,28 @@
+{
+  "match_summary": {
+    "direct_count": 2,
+    "transferable_count": 1,
+    "gap_count": 0,
+    "overall_fit_pct": 78
+  },
+  "matches": [
+    {
+      "requirement": "C++ legacy migration",
+      "category": "responsibility",
+      "match_type": "direct",
+      "evidence": "Fortran to C++ migration experience at OldCo Media (1998-2004)"
+    },
+    {
+      "requirement": "API platform experience",
+      "category": "responsibility",
+      "match_type": "direct",
+      "evidence": "API platform migration led at Acme Corp"
+    },
+    {
+      "requirement": "Distributed systems",
+      "category": "technology",
+      "match_type": "transferable",
+      "evidence": "Distributed services work in recent roles"
+    }
+  ]
+}
