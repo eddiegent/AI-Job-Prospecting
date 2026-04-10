@@ -199,7 +199,7 @@ def test_config_layering_returns_defaults_when_user_file_missing(tmp_path):
 
 # Scripts that are explicitly legacy-aware (they manipulate the old project
 # layout on purpose) and are allowed to reference ``resources/`` literally.
-_LEGACY_AWARE_SCRIPTS = {"backup_user_data.py", "paths.py"}
+_LEGACY_AWARE_SCRIPTS = {"backup_user_data.py", "paths.py", "migrate.py"}
 
 
 def _script_files() -> list[Path]:

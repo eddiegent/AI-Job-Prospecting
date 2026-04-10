@@ -1,0 +1,60 @@
+# User preferences for job-application-tailor.
+#
+# This file is OPTIONAL. Delete it, leave it empty, or keep only the keys
+# you care about — every key has a sensible default and the skill runs
+# cleanly without this file at all.
+#
+# Loaded once at Step 0 and passed into the tailor_cv, motivation letter,
+# and LinkedIn message steps. Replaces what used to live in per-user
+# Claude memories, so the skill is portable across machines and users.
+
+# ---------------------------------------------------------------------------
+# Title labelling
+# ---------------------------------------------------------------------------
+
+# Job titles the tailor step should PREFER when it has to choose a title
+# line for your tailored CV. Order matters — the tailor picks the first
+# one that is evidence-supported by the offer.
+preferred_title_labels:
+  # - "Backend Engineer"
+  # - "Platform Engineer"
+
+# Job titles the tailor step must NEVER use in the tailored CV title.
+# Enforced at generation time by the prompt AND at validation time by
+# scripts/user_customization.py::find_forbidden_title_label_violations().
+forbidden_title_labels:
+  # - "Frontend Developer"
+  # - "Full Stack Engineer"
+
+# ---------------------------------------------------------------------------
+# Letter tone
+# ---------------------------------------------------------------------------
+
+# Free-form directives passed verbatim into the motivation letter prompt.
+# Each item should be a single, concrete instruction — not a paragraph.
+tone_directives:
+  # - "Natural and conversational, not formal."
+  # - "Avoid superlatives and marketing language."
+  # - "Mirror the company's voice if it has one on its careers page."
+
+# ---------------------------------------------------------------------------
+# Team-context companies
+# ---------------------------------------------------------------------------
+
+# Companies where you were part of a team, so the letter generator does
+# not accidentally phrase your contributions as solo work. Proximity-
+# checked by find_team_context_solo_phrasing() in
+# scripts/user_customization.py — matches like "single-handedly" or
+# "solo" within 200 characters of a listed company trigger a violation.
+team_context_companies:
+  # - "Helios Analytics"
+  # - "Northbridge Software"
+
+# ---------------------------------------------------------------------------
+# Language
+# ---------------------------------------------------------------------------
+
+# Default output language when the job offer's language can't be detected
+# automatically. "auto" keeps the current behaviour (detect from the
+# offer); "fr" or "en" force a specific language.
+default_language: auto

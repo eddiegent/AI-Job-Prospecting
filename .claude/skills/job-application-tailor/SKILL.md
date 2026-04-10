@@ -52,9 +52,19 @@ The skill bundles Python scripts, JSON schemas, and prompt files. Use them — t
 
 Verify dependencies and read config (`config/settings.default.yaml` merged with the optional user override at `<user-data-dir>/settings.yaml`, plus `config/naming_rules.yaml`).
 
-**Check for master CV** — if `resources/MASTER_CV.docx` does not exist, do not proceed. Instead, guide the user:
-> "No master CV found. To get started, save your CV as a `.docx` file at `resources/MASTER_CV.docx`, then run this command again. See `resources/README.md` for details."
-Stop here until the file is in place.
+**Check for master CV** — if `<user-data-dir>/MASTER_CV.docx` does not exist, trigger first-run onboarding instead of stopping cold:
+
+```bash
+python -m scripts.init
+```
+
+`scripts/init.py` resolves the user data dir (via `scripts/paths.py::resolve_user_data_dir`, which honours `JOB_TAILOR_HOME`, the legacy `resources/` layout, or the OS-standard app data dir), creates the directory and its `output/` subfolder, and copies three files from `samples/`:
+
+- `MASTER_CV.example.docx` — a fictional neutral CV the user can open in Word to see the section headers, skills-table structure, and date formats the extractor expects.
+- `cv_addendum.template.md` — a commented template for the per-run enrichment layer (Phase 1).
+- `user_prefs.template.yaml` — a commented template with every available preference key.
+
+Init is idempotent and **never** overwrites an existing `MASTER_CV.docx`, `cv_addendum.md`, or `user_prefs.yaml`. After running it, surface the printed "Next steps" to the user and stop until they save their real CV as `<user-data-dir>/MASTER_CV.docx`. Do not attempt to generate an application pack from the example CV — it is a reference, not a substitute.
 
 Once confirmed, create the output folder with `_prep/` subfolder. Language defaults to `auto` (detected from the job offer later). See `references/commands.md` § Setup.
 
