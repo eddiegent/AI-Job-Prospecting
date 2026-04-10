@@ -345,31 +345,32 @@ These are the most safety-critical tests in the whole roadmap. Every one pins an
 
 ### Tests to write first
 
-- [ ] `test_plugin_manifest_is_valid_json` — parse `.claude-plugin/plugin.json`, assert required fields are present.
-- [ ] `test_package_script_produces_archive` — run the packaging script against a fresh copy of the repo, assert an archive file is created with the expected contents (three skills + manifest).
-- [ ] `test_package_excludes_user_data` — inspect the produced archive, assert it does NOT contain `resources/MASTER_CV.docx`, `job_history.db`, or `output/` — these are user data and must never be bundled.
-- [ ] `test_package_excludes_backups` — assert the archive does NOT contain `backups/`.
-- [ ] `test_package_includes_sample_cv` — assert `samples/MASTER_CV.example.docx` IS in the archive.
-- [ ] `test_all_phase_tests_pass_in_ci` — top-level gate: running `pytest` from the repo root must pass all tests from Phases T, 0, 1, 2, 3, 4, 4.5 before packaging is allowed.
+- [x] `test_plugin_manifest_is_valid_json` — implemented in `tests/test_package.py`. Asserts name/version/description exist.
+- [x] `test_package_script_produces_archive` — `test_package_plugin_produces_archive` in `test_package.py`. Uses a synthetic fake repo fixture, not real data.
+- [x] `test_package_excludes_user_data` — split into `test_build_plugin_tree_excludes_user_data` + `test_package_plugin_archive_excludes_user_data`. Both byte-scan the produced tree/archive for the sentinel bytes `REAL-CV-SECRET`, `USER-OUTPUT`, `SQLITE`, so any future path-matching regression fails loudly rather than silently.
+- [x] `test_package_excludes_backups` — `test_build_plugin_tree_excludes_backups`. Matches `pre-plugin-migration-*` anywhere under the dist tree.
+- [x] `test_package_includes_sample_cv` — two assertions: tree-level `test_build_plugin_tree_includes_sample_cv` and archive-level `test_package_plugin_archive_includes_sample_cv`.
+- [x] ~~`test_all_phase_tests_pass_in_ci`~~ — intentionally skipped with rationale. A pytest that asserts pytest passed is circular. The intent is satisfied by `scripts/package.py::run_phase_tests()` which the CLI calls before bundling; `--skip-tests` is the explicit override. See Decision log 2026-04-10.
+- [x] **Bonus** `test_build_plugin_tree_uses_top_level_skills_dir` — pins the structural `.claude/skills/<name>/` → `skills/<name>/` transformation.
+- [x] **Bonus** `test_build_plugin_tree_excludes_tests_and_pycache` — covers the other non-data exclusions (`tests/`, `__pycache__/`, `.pytest_cache/`, `*.pyc`).
+- [x] **Bonus** `test_build_plugin_tree_refuses_existing_target` — pins the no-silent-overwrite invariant (caller cleans up; matches Phase 0 backup behaviour).
+- [x] **Bonus** `test_package_plugin_archive_includes_manifest` — pins `.claude-plugin/plugin.json` presence in the zip.
 
 
 
-**Goal:** The repo produces a `.skill` or plugin bundle that can be installed by `claude plugin install` (or equivalent) with a single command.
+**Goal:** The repo produces a Claude Code plugin bundle that can be installed either via a marketplace (`/plugin marketplace add` + `/plugin install`) or directly as a local `--plugin-dir`, without the user ever copying files by hand.
 
 **Why:** Everything above is worthless if users have to manually copy files into `.claude/skills/`.
 
 ### Tasks
 
-- [ ] **Research current Claude Code plugin format** — what's the canonical way to ship a plugin in April 2026? Check the latest docs. (Update this roadmap with the answer.)
-- [ ] **Write `.claude-plugin/plugin.json`** with:
-  - name, version, description, author, homepage, license
-  - the three skills: `job-application-tailor`, `job-stats`, `job-status`
-  - required tools and MCPs (none hard-required, but Gmail/Calendar MCPs unlock optional features)
-  - minimum Claude Code version
-- [ ] **Write a short `README.md`** at the repo root with install instructions, quick start, and a link to this roadmap for contributors.
-- [ ] **Package script** — single command that bundles the three skills + the plugin manifest into a distributable archive. May already exist as `skill-creator:skill-creator` package helper; verify.
+- [x] **Research current Claude Code plugin format** — April 2026 canonical layout is `<plugin-root>/.claude-plugin/plugin.json` + auto-discovered `<plugin-root>/skills/<name>/SKILL.md` (NOT `.claude/skills/`). Only `name` is required in `plugin.json`. Distribution is via marketplace JSON (GitHub repos / local paths) or dev-time `claude --plugin-dir <path>`. No tarball install, no minimum-version field, no `.claudeignore`. MCPs go in an optional `.mcp.json` at plugin root. Source: claude-code-guide agent against current docs, 2026-04-10.
+- [x] **Write `.claude-plugin/plugin.json`** — created at repo root with name, version (1.0.0), description, author, license (MIT), keywords. Skills are auto-discovered — no explicit listing needed. No required MCPs (Gmail/Calendar are optional). No minimum-version field exists in the current format.
+- [x] **Write a short `README.md`** — rewritten around the three install paths (marketplace, local `--plugin-dir`, built bundle), first-run OS-standard data dir behaviour, the four optional customization files, cross-platform PDF fallbacks, and a migration section pointing at `scripts/migrate.py`. Contributors are linked to `PLUGIN_ROADMAP.md`.
+- [x] **Package script** — `scripts/package.py` with `build_plugin_tree()`, `package_plugin()`, and a CLI. Transforms the dev-time `.claude/skills/<name>/` layout into the plugin-install `skills/<name>/` layout (non-destructive; dev flow untouched). Copies `.claude-plugin/plugin.json` into the dist. Exclusion lists enforced at copy time AND verified by the test suite: `resources/`, `output/`, `backups/`, `tests/`, `__pycache__/`, `.pytest_cache/`, `job-application-tailor-workspace/`, plus file-level `MASTER_CV.docx`, `job_history.db`, `cv_fact_base.json`, `.cv_hash`, `cv_addendum.md`, `user_prefs.yaml`, `settings.yaml`, `*.pyc`/`*.pyo`/`*.db`/`*.sqlite*`. CLI runs the full phase test suite first and refuses to package on failure; `--skip-tests` is the opt-out.
+- [x] **Dry-run packaging against the live repo** — 2026-04-10: produced `dist/job-prospecting.zip` (216 KB, 64 entries). Manual audit: manifest present, all three skills' `SKILL.md` present, sample CV present, zero user-data leaks (byte-scan for `MASTER_CV.docx`, `job_history.db`, `cv_fact_base.json`, `/resources/`, `/output/`, `/backups/`, `__pycache__`, `/tests/`, `.cv_hash` — only the allowlisted `MASTER_CV.example.docx` matched). Stale `dist/` cleaned up after the audit. `dist/` added to `.gitignore` alongside `backups/`.
 - [ ] **Smoke test the package** on a fresh machine (Windows + Mac + Linux if possible).
-- [ ] **Tag v1.0.0 in git**, push.
+- [ ] **Tag v1.0.0 in git**, push. *(Held pending user confirmation — tagging is a public/durable action per CLAUDE.md.)*
 
 ### Success criteria
 
@@ -412,6 +413,9 @@ When you make a judgment call on this roadmap, append a line here so future sess
 - *2026-04-10 — Phase 4.5 `sqlite3.connect(...)` is NOT closed by its context manager — the `with` block only commits. On Windows this leaves a file handle open long enough for a subsequent `shutil.move` to fail with `WinError 32`. Caught during test bring-up: all six "apply" tests failed with a PermissionError on the staged DB until every sqlite3 call was wrapped in an explicit `try: ... finally: conn.close()`. Lesson: never rely on `with sqlite3.connect` on Windows if you're going to move or delete the DB file in the same function.*
 - *2026-04-10 — Phase 4.5 `test_skill_can_run_against_migrated_data` intentionally skipped with a docstring rather than implemented. Running Step 5 requires a model call and the roadmap's TDD rule is "no implementation without a test that fails for the right reason". A model-dependent test fails for all sorts of reasons that aren't migration bugs (network, rate limits, non-determinism), so it would rot. The invariants that test was meant to pin are covered by `test_find_duplicates_still_works_after_migration` (DB + path round-trip under realistic query) plus `test_apply_copies_all_legacy_files_to_new_location` (SHA-256 identity of every non-DB file). A model-free integration failure would show up before the manual smoke pass at release time.*
 - *2026-04-10 — Phase 4 init.py takes `user_data_dir` and `samples_dir` as kwargs (same DI pattern as `paths.resolve_user_data_dir`) so tests can use a synthetic `samples/` dir with placeholder bytes and never depend on the real docx existing. This meant Phase 4 tests could be written before Task #2 (build sample CV) without blocking — `test_sample_cv_extracts_cleanly` carries an `if not sample.exists(): pytest.skip(...)` guard that the real sample then satisfies. Lets TDD and implementation interleave naturally across tasks within a phase.*
+- *2026-04-10 — Phase 5 plugin layout is `<root>/skills/<name>/`, NOT `<root>/.claude/skills/<name>/`. Earlier drafts of this roadmap's Phase 3 target-layout diagram showed the latter, which was wrong: the current Claude Code plugin format auto-discovers skills under a top-level `skills/` directory, and `.claude/skills/` is the in-repo dev convention only. Rather than restructure the live repo (which would break the in-place `/slash` dev flow) the packaging script performs the transformation at build time: it walks `.claude/skills/<name>/`, applies the exclusion list, and writes to `<dist>/job-prospecting/skills/<name>/`. The dev-time and plugin-install layouts therefore coexist, with `package.py` as the only place that knows about both.*
+- *2026-04-10 — Phase 5 packaging test fixture uses sentinel byte strings (`REAL-CV-SECRET`, `USER-OUTPUT`, `SQLITE`) inside the fake user-data files and byte-scans the produced tree + archive for them. A pure path-based exclusion test would miss the case where a new exclusion rule is written correctly but a regression later reintroduces a code path that copies the file via some other mechanism. Byte-scanning the output catches both. The pattern is cheap (rglob + read_bytes on a ~64-file tree) and the test is the last line of defence before a user's master CV or SQLite history ships to a stranger.*
+- *2026-04-10 — `test_all_phase_tests_pass_in_ci` is a skipped marker, not an implementation. Rationale: a pytest that asserts "pytest passed" is circular — if the outer pytest run is green, the inner assertion is trivially true, and if it's red, the assertion never runs at all. The roadmap's actual intent was a release gate, which lives in the right place: `scripts/package.py::run_phase_tests()` is called by `package.py::main()` before bundling and exits non-zero on any failure. The escape hatch is an explicit `--skip-tests` CLI flag, documented in the README, so an operator who knows exactly why the suite is red (e.g., a flaky network test unrelated to the plugin) can still cut a bundle. Same skip-with-rationale pattern as `test_skill_can_run_against_migrated_data` in Phase 4.5.*
 - *2026-04-10 — Phase 2 PDF pipeline extracted from `generate_outputs.py` into its own module `scripts/pdf_pipeline.py` with three private helpers (`_try_docx2pdf`, `_try_libreoffice`, `_try_pandoc`). `convert_docx_to_pdf` resolves them at call time via module globals so tests can monkeypatch each converter independently without touching the loop. Total-failure path raises `PdfConversionError` (a new subclass of `RuntimeError`) with a multi-line message naming all three tools AND the DOCX path — the old code silently swallowed every failure. Still TODO: `requirements.txt` notes and the manual 5-platform smoke matrix, both of which don't belong in TDD and are tracked as open boxes on the roadmap.*
 
 ---

@@ -1,0 +1,17 @@
+{
+  "name": "job-prospecting",
+  "version": "1.0.0",
+  "description": "Job search automation: generate tailored application packs (CV, motivation letter, LinkedIn messages, interview prep) from a job offer and a master CV, track applications in SQLite, and report stats and skill gaps.",
+  "author": {
+    "name": "Eddie Gent"
+  },
+  "license": "MIT",
+  "keywords": [
+    "jobs",
+    "job-search",
+    "cv",
+    "resume",
+    "cover-letter",
+    "automation"
+  ]
+}

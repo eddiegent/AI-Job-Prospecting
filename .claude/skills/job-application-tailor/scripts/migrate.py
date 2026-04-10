@@ -438,7 +438,42 @@ def main(argv: list[str] | None = None) -> int:
             f"Migrated {report['file_copies']} files and "
             f"{report['db_rewrites']} DB rows to {target}."
         )
+        _print_memory_cleanup_prompt()
     return 0
+
+
+_LEGACY_MEMORY_FILES = (
+    "project_cv_fortran_experience.md",
+    "feedback_no_backend_label.md",
+    "feedback_motivation_letter_tone.md",
+    "feedback_training_not_in_experience.md",
+)
+
+
+def _print_memory_cleanup_prompt() -> None:
+    """Tell the user which per-project memory files are now superseded.
+
+    Phase 1 moved the per-user customization out of Claude memories and
+    into ``cv_addendum.md`` / ``user_prefs.yaml``. The old memory files
+    were neutralised to short pointer stubs in the same pass, but they
+    still live on disk and a future session could re-apply their content
+    if a reader skims only the first line. Nudging the user to delete
+    them after a successful migration closes that loop.
+    """
+    print()
+    print("Legacy customization memories are now superseded by")
+    print("  resources/cv_addendum.md   (addendum content)")
+    print("  resources/user_prefs.yaml  (tone rules, forbidden labels, team context)")
+    print()
+    print("You can safely delete the following stub files from your Claude memory:")
+    for name in _LEGACY_MEMORY_FILES:
+        print(f"  - {name}")
+    print()
+    print(
+        "Look for them under "
+        "~/.claude/projects/<project-slug>/memory/ and remove the file plus "
+        "its entry from MEMORY.md. The plugin does not depend on them."
+    )
 
 
 if __name__ == "__main__":

@@ -45,3 +45,6 @@ resources/.claude/
 
 # Pre-plugin-migration backups (created by scripts/backup_user_data.py)
 backups/
+
+# Packaged plugin bundles (created by scripts/package.py)
+dist/
