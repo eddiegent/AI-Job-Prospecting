@@ -166,7 +166,7 @@ Any layout change (Phase 3) or migration (Phase 4.5) that touches these files wi
 - [x] **Add a LibreOffice fallback** — `_try_libreoffice()` in `scripts/pdf_pipeline.py`: `shutil.which('soffice')` then `soffice --headless --convert-to pdf --outdir <dir> <file.docx>` with a 120 s timeout.
 - [x] **Add a pandoc fallback** as tertiary — `_try_pandoc()` using `pandoc <docx> -o <pdf>`.
 - [x] **Strategy** — `convert_docx_to_pdf()` walks `(_try_docx2pdf, _try_libreoffice, _try_pandoc)` at call time, returning on first success. On total failure it raises `PdfConversionError` with an actionable message naming all three tools and the DOCX path.
-- [ ] **Update `requirements.txt` notes** — LibreOffice and pandoc are optional external binaries, not pip packages.
+- [x] **Update `requirements.txt` notes** — LibreOffice and pandoc documented as optional external binaries with per-OS install commands (apt / brew / winget) and a note that DOCX output still works when none are present.
 - [ ] **Test matrix** (manual, one-time): Windows+Word, Mac+Word, Mac+LibreOffice, Linux+LibreOffice, Linux+pandoc.
 
 ### Success criteria

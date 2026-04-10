@@ -1,6 +1,21 @@
+# Python dependencies — install with `pip install -r requirements.txt`.
 python-docx>=1.1.2
 docxtpl>=0.18.0
 pyyaml>=6.0.2
 jsonschema>=4.21.0
-docx2pdf>=0.1.8
-pytest>=8.0.0
+docx2pdf>=0.1.8       # primary PDF converter; needs Microsoft Word (Windows / Mac)
+pytest>=8.0.0         # test runner for tests/
+
+# Optional external binaries (NOT pip packages — install via your OS package manager).
+# The PDF pipeline in scripts/pdf_pipeline.py tries converters in this order:
+#   1. docx2pdf          (above)
+#   2. LibreOffice       install LibreOffice; ensure `soffice` is on PATH
+#                        apt: sudo apt install libreoffice
+#                        brew: brew install --cask libreoffice
+#                        winget: winget install TheDocumentFoundation.LibreOffice
+#   3. pandoc            install pandoc AND a LaTeX engine (MiKTeX / TeX Live / MacTeX)
+#                        apt: sudo apt install pandoc texlive-xetex
+#                        brew: brew install pandoc basictex
+#                        winget: winget install JohnMacFarlane.Pandoc
+# If none are available, DOCX output still works; only the PDF step is skipped
+# with an actionable message naming all three tools.
