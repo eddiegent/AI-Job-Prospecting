@@ -12,11 +12,16 @@ Run once when the sample needs refreshing::
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from docx import Document
 
-from scripts.create_cv_template import (
+# Allow importing siblings when run directly (python scripts/build_sample_cv.py)
+# as well as via module path (python -m scripts.build_sample_cv).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from create_cv_template import (
     SKILL_ROOT,
     _create_styles,
     _para,

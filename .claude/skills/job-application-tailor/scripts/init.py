@@ -24,7 +24,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from scripts.paths import SKILL_ROOT, resolve_user_data_dir
+# Allow importing siblings when run directly (python scripts/init.py) as well
+# as via module path (python -m scripts.init).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from paths import SKILL_ROOT, resolve_user_data_dir
 
 
 SAMPLE_CV_NAME = "MASTER_CV.example.docx"
