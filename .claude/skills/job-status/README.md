@@ -40,6 +40,23 @@ Change status to: interview?
 Updated application #23 to "interview".
 ```
 
+## Example: Renaming an Application
+
+When a job is posted by an aggregator (Free-Work, Indeed, LinkedIn, ...) and the real client surfaces afterwards:
+
+```
+> /job-status rename 23 --new-company "Omnitech SA"
+
+Renamed: good-01042026-Software-Engineer-Free-Work
+     -> good-01042026-Software-Engineer-Omnitech-SA
+Patched _prep/job_offer_analysis.json   (source_platform = "Free-Work")
+Patched run_summary.json
+#23: company "Free-Work" -> "Omnitech SA"
+Regenerating outputs...
+```
+
+One command swaps the folder, DB row, `_prep/job_offer_analysis.json`, and `run_summary.json`, then rebuilds the DOCX/PDF filenames so they match the new slug. Add `--no-regenerate` to skip the doc rebuild.
+
 ## Example: Blacklist / Whitelist
 
 ```

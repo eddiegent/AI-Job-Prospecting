@@ -92,6 +92,29 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-output-folder <
 
 Both commands update `updated_at`. `update-company` also refreshes `company_name_norm` so future duplicate detection sees the new name. Do not edit the database directly — these two primitives cover the common cases.
 
+### If the user wants the full atomic rename (folder + DB + JSON + run_summary)
+
+When the real client surfaces after generation (the classic "Free-Work posted on behalf of Omnitech SA" case), `rename-application` does the whole dance in one shot: filesystem rename, DB updates, `_prep/job_offer_analysis.json` patch, `run_summary.json` path rewrite, and a regenerate-outputs pass so DOCX/PDF filenames pick up the new slug.
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" rename-application <app_id> \
+  --new-company "Omnitech SA"
+```
+
+- `--new-slug "<slug>"` — override the auto-derived folder slug (default keeps the prefix `{fit_level}-{date}-` and uses `{job_title}-{new_company}`).
+- `--no-regenerate` — skip the regenerate-outputs step (use when you only want the metadata fixed).
+
+If the old company matched a known aggregator (`Free-Work`, `Indeed`, `LinkedIn`, etc. from `config/settings.default.yaml`), the old name is preserved as `source_platform` in the `_prep/job_offer_analysis.json` for audit.
+
+**When to use which command**:
+- `update-company` / `update-output-folder` — DB-only fixes; the disk hasn't changed and you don't want the rename overhead.
+- `rename-application` — the disk *should* change too (folder rename + filenames + JSON content). This is the normal post-fact correction.
+
+**Edge cases**:
+- Folder already renamed manually on disk → command detects the missing old path and proceeds with DB + JSON patch only.
+- Target folder already exists → command refuses to overwrite; pick a different `--new-slug`.
+- Word/Acrobat has the DOCX/PDF open → `PermissionError` surfaces with a clear "close any open documents" message; rerun once the file is released.
+
 ### If the user wants to manage company lists
 
 Show blacklist and whitelist:

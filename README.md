@@ -18,7 +18,7 @@ Nothing is invented. If a claim isn't in your master CV (or your `cv_addendum.md
 
 | Skill | Description |
 |-------|-------------|
-| `/job-status` | Update application statuses (applied, rejected, interview, offer), filter by status/company, manage blacklist/whitelist |
+| `/job-status` | Update application statuses (applied, rejected, interview, offer), filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
 | `/job-stats` | Application statistics, trends, skill gap analysis, exports |
 
 ## Install

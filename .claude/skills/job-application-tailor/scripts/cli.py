@@ -8,12 +8,17 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
+from common import matched_aggregator, sanitize_component
 from job_history_db import JobHistoryDB
+from paths import load_settings
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
 
@@ -317,6 +322,158 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
     sys.exit(result.returncode)
 
 
+_FOLDER_PREFIX_RE = re.compile(r"^((?:very_good|good|medium|low)-\d{8}-)(.+)$")
+_DATE_PREFIX_RE = re.compile(r"^(\d{8}-)(.+)$")
+
+
+def _split_folder_prefix(name: str) -> tuple[str, str]:
+    """Split a folder name into ('{fit_level}-{date}-' prefix, slug)."""
+    m = _FOLDER_PREFIX_RE.match(name) or _DATE_PREFIX_RE.match(name)
+    if m:
+        return m.group(1), m.group(2)
+    return "", name
+
+
+def _auto_slug(job_title: str | None, new_company: str) -> str:
+    """Build a folder slug from job title and new company, dash-separated."""
+    raw = f"{job_title} {new_company}" if job_title else new_company
+    cleaned = sanitize_component(raw)
+    dashed = re.sub(r"\s+", "-", cleaned)
+    dashed = re.sub(r"-+", "-", dashed)
+    return dashed.strip("-") or "untitled"
+
+
+def cmd_rename_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    app = db.get_application(args.id)
+    if not app:
+        print(f"Application #{args.id} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    new_company = args.new_company.strip()
+    if not new_company:
+        print("--new-company must be non-empty.", file=sys.stderr)
+        sys.exit(1)
+
+    old_company = app["company_name"]
+    old_folder = Path(app["output_folder"])
+    parent = old_folder.parent
+    prefix_part, _old_slug = _split_folder_prefix(old_folder.name)
+
+    # Resolve job_title from _prep so the auto-slug keeps the role
+    job_title = None
+    job_analysis_in_old = old_folder / "_prep" / "job_offer_analysis.json"
+    if job_analysis_in_old.exists():
+        try:
+            job_title = json.loads(
+                job_analysis_in_old.read_text(encoding="utf-8")
+            ).get("job_title")
+        except json.JSONDecodeError:
+            pass
+
+    new_slug = args.new_slug.strip() if args.new_slug else _auto_slug(job_title, new_company)
+    new_folder = parent / f"{prefix_part}{new_slug}"
+
+    # Filesystem rename
+    if old_folder == new_folder:
+        pass
+    elif old_folder.exists():
+        if new_folder.exists():
+            print(
+                f"Target folder already exists: {new_folder}\n"
+                "Pick a different --new-slug or move/delete the existing target.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        try:
+            os.rename(old_folder, new_folder)
+        except PermissionError as exc:
+            print(
+                "Cannot rename folder — a file inside is locked by another process.\n"
+                f"  {exc}\n"
+                "Close any DOCX/PDF that Word/Acrobat may have open from this folder, "
+                "then re-run the command.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        except OSError as exc:
+            print(f"Folder rename failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Renamed: {old_folder.name} -> {new_folder.name}")
+    elif new_folder.exists():
+        print(f"Folder already at {new_folder.name}; skipping filesystem rename.")
+    else:
+        print(
+            f"WARNING: output folder is missing on disk: {old_folder}\n"
+            "Updating DB only — re-create the folder before regenerating outputs.",
+            file=sys.stderr,
+        )
+
+    # Patch _prep/job_offer_analysis.json
+    new_job_analysis = new_folder / "_prep" / "job_offer_analysis.json"
+    if new_job_analysis.exists():
+        try:
+            data = json.loads(new_job_analysis.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(f"Could not parse {new_job_analysis}: {exc}", file=sys.stderr)
+        else:
+            data["company_name"] = new_company
+            try:
+                settings = load_settings()
+                platforms = settings.get("aggregators", {}).get("known_platforms", []) or []
+                aggregator = matched_aggregator(old_company, platforms)
+            except Exception:
+                aggregator = None
+            if aggregator:
+                data["source_platform"] = aggregator
+                data["company_is_aggregator"] = False
+            new_job_analysis.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(f"Patched {new_job_analysis.relative_to(new_folder)}")
+
+    # Patch run_summary.json paths (round-trip JSON so backslash escaping
+    # on Windows doesn't defeat a naive string replace)
+    run_summary = new_folder / "run_summary.json"
+    if run_summary.exists() and old_folder != new_folder:
+        try:
+            summary = json.loads(run_summary.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Could not patch {run_summary}: {exc}", file=sys.stderr)
+        else:
+            old_str = str(old_folder)
+            new_str = str(new_folder)
+            changed = False
+            for key, value in list(summary.items()):
+                if isinstance(value, str) and old_str in value:
+                    summary[key] = value.replace(old_str, new_str)
+                    changed = True
+            if changed:
+                run_summary.write_text(
+                    json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                print(f"Patched {run_summary.name}")
+
+    # DB updates
+    db.update_company(args.id, new_company)
+    db.update_output_folder(args.id, str(new_folder))
+    print(f"#{args.id}: company '{old_company}' -> '{new_company}'")
+    print(f"#{args.id}: output_folder -> {new_folder}")
+
+    if args.no_regenerate:
+        print("Skipping regenerate-outputs (--no-regenerate set).")
+        return
+    if not new_folder.exists():
+        print("Skipping regenerate-outputs (folder missing on disk).")
+        return
+    print("Running regenerate-outputs...")
+    cmd_regenerate_outputs(
+        db,
+        SimpleNamespace(target=str(new_folder), check=False, skip_pdf=False),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Argument parser
 # ---------------------------------------------------------------------------
@@ -402,6 +559,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--check", action="store_true", help="Only report which _prep/ files are present or missing")
     p.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion (DOCX only)")
 
+    # rename-application
+    p = sub.add_parser(
+        "rename-application",
+        help="Atomically rename folder + DB + _prep JSON + run_summary; optionally regenerate outputs",
+    )
+    p.add_argument("id", type=int, help="Application ID")
+    p.add_argument("--new-company", required=True, help="New company name")
+    p.add_argument(
+        "--new-slug",
+        help="Override the auto-derived folder slug (defaults to '{job_title}-{new_company}')",
+    )
+    p.add_argument(
+        "--no-regenerate",
+        action="store_true",
+        help="Skip the regenerate-outputs step at the end (rename + DB + JSON only)",
+    )
+
     return parser
 
 
@@ -435,6 +609,7 @@ def main() -> None:
             "export-csv": cmd_export_csv,
             "count": cmd_count,
             "regenerate-outputs": cmd_regenerate_outputs,
+            "rename-application": cmd_rename_application,
         }
         handlers[args.command](db, args)
     finally:

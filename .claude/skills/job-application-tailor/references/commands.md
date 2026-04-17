@@ -299,3 +299,19 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_hist
 ```
 
 Accepts either a filesystem path or an integer application id (resolved via the DB). Add `--check` to validate `_prep/` completeness without running generation (exit 0 = ready, 1 = missing files). Add `--skip-pdf` to produce DOCX only.
+
+## Rename Application (post-fact)
+
+When the real client surfaces after generation (the Free-Work / Omnitech case), `rename-application` is the atomic wrapper that swaps the folder, DB row, `_prep/job_offer_analysis.json`, and `run_summary.json` in one shot, then runs `regenerate-outputs` so DOCX/PDF filenames pick up the new slug.
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
+  rename-application <app_id> --new-company "<real client name>"
+```
+
+- Auto-slug keeps `{fit_level}-{date}-` and uses `{job_title}-{new_company}` for the rest. Override with `--new-slug "<slug>"`.
+- `--no-regenerate` skips the doc rebuild (DB + metadata patch only).
+- If the old company matched a known aggregator (`config/settings.default.yaml § aggregators.known_platforms`), the old name is preserved as `source_platform` on the offer JSON for audit.
+- If the folder is already renamed manually on disk, the command detects the missing old path and proceeds with DB + JSON patch only. If the target folder already exists, the command refuses; pick a different `--new-slug`. If a DOCX/PDF inside is open in Word/Acrobat, the rename fails with a clear "close any open documents" message — close and re-run.
+
+For DB-only fixes (no filesystem change), use the lower-level primitives `update-company` / `update-output-folder` instead.
