@@ -231,6 +231,104 @@ def cmd_company_check(db: JobHistoryDB, args: argparse.Namespace) -> None:
         print(f"{args.name}: not on any list")
 
 
+def cmd_check_duplicate(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    """Step 3.5 wrapper — reads job_offer_analysis.json and runs the three
+    history checks (duplicate, same-company context, blacklist) in one call.
+
+    Target may be the `_prep/job_offer_analysis.json` path, or a folder
+    containing `_prep/job_offer_analysis.json`, or the JSON file directly.
+
+    Exit codes:
+      0 — clean (no blacklist, no duplicate)
+      1 — needs attention (duplicate or blacklisted company)
+    """
+    target = Path(args.target)
+    if target.is_dir():
+        candidate = target / "_prep" / "job_offer_analysis.json"
+        if not candidate.exists():
+            candidate = target / "job_offer_analysis.json"
+        job_path = candidate
+    else:
+        job_path = target
+
+    if not job_path.exists():
+        print(f"Cannot find job_offer_analysis.json at {job_path}", file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        job = json.loads(job_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"Could not parse {job_path}: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    company = (job.get("company_name") or "").strip()
+    title = (job.get("job_title") or "").strip()
+    source_url = args.url or job.get("source_url")
+    required_skills = job.get("required_skills") or []
+
+    blacklist_entry = db.check_company_list(company) if company else None
+
+    dupes = db.find_duplicates(
+        company_name=company,
+        job_title=title,
+        source_url=source_url,
+        required_skills=required_skills,
+    ) if company and title else []
+
+    same_company = db.find_same_company(company) if company else []
+    dupe_ids = {d["id"] for d in dupes}
+    context = [c for c in same_company if c["id"] not in dupe_ids]
+
+    if args.json:
+        payload = {
+            "company_name": company,
+            "job_title": title,
+            "source_url": source_url,
+            "blacklist": blacklist_entry,
+            "duplicates": dupes,
+            "same_company_context": context,
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+    else:
+        print(f"Checking: {company} — {title}")
+        if source_url:
+            print(f"URL: {source_url}")
+
+        if blacklist_entry:
+            lt = blacklist_entry["list_type"].upper()
+            reason = f" — {blacklist_entry['reason']}" if blacklist_entry.get("reason") else ""
+            print(f"\n[!] {lt}: {blacklist_entry['company_name']}{reason}")
+        else:
+            print("\nBlacklist: not listed")
+
+        if dupes:
+            print(f"\n[!] {len(dupes)} duplicate(s) found:")
+            for d in dupes:
+                fit_level = d.get("fit_level") or "n/a"
+                fit_pct = d.get("fit_pct")
+                fit_pct_s = f"{fit_pct}%" if fit_pct is not None else "n/a"
+                print(f"  #{d['id']} [{fit_level} {fit_pct_s}] — {d['company_name']} / {d['job_title']}")
+                print(f"    reason: {d['match_reason']}")
+                print(f"    date:   {d['created_at']}")
+                folder = d.get("output_folder") or "(none)"
+                print(f"    folder: {folder}")
+        else:
+            print("\nDuplicates: none")
+
+        if context:
+            print(f"\nOther applications to {company} ({len(context)}):")
+            for c in context:
+                fit_level = c.get("fit_level") or "n/a"
+                fit_pct = c.get("fit_pct")
+                fit_pct_s = f"{fit_pct}%" if fit_pct is not None else "n/a"
+                print(f"  #{c['id']} [{fit_level} {fit_pct_s}] — {c['job_title']} ({c['created_at']})")
+
+    flagged = bool(dupes) or (
+        blacklist_entry is not None and blacklist_entry.get("list_type") == "blacklist"
+    )
+    sys.exit(1 if flagged else 0)
+
+
 def cmd_export_csv(db: JobHistoryDB, args: argparse.Namespace) -> None:
     content = db.export_csv(output_path=args.output)
     if args.output:
@@ -542,6 +640,18 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("company-check", help="Check if company is on a list")
     p.add_argument("name", help="Company name")
 
+    # check-duplicate
+    p = sub.add_parser(
+        "check-duplicate",
+        help="Step 3.5 — check duplicate / same-company / blacklist against a job_offer_analysis.json",
+    )
+    p.add_argument(
+        "target",
+        help="Path to _prep/job_offer_analysis.json, or a folder containing one",
+    )
+    p.add_argument("--url", help="Override source URL if missing from the offer JSON")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
     # export-csv
     p = sub.add_parser("export-csv", help="Export applications to CSV")
     p.add_argument("--output", help="Output file path (prints to stdout if omitted)")
@@ -606,6 +716,7 @@ def main() -> None:
             "company-add": cmd_company_add,
             "company-remove": cmd_company_remove,
             "company-check": cmd_company_check,
+            "check-duplicate": cmd_check_duplicate,
             "export-csv": cmd_export_csv,
             "count": cmd_count,
             "regenerate-outputs": cmd_regenerate_outputs,

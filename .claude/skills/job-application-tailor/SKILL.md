@@ -122,18 +122,25 @@ Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, val
 
 ### Step 3.5 — Duplicate & history check
 
-After the job offer analysis is complete (company name and required skills are known), check the job history database for duplicates. See `references/commands.md` § Duplicate Detection.
+After the job offer analysis is complete, run the one-shot `check-duplicate` subcommand — it wraps all three history checks, the same-company context surface, and the blacklist lookup in a single call. See `references/commands.md` § Duplicate Detection.
 
-The check uses three layers:
+```bash
+python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
+  check-duplicate "$PREP_DIR" --url "<job-url>"
+```
+
+Exit code `0` = clear to proceed. Exit code `1` = flagged (duplicate or blacklisted) — stop and surface the output to the user before continuing.
+
+The three duplicate layers:
 1. **Exact URL match** — same source URL used before
 2. **Company + title match** — normalised comparison (case-insensitive, common abbreviations unified)
 3. **Fuzzy skill match** — same company but different title: if >80% of required skills overlap, flag as likely duplicate
 
-**If a duplicate is found**: show the user the previous application details (date, fit score, output folder path) and ask whether to proceed or skip. Do not silently continue.
+**If a duplicate is found**: the subcommand prints the previous application's id, fit score, date, and output folder. Show that to the user and ask whether to proceed or skip. Do not silently continue.
 
-**If no duplicate but same company**: surface previous applications as context — "You applied to [Company] on [date] for [title] ([fit]% fit). This is a different role." This informs but doesn't block.
+**If no duplicate but same company**: the `Other applications to …` block surfaces previous applications as context — "You applied to [Company] on [date] for [title] ([fit]% fit). This is a different role." This informs but doesn't block.
 
-**Check company blacklist** — if the company was identified in Step 3, verify it's not blacklisted. If blacklisted, inform the user (include the reason if one was stored) and stop unless they explicitly override.
+**Blacklist is part of the same call** — if the company is on the blacklist, the output starts with `[!] BLACKLIST: …` and the reason (if stored). Stop unless the user explicitly overrides.
 
 ### Step 3.6 — Research the company
 

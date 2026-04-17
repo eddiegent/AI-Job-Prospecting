@@ -186,33 +186,20 @@ cd "$SKILL_BASE" && python scripts/backfill_history.py \
 ```
 
 ### Duplicate Detection
+
+Preferred: the `check-duplicate` subcommand wraps all three history checks (exact URL, company+title, fuzzy skill overlap), the same-company context surface, and the blacklist lookup in one call. It reads company/title/skills/URL from `_prep/job_offer_analysis.json`.
+
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io, json
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
-dupes = db.find_duplicates(
-    company_name=job['company_name'],
-    job_title=job['job_title'],
-    source_url=job.get('source_url'),
-    required_skills=job.get('required_skills', []),
-)
-if dupes:
-    for d in dupes:
-        print(f\"Match: {d['company_name']} / {d['job_title']} ({d['fit_level']}, {d['fit_pct']}%) — {d['match_reason']}\")
-        print(f\"  Output: {d['output_folder']}\")
-        print(f\"  Date: {d['created_at']}\")
-else:
-    print('No duplicates found')
-# Also check for same-company context
-context = db.find_same_company('<company_name>')
-if context and not dupes:
-    for c in context:
-        print(f\"Previous: {c['company_name']} / {c['job_title']} ({c['fit_pct']}%) on {c['created_at']}\")
-db.close()
-"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
+  check-duplicate "$PREP_DIR" --url "<offer-url-if-not-in-JSON>"
 ```
+
+- Accepts either the folder (`$OUTPUT_DIR` or `$PREP_DIR`) or the `_prep/job_offer_analysis.json` path directly.
+- `--url` is optional — pass it when the offer JSON doesn't carry `source_url` (the analysis schema doesn't yet).
+- `--json` emits a structured payload with `blacklist`, `duplicates`, `same_company_context`.
+- Exit codes: `0` = clean, `1` = flagged (duplicate or blacklisted), `2` = bad input (missing/invalid JSON).
+
+Low-level primitives remain available for scripting beyond this step: `db.find_duplicates(...)`, `db.find_same_company(...)`, `db.check_company_list(...)` in `scripts/job_history_db.py`.
 
 ### Company Lists
 ```bash
