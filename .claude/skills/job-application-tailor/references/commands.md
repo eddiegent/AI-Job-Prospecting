@@ -37,6 +37,24 @@ print(folder)
 "
 ```
 
+## Cache Raw Offer
+
+Write the raw offer text (WebFetch response or pasted input) to `$PREP_DIR/raw_offer.md` before analysis. Run once per offer, after `$PREP_DIR` exists and before Step 3 analysis.
+
+```bash
+python -u -c "
+import sys, io
+from pathlib import Path
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+Path('$PREP_DIR/raw_offer.md').write_text(sys.stdin.read(), encoding='utf-8')
+print('Cached raw offer ->', '$PREP_DIR/raw_offer.md')
+" <<'OFFER'
+<paste the WebFetch response or raw offer text here>
+OFFER
+```
+
+If you already have the text in a variable, pipe it in instead of the heredoc. The file is a sibling of the `_prep/` JSONs; no schema validation — it's a verbatim snapshot.
+
 ## CV Caching
 
 ### Check cache validity

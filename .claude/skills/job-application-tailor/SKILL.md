@@ -107,7 +107,9 @@ This step must complete **before** the job offer is analysed, so the fact base i
 
 ### Step 3 — Analyse the job offer
 
-If `$ARGUMENTS` is a URL, fetch it with WebFetch first. Read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, validate against `schemas/job_offer_analysis.schema.json`. Note the `detected_language` — it drives the language of all subsequent output.
+If `$ARGUMENTS` is a URL, fetch it with WebFetch first. **Cache the raw offer text** to `$PREP_DIR/raw_offer.md` before analysis — write the full WebFetch response (or the pasted text if the user supplied one) as-is. This gives an audit trail and survives the posting being pulled. See `references/commands.md` § Cache Raw Offer.
+
+Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, validate against `schemas/job_offer_analysis.schema.json`. Note the `detected_language` — it drives the language of all subsequent output.
 
 ### Step 3.5 — Duplicate & history check
 
