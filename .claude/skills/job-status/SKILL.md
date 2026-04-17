@@ -81,6 +81,17 @@ To look up an application's current details first:
 cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" get <app_id>
 ```
 
+### If the user wants to correct the company name or output folder on an existing application
+
+Use when the real hiring company wasn't known at generation time (e.g. the offer was posted via a platform like Free-Work) and has since been identified, or when the output folder was renamed on disk.
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-company <app_id> "<new name>"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-output-folder <app_id> "<new path>"
+```
+
+Both commands update `updated_at`. `update-company` also refreshes `company_name_norm` so future duplicate detection sees the new name. Do not edit the database directly — these two primitives cover the common cases.
+
 ### If the user wants to manage company lists
 
 Show blacklist and whitelist:

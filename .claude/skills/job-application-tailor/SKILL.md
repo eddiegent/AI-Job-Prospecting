@@ -178,6 +178,10 @@ Read `prompts/generate_linkedin_message.md`. Use the CV fact base, job offer ana
 
 Wait for both subagents to complete before proceeding to Step 8.
 
+**Write permission note:** subagents need to write JSON into `$PREP_DIR`. The project's `.claude/settings.local.json` pre-approves `Write(output/**)` for exactly this reason. If you ever see a subagent report "Write permission denied" for `output/**/_prep/*.json`:
+1. Confirm the allow rule is still present in `.claude/settings.local.json`.
+2. If a subagent returned the generated JSON in its final message instead of saving it, save it yourself from the main context and continue — don't re-run the subagent.
+
 ### Step 8 — Interview prep (foreground)
 
 **Do not use a background agent for this step.** Interview prep is markdown-only (no schema validation via Bash), and background agents can encounter permission issues that silently fail. Generate this in the main context instead.

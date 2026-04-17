@@ -295,6 +295,28 @@ class JobHistoryDB:
         self._conn.commit()
         return cur.rowcount > 0
 
+    def update_company(self, app_id: int, new_name: str) -> bool:
+        new_name = new_name.strip()
+        if not new_name:
+            raise ValueError("Company name must be non-empty")
+        cur = self._conn.execute(
+            "UPDATE applications SET company_name = ?, company_norm = ?, updated_at = ? WHERE id = ?",
+            (new_name, _normalise(new_name), datetime.now().isoformat(), app_id),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def update_output_folder(self, app_id: int, new_path: str) -> bool:
+        new_path = new_path.strip()
+        if not new_path:
+            raise ValueError("Output folder must be non-empty")
+        cur = self._conn.execute(
+            "UPDATE applications SET output_folder = ?, updated_at = ? WHERE id = ?",
+            (new_path, datetime.now().isoformat(), app_id),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0
+
     # -- queries -------------------------------------------------------------
 
     def get_application(self, app_id: int) -> dict[str, Any] | None:

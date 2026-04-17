@@ -99,6 +99,32 @@ def cmd_update_status(db: JobHistoryDB, args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_update_company(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    app = db.get_application(args.id)
+    if not app:
+        print(f"Application #{args.id} not found.", file=sys.stderr)
+        sys.exit(1)
+    ok = db.update_company(args.id, args.name)
+    if ok:
+        print(f"#{args.id}: company '{app['company_name']}' -> '{args.name}'")
+    else:
+        print("Update failed.", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_update_output_folder(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    app = db.get_application(args.id)
+    if not app:
+        print(f"Application #{args.id} not found.", file=sys.stderr)
+        sys.exit(1)
+    ok = db.update_output_folder(args.id, args.path)
+    if ok:
+        print(f"#{args.id}: output_folder '{app['output_folder']}' -> '{args.path}'")
+    else:
+        print("Update failed.", file=sys.stderr)
+        sys.exit(1)
+
+
 def cmd_stats(db: JobHistoryDB, args: argparse.Namespace) -> None:
     since = resolve_since(args.since) if args.since else None
     report_type = args.type
@@ -239,6 +265,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id", type=int, help="Application ID")
     p.add_argument("status", choices=["generated", "applied", "rejected", "interview", "offer"])
 
+    # update-company
+    p = sub.add_parser("update-company", help="Rename the company on an application")
+    p.add_argument("id", type=int, help="Application ID")
+    p.add_argument("name", help="New company name")
+
+    # update-output-folder
+    p = sub.add_parser("update-output-folder", help="Update the output_folder path on an application")
+    p.add_argument("id", type=int, help="Application ID")
+    p.add_argument("path", help="New output folder path")
+
     # stats
     p = sub.add_parser("stats", help="Show statistics")
     p.add_argument("--type", default="all", choices=["all", "status", "fit", "company", "domain", "skills"])
@@ -299,6 +335,8 @@ def main() -> None:
             "list": cmd_list,
             "get": cmd_get,
             "update-status": cmd_update_status,
+            "update-company": cmd_update_company,
+            "update-output-folder": cmd_update_output_folder,
             "stats": cmd_stats,
             "skills": cmd_skills,
             "company-list": cmd_company_list,

@@ -37,7 +37,7 @@ def main() -> None:
     parser.add_argument("--language", default="fr")
     args = parser.parse_args()
 
-    from scripts.paths import load_settings
+    from paths import load_settings
     settings = load_settings(defaults_path=Path(args.settings))
     naming = load_yaml(Path(args.naming_rules))
 
