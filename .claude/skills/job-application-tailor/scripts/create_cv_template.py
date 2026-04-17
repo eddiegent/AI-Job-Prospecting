@@ -16,6 +16,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Inches, Mm, RGBColor, Emu
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -45,7 +46,7 @@ LABELS = {
         "languages": "Langues",
     },
     "en": {
-        "profile": "Professional Profile",
+        "profile": "Summary",
         "skills": "Skills",
         "experience": "Professional Experience",
         "education": "Education",
@@ -89,6 +90,13 @@ def _add_bottom_border(style, color_hex: str = "1F4E79", sz: str = "4") -> None:
     pPr.append(pBdr)
 
 
+def _set_keep_with_next(style) -> None:
+    """Glue this paragraph to the next so Word won't orphan it at a page break."""
+    pPr = style._element.get_or_add_pPr()
+    keep = OxmlElement("w:keepNext")
+    pPr.append(keep)
+
+
 def _para(doc: Document, text: str, style_name: str = "Normal") -> None:
     """Add a paragraph with the given text and style."""
     doc.add_paragraph(text, style=style_name)
@@ -117,35 +125,49 @@ def _create_styles(doc: Document) -> None:
         s.font.bold = True
         s.font.color.rgb = BLUE
         _set_spacing(s, before_pt=0, after_pt=2)
+        s.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # --- TaglineStyle ---
+    # --- TitleStyle (job title line, directly under the name) ---
+    if "TitleStyle" not in existing:
+        s = styles.add_style("TitleStyle", WD_STYLE_TYPE.PARAGRAPH)
+        s.base_style = normal
+        _set_font(s, FONT)
+        s.font.size = Pt(16)
+        s.font.bold = True
+        s.font.color.rgb = BLUE
+        _set_spacing(s, before_pt=0, after_pt=2)
+        s.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # --- TaglineStyle (supporting line under the title, intentionally subtler) ---
     if "TaglineStyle" not in existing:
         s = styles.add_style("TaglineStyle", WD_STYLE_TYPE.PARAGRAPH)
         s.base_style = normal
         _set_font(s, FONT)
-        s.font.size = Pt(11.5)
-        s.font.bold = True
-        s.font.color.rgb = DARK_GRAY
-        _set_spacing(s, before_pt=0, after_pt=2)
+        s.font.size = Pt(10.5)
+        s.font.italic = True
+        s.font.color.rgb = SUBTLE_GRAY
+        _set_spacing(s, before_pt=0, after_pt=4)
+        s.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     # --- ContactStyle ---
     if "ContactStyle" not in existing:
         s = styles.add_style("ContactStyle", WD_STYLE_TYPE.PARAGRAPH)
         s.base_style = normal
         _set_font(s, FONT)
-        s.font.size = Pt(10)
-        s.font.color.rgb = SUBTLE_GRAY
-        _set_spacing(s, before_pt=0, after_pt=6)
+        s.font.size = Pt(11)
+        s.font.color.rgb = DARK_GRAY
+        _set_spacing(s, before_pt=0, after_pt=2)
+        s.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     # --- SectionStyle (with bottom border) ---
     if "SectionStyle" not in existing:
         s = styles.add_style("SectionStyle", WD_STYLE_TYPE.PARAGRAPH)
         s.base_style = normal
         _set_font(s, FONT)
-        s.font.size = Pt(12)
+        s.font.size = Pt(14)
         s.font.bold = True
         s.font.color.rgb = BLUE
-        _set_spacing(s, before_pt=10, after_pt=4)
+        _set_spacing(s, before_pt=12, after_pt=4)
         _add_bottom_border(s)
 
     # --- RoleStyle ---
@@ -156,9 +178,21 @@ def _create_styles(doc: Document) -> None:
         s.font.size = Pt(11)
         s.font.bold = True
         s.font.color.rgb = BLACK
-        _set_spacing(s, before_pt=6, after_pt=0)
+        _set_spacing(s, before_pt=8, after_pt=0)
+        _set_keep_with_next(s)
 
-    # --- SubtleStyle (dates) ---
+    # --- MetaStyle (Company | Location | Dates line, sits under the role) ---
+    if "MetaStyle" not in existing:
+        s = styles.add_style("MetaStyle", WD_STYLE_TYPE.PARAGRAPH)
+        s.base_style = normal
+        _set_font(s, FONT)
+        s.font.size = Pt(10)
+        s.font.italic = True
+        s.font.color.rgb = SUBTLE_GRAY
+        _set_spacing(s, before_pt=0, after_pt=3)
+        _set_keep_with_next(s)
+
+    # --- SubtleStyle (kept for backwards compatibility with older templates) ---
     if "SubtleStyle" not in existing:
         s = styles.add_style("SubtleStyle", WD_STYLE_TYPE.PARAGRAPH)
         s.base_style = normal
@@ -207,13 +241,17 @@ def _add_template_content(doc: Document, labels: dict[str, str]) -> None:
     _para(doc, "{{candidate_name}}", "NameStyle")
     # Title (conditional — separate control paragraphs)
     _para(doc, "{%p if title %}")
-    _para(doc, "{{title}}", "TaglineStyle")
+    _para(doc, "{{title}}", "TitleStyle")
     _para(doc, "{%p endif %}")
-    # Tagline (conditional)
+    # Tagline (conditional, smaller than title)
     _para(doc, "{%p if tagline %}")
     _para(doc, "{{tagline}}", "TaglineStyle")
     _para(doc, "{%p endif %}")
     _para(doc, "{{r contact_rich}}", "ContactStyle")
+    # Optional second contact line (long contact strings are split in half by the generator).
+    _para(doc, "{%p if contact_rich_line2 %}")
+    _para(doc, "{{r contact_rich_line2}}", "ContactStyle")
+    _para(doc, "{%p endif %}")
 
     # ── Profile ──
     _para(doc, labels["profile"], "SectionStyle")
@@ -228,11 +266,12 @@ def _add_template_content(doc: Document, labels: dict[str, str]) -> None:
     _para(doc, "{%p endfor %}")
 
     # ── Experience ──
+    # Role (RoleStyle, bold) then "Company | Location | Dates" metadata line (MetaStyle).
     _para(doc, labels["experience"], "SectionStyle")
     _para(doc, "{%p for role in experience %}")
-    _para(doc, "{{role.company_role_line}}", "RoleStyle")
-    _para(doc, "{%p if role.date_line %}")
-    _para(doc, "{{role.date_line}}", "SubtleStyle")
+    _para(doc, "{{role.role_line}}", "RoleStyle")
+    _para(doc, "{%p if role.metadata_line %}")
+    _para(doc, "{{role.metadata_line}}", "MetaStyle")
     _para(doc, "{%p endif %}")
     _para(doc, "{%p for bullet in role.bullets %}")
     _para(doc, "\u2022 {{bullet}}", "BulletStyle")

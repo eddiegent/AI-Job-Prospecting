@@ -47,6 +47,10 @@ def sanitize_component(text: str, replacement: str = "-", trim_chars: str = " .-
 
 def slug_for_filename(text: str) -> str:
     value = sanitize_component(text, replacement="-")
+    # Drop characters that are ATS-legal but look ugly / inconsistent in filenames
+    # (parentheses, brackets, dots). Dots inside titles like ".Net Core" survive in
+    # the CV body and other outputs — we only strip them from the filename slug.
+    value = re.sub(r"[()\[\]{}.]+", "", value)
     value = re.sub(r"\s+", "_", value)
     value = re.sub(r"_+", "_", value)
     value = re.sub(r"-+", "-", value)

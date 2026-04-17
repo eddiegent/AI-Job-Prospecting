@@ -3,13 +3,13 @@
   "title": "Senior Software Engineer",
   "experience": [
     {
-      "company_role_line": "Senior Engineer — Acme Corp, Paris",
-      "date_line": "Janvier 2018 - Present",
+      "role_line": "Senior Engineer",
+      "metadata_line": "Acme Corp | Paris | January 2018 – Present",
       "bullets": ["Led API platform migration."]
     },
     {
-      "company_role_line": "Product Builder No-Code (Formation) — École Cube, Paris",
-      "date_line": "2025",
+      "role_line": "Product Builder No-Code (Formation)",
+      "metadata_line": "École Cube | Paris | 2025",
       "bullets": ["RNCP Niveau 6."]
     }
   ],

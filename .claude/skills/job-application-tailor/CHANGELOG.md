@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.2.0] - 2026-04-17
+
+### Breaking
+- **Schema rename** — `experience[]` fields in `tailored_cv.schema.json` renamed `company_role_line` → `role_line`, `date_line` → `metadata_line`. Semantics changed: `role_line` carries only the role title; `metadata_line` carries `"Company | Location | Month YYYY – Month YYYY"`. Old tailored CV JSON files (pre-1.2.0) no longer validate — `regenerate-outputs` on a legacy `_prep/` folder will fail until the JSON is migrated.
+
+### Changed
+- **Centered header block** — Name (19pt blue), Title (16pt blue), Tagline (10.5pt italic gray, intentionally subtler), Contact (11pt dark gray) — all centered
+- **Date format standardised** — every date in the experience section now uses `Month YYYY – Month YYYY` with full month names and an en-dash
+- **Summary section heading** — EN label renamed `Professional Profile` → `Summary` for cleaner ATS keyword matching (FR stays `Profil professionnel`)
+- **Section headings** — bumped 12pt → 14pt, matching ATS-friendly hierarchy (body 11pt, headings 14pt, name 19pt)
+- **Contact line auto-split** — when the contact string has 4+ pipe-separated items, the generator now emits two centered lines (e.g. `Email | Tel` / `LinkedIn | Location`) so long contact lines no longer wrap awkwardly at the page edge
+- **Filename slug** — `slug_for_filename()` now strips `()[]{}.` so job titles like `Backend Developer (.Net Core)` produce `Backend_Developer_Net_Core` in output filenames instead of `Backend_Developer_(.Net_Core)`
+
+### Added
+- `TitleStyle`, `MetaStyle` paragraph styles in `create_cv_template.py`
+- `_set_keep_with_next()` helper — Role and Metadata lines are glued to the next paragraph so Word can't orphan a role header at a page break
+- `_split_contact_lines()` helper in `docx_generator.py` — mid-pipe split for long contact strings
+
+### Fixed
+- **Ampersand bug in docxtpl render** — rendered text was silently dropping `&` characters (and surrounding spaces) because docxtpl's default Jinja environment lacks XML autoescape. `generate_cv_docx()` now passes a `jinja_env=Environment(autoescape=True)` into `tpl.render()`. Text like `R&D Engineer`, `Platforms & Frameworks`, `JFC Informatique & Média` now renders correctly.
+
+### Migration
+- If you have pre-1.2.0 `_prep/tailored_cv.json` files you want to regenerate, rename the fields per the schema rename above. The tailoring prompt (`prompts/tailor_cv.md`) now documents the new contract.
+
 ## [1.1.0] - 2026-04-09
 
 ### Changed

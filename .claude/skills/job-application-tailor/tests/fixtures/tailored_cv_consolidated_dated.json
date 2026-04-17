@@ -3,18 +3,18 @@
   "title": "Senior Software Engineer",
   "experience": [
     {
-      "company_role_line": "Senior Engineer — Acme Corp, Paris",
-      "date_line": "Janvier 2018 - Present",
+      "role_line": "Senior Engineer",
+      "metadata_line": "Acme Corp | Paris | January 2018 – Present",
       "bullets": ["Led API platform migration."]
     },
     {
-      "company_role_line": "C++ Developer — OldCo Media, Paris",
-      "date_line": "1998 - 2004",
+      "role_line": "C++ Developer",
+      "metadata_line": "OldCo Media | Paris | January 1998 – December 2004",
       "bullets": ["Fortran to C++ migrations."]
     },
     {
-      "company_role_line": "Expériences antérieures — TinyShop",
-      "date_line": "Avant 1998",
+      "role_line": "Expériences antérieures",
+      "metadata_line": "TinyShop | Avant 1998",
       "bullets": ["Premiers postes en développement logiciel."]
     }
   ],

@@ -74,11 +74,11 @@ If none of A, B, C apply, the role goes into the consolidated line.
 
 If any pre-cutoff roles were set aside in Step 2, append **one single entry** to the end of the `experience` array, after the last recent or load-bearing role. The entry must:
 
-- Be **dateless**: set `date_line` to an empty string `""`. No years, no ranges, no "Avant 2005", nothing. The goal is to present earlier experience as context without inviting age-based filtering.
-- Use a language-appropriate heading in the `company_role_line`:
-  - French: `"Expériences antérieures — <Company A>, <Company B>, <Company C>"`
-  - English: `"Earlier experience — <Company A>, <Company B>, <Company C>"`
+- Put a language-appropriate heading in `role_line`:
+  - French: `"Expériences antérieures"`
+  - English: `"Earlier experience"`
   - Other target languages: translate the heading appropriately. The rest of the CV already tells you which language to write in.
+- Put the **pipe-separated company names only** in `metadata_line`, with **no dates** (e.g. `"Peaktime SAS | JFC Informatique & Média"`). Dateless on purpose: presents earlier experience as context without inviting age-based filtering.
 - Contain **one single bullet** in `bullets` that summarises the aggregate scope of the consolidated roles: the core tech (C++ STL / MFC, etc.), the general domain (e.g. media, advertising data), and the high-level contribution (development, project coordination, writing specifications). Keep it under 2 lines in the rendered output. Write it in the same language as the rest of the CV.
 
 Companies in the consolidated line appear in reverse-chronological order to match the rest of the experience section.
@@ -107,7 +107,16 @@ Use the labeled format from the master CV:
 Preserve the master CV's granular skill categories as separate `skills_sections` entries. Each category from the skills table becomes its own section with its own heading (e.g. "Langages", "Plateformes & Frameworks", "Services & Communication", "Données", "Tests", "Outils & Environnements", "Architecture & Méthodes", "Systèmes"). Do not consolidate multiple categories into a single section. Dedicated sections outside the table (e.g. "Développement assisté par IA") are also preserved as separate entries. You may reorder sections for relevance but never merge or drop them.
 
 ### Experience line format
-Role comes first, then company: `Role — Company, Location`. This matches the master CV's style hierarchy (RoleStyle above CompanyStyle). Never reverse this to `Company — Role`.
+Each experience entry has two separate fields:
+- `role_line` — the role/job title **only** (e.g. `"IT Project Manager"`, `"R&D Engineer"`, `"Development Manager"`). No company, no dates. Rendered bold on its own line.
+- `metadata_line` — a single pipe-separated string `"Company | Location | Month YYYY – Month YYYY"` (e.g. `"Oodrive SA | Paris | July 2010 – March 2025"`). Rendered italic-gray on its own line directly under the role.
+
+This matches how ATS parsers expect to find role, employer, and dates — each on its own clear line rather than merged.
+
+### Date format
+Use `Month YYYY – Month YYYY` consistently across the `experience` array (e.g. `"July 2010 – March 2025"`). Use the full month name in the target language (`"July"` in English, `"juillet"` in French). Use an en-dash ` – ` (not a hyphen `-`). Never abbreviate months. Never mix formats inside the CV.
+
+For the consolidated `Earlier experience` entry (if any), the `metadata_line` is intentionally dateless: put only the pipe-separated company names there (e.g. `"Peaktime SAS | JFC Informatique & Média"`). The `role_line` stays `"Earlier experience"` (or the target-language equivalent from § Earlier-experience compression).
 
 ### Education dates
 Reproduce date formatting as it appears in the master CV. Do not reformat dates (e.g. don't expand 2-digit years to 4-digit, don't change separators).
@@ -140,7 +149,7 @@ Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema f
     {"heading": "Plateformes & Frameworks", "items": [".NET", ".NET Core", "WPF"]}
   ],
   "experience": [
-    {"company_role_line": "Senior Developer — Acme Corp, Paris", "date_line": "Jan 2020 – Present", "bullets": ["Developed...", "Migrated..."]}
+    {"role_line": "Senior Developer", "metadata_line": "Acme Corp | Paris | January 2020 – Present", "bullets": ["Developed...", "Migrated..."]}
   ],
   "education": ["2015 : University X – MSc Computer Science"],
   "languages": ["Bilingue Français / Anglais"]

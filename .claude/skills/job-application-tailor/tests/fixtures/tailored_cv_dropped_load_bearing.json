@@ -3,18 +3,18 @@
   "title": "Senior Software Engineer",
   "experience": [
     {
-      "company_role_line": "Senior Engineer — Acme Corp, Paris",
-      "date_line": "Janvier 2018 - Present",
+      "role_line": "Senior Engineer",
+      "metadata_line": "Acme Corp | Paris | January 2018 – Present",
       "bullets": ["Led API platform migration."]
     },
     {
-      "company_role_line": "Software Engineer — Midway Systems, Lyon",
-      "date_line": "2010 - 2017",
+      "role_line": "Software Engineer",
+      "metadata_line": "Midway Systems | Lyon | January 2010 – December 2017",
       "bullets": ["Built distributed services."]
     },
     {
-      "company_role_line": "Expériences antérieures — OldCo Media, TinyShop",
-      "date_line": "",
+      "role_line": "Expériences antérieures",
+      "metadata_line": "OldCo Media | TinyShop",
       "bullets": ["C++ MFC et débuts en développement logiciel."]
     }
   ],

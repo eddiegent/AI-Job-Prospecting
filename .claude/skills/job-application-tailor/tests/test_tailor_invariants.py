@@ -84,4 +84,4 @@ def test_consolidated_line_is_dateless_in_detected_language():
 def test_consolidated_line_with_date_is_flagged():
     dated = load_fixture("tailored_cv_consolidated_dated.json")
     violations = find_consolidated_line_issues(dated, expected_language="fr")
-    assert any("empty date_line" in v for v in violations)
+    assert any("dateless" in v for v in violations)

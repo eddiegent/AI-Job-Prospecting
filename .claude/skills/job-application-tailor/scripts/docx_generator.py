@@ -10,6 +10,7 @@ from docx.shared import Pt, Inches
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docxtpl import DocxTemplate, RichText
+from jinja2 import Environment
 
 from common import ensure_dir, load_yaml
 
@@ -41,6 +42,21 @@ def _get_template_path(language: str) -> Path:
         f"CV template not found. Expected: {template}\n"
         f"Run 'python scripts/create_cv_template.py' to generate it."
     )
+
+
+def _split_contact_lines(contact_line: str) -> list[str]:
+    """Split a long contact line into readable halves at pipe separators.
+
+    One line is kept when there are <= 3 pipe-separated items; four or more
+    items split in half so the contact block never wraps mid-item on page.
+    """
+    if not contact_line:
+        return [""]
+    items = [p.strip() for p in contact_line.split("|") if p.strip()]
+    if len(items) <= 3:
+        return [" | ".join(items)]
+    mid = (len(items) + 1) // 2
+    return [" | ".join(items[:mid]), " | ".join(items[mid:])]
 
 
 def _build_contact_richtext(tpl: DocxTemplate, contact_line: str) -> RichText:
@@ -121,8 +137,11 @@ def generate_cv_docx(output_path: Path, cv_data: dict[str, Any], settings: dict[
     template_path = _get_template_path(language)
     tpl = DocxTemplate(template_path)
 
-    # Build RichText for contact line (hyperlinks)
-    contact_rich = _build_contact_richtext(tpl, cv_data.get("contact_line", ""))
+    # Build RichText for the contact line(s). Long contact lines are split in
+    # half so they don't wrap awkwardly mid-item at the page edge.
+    contact_parts = _split_contact_lines(cv_data.get("contact_line", ""))
+    contact_rich = _build_contact_richtext(tpl, contact_parts[0])
+    contact_rich_line2 = _build_contact_richtext(tpl, contact_parts[1]) if len(contact_parts) > 1 else None
 
     # Build RichText for each skill section (bold heading + normal items)
     skills = []
@@ -136,6 +155,7 @@ def generate_cv_docx(output_path: Path, cv_data: dict[str, Any], settings: dict[
         "title": cv_data.get("title", ""),
         "tagline": cv_data.get("tagline", ""),
         "contact_rich": contact_rich,
+        "contact_rich_line2": contact_rich_line2,
         "labels": labels,
         "summary_paragraphs": cv_data.get("summary_paragraphs", []),
         "skills_sections": skills,
@@ -144,7 +164,8 @@ def generate_cv_docx(output_path: Path, cv_data: dict[str, Any], settings: dict[
         "languages_line": ", ".join(cv_data.get("languages", [])),
     }
 
-    tpl.render(context)
+    # Autoescape ensures `&`, `<`, `>` in values don't corrupt the rendered XML.
+    tpl.render(context, jinja_env=Environment(autoescape=True))
     tpl.save(str(output_path))
     return output_path
 

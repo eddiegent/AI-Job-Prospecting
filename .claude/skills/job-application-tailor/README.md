@@ -172,8 +172,11 @@ CVs are generated from a pre-styled DOCX template using [`docxtpl`](https://docx
 
 **Template design:**
 - ATS-compliant: single-column, Calibri font, no tables/text boxes/images
-- French CV conventions: Profil > Competences > Experience > Formation > Langues
-- Blue accent (`#1F4E79`) on name and section headings with thin bottom borders
+- Centered header block: Name (19pt blue) → Title (16pt blue) → Tagline (10.5pt italic subtle gray, intentionally subtler than the title) → Contact (11pt dark gray, centered)
+- Contact line auto-splits into two centered paragraphs when it has 4+ pipe-separated items, so long contact strings never wrap mid-item at the page edge
+- Section layout — French: Profil professionnel → Compétences → Expérience professionnelle → Formation → Langues; English: Summary → Skills → Professional Experience → Education → Languages
+- Section headings 14pt bold blue (`#1F4E79`) with a thin bottom border
+- Each experience entry renders as: `Role` on its own bold line, then `Company | Location | Month YYYY – Month YYYY` on a 10pt italic gray `MetaStyle` line below; the two are glued with `keep_with_next` so Word can't orphan a role header at a page break
 - Clickable email and LinkedIn hyperlinks in the contact line
 - Compact spacing optimised for 2-page CVs
 

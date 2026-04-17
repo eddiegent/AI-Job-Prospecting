@@ -17,6 +17,12 @@ from typing import Any
 
 # --- Training-in-Education rule --------------------------------------------
 
+def _combined_line(item: dict[str, Any]) -> str:
+    """Return ``role_line`` and ``metadata_line`` joined by a separator so a
+    single substring scan can find text from either field."""
+    return f"{item.get('role_line', '')} || {item.get('metadata_line', '')}"
+
+
 def find_training_entries_in_experience(
     tailored_cv: dict[str, Any],
     fact_base: dict[str, Any],
@@ -24,9 +30,9 @@ def find_training_entries_in_experience(
     """Return a list of violation messages for training entries that leaked
     into the tailored CV's experience array.
 
-    Matching is done on company name (case-insensitive, substring) because
-    the tailored CV's ``company_role_line`` formats the company inline with
-    the role (e.g. ``"Product Builder — École Cube, Paris"``).
+    Matching is done on company name (case-insensitive, substring) against
+    the combined ``role_line`` + ``metadata_line`` text so the check works
+    regardless of which field the company name ended up in.
     """
     training_companies = [
         entry.get("company", "").strip()
@@ -37,7 +43,7 @@ def find_training_entries_in_experience(
 
     violations: list[str] = []
     for item in tailored_cv.get("experience", []):
-        line = item.get("company_role_line", "")
+        line = _combined_line(item)
         for company in training_companies:
             if company.lower() in line.lower():
                 violations.append(
@@ -108,10 +114,10 @@ def find_missing_load_bearing_roles(
     # the consolidated "Earlier experience" line. Exclude that line from the
     # haystack so a folded role registers as missing.
     tailored_lines = " \n ".join(
-        item.get("company_role_line", "")
+        _combined_line(item)
         for item in tailored_cv.get("experience", [])
         if not any(
-            h in item.get("company_role_line", "")
+            h in item.get("role_line", "")
             for h in CONSOLIDATED_HEADINGS.values()
         )
     ).lower()
@@ -158,9 +164,9 @@ def find_non_consolidated_non_load_bearing_roles(
         if _role_is_load_bearing(company, entry.get("dates", ""), match_analysis):
             continue
         for item in tailored_cv.get("experience", []):
-            line = item.get("company_role_line", "")
-            if any(h in line for h in CONSOLIDATED_HEADINGS.values()):
+            if any(h in item.get("role_line", "") for h in CONSOLIDATED_HEADINGS.values()):
                 continue
+            line = _combined_line(item)
             if company.lower() in line.lower():
                 violations.append(
                     f"Non-load-bearing pre-cutoff role {company!r} should be "
@@ -174,21 +180,24 @@ def find_consolidated_line_issues(
     expected_language: str,
 ) -> list[str]:
     """Return violations about the consolidated 'Earlier experience' line:
-    it must be dateless and use the heading in the expected language.
+    it must be dateless (no year in the metadata line) and use the heading in
+    the expected language.
     """
+    year_re = re.compile(r"\b(19|20)\d{2}\b")
     violations: list[str] = []
     expected_heading = CONSOLIDATED_HEADINGS.get(expected_language)
     for item in tailored_cv.get("experience", []):
-        line = item.get("company_role_line", "")
-        if not any(h in line for h in CONSOLIDATED_HEADINGS.values()):
+        role_line = item.get("role_line", "")
+        if not any(h in role_line for h in CONSOLIDATED_HEADINGS.values()):
             continue
-        if item.get("date_line", "") != "":
+        meta = item.get("metadata_line", "")
+        if year_re.search(meta):
             violations.append(
-                f"Consolidated line must have empty date_line, got: {item.get('date_line')!r}"
+                f"Consolidated line must be dateless, metadata_line contains a year: {meta!r}"
             )
-        if expected_heading and expected_heading not in line:
+        if expected_heading and expected_heading not in role_line:
             violations.append(
                 f"Consolidated line heading for language {expected_language!r} "
-                f"should contain {expected_heading!r}, got: {line!r}"
+                f"should contain {expected_heading!r}, got: {role_line!r}"
             )
     return violations

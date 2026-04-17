@@ -23,11 +23,17 @@
       "items": {
         "type": "object",
         "properties": {
-          "company_role_line": {"type": "string"},
-          "date_line": {"type": "string"},
+          "role_line": {
+            "type": "string",
+            "description": "Role/job title only, e.g. 'IT Project Manager'. Rendered bold on its own line."
+          },
+          "metadata_line": {
+            "type": "string",
+            "description": "Pipe-separated 'Company | Location | Month YYYY – Month YYYY'. For the consolidated Earlier-experience entry, drop the dates and keep only pipe-separated company names (kept dateless on purpose)."
+          },
           "bullets": {"type": "array", "items": {"type": "string"}}
         },
-        "required": ["company_role_line", "date_line", "bullets"]
+        "required": ["role_line", "metadata_line", "bullets"]
       }
     },
     "education": {"type": "array", "items": {"type": "string"}},
