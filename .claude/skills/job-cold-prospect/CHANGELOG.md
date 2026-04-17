@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-04-17
+
+**Phase D — CV tailoring + speculative letters.**
+
+- Added `prompts/tailor_cv_cold.md` — anchors tailoring on `selected_role.json` + `company_profile.json` instead of a JD. Replaces keyword matching with values/domain alignment. Keeps all structural rules, chronological integrity, training-in-education separation, and the earlier-experience compression rule unchanged (Criterion A adapted to anchor alignment since no match_analysis exists in the cold flow).
+- Added `prompts/generate_motivation_letter_cold.md` — cold letter opens with a specific observation from the company profile (recent news > mission > product), never implies a posting exists, respects `team_context_companies` and `tone_directives`, writes `letter_type: "speculative"`.
+- Added `prompts/generate_short_letter_cold.md` — 500–750 character email-ready distillation, same hook as the full letter.
+- Extended the tailor skill's `schemas/letter.schema.json` with an optional `letter_type` enum (`standard` | `speculative`). Backwards-compatible — existing tailor-skill letters omit the field.
+- Made `--linkedin-json` and `--interview-markdown` optional in the tailor skill's `scripts/generate_outputs.py` so Phase D can produce a CV + letter pack standalone. Run summary reports `null` for the absent files. Regression-tested the full-pack path (all inputs supplied) — unchanged.
+- `SKILL.md` Steps 5, 6, and a Phase-D variant of Step 9 are now concrete. Verified end-to-end CV + letter DOCX generation via the example JSONs in the tailor skill.
+
 ## 0.3.0 — 2026-04-17
 
 **Phase C — Role inference loop.**

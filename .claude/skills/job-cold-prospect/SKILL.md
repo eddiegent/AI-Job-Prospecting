@@ -244,13 +244,52 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
 
 **Phase C stop point.** For now the pipeline ends here: research + selected role are locked. Summarise the pick back to the user — title, source, emphasis areas, risk notes — and note that Phases D+ (CV tailoring, letters, LinkedIn, dossier) are not yet implemented.
 
-### Step 5 — Tailor CV *(placeholder — Phase D)*
+### Step 5 — Tailor the CV
 
-Reuses `scripts/generate_outputs.py` and `schemas/tailored_cv.schema.json` from the tailor skill. New prompt `prompts/tailor_cv_cold.md` anchors emphasis on company values/domain instead of JD keywords. **Not implemented in Phase A.**
+Read `prompts/tailor_cv_cold.md`. Anchor = `selected_role.json` + `company_profile.json`. All structural rules from `job-application-tailor` SKILL.md § Step 5 apply unchanged (contact line, skills-section granularity, `role_line` / `metadata_line` split, date format, education/languages conventions, earlier-experience compression).
 
-### Step 6 — Speculative motivation letter + short letter *(placeholder — Phase D)*
+**Before invoking the prompt**, merge the user's addendum into the in-memory fact base and pass `$CUSTOMIZATION["prefs"]` as context:
 
-New prompts `prompts/generate_motivation_letter_cold.md` and `prompts/generate_short_letter_cold.md`. Reuses `schemas/letter.schema.json`. **Not implemented in Phase A.**
+```python
+from scripts.user_customization import merge_addendum_into_fact_base
+fact_base_for_tailoring = merge_addendum_into_fact_base(fact_base, $CUSTOMIZATION["addendum"])
+```
+
+The merged fact base must NOT be written back to `resources/cv_fact_base.json`.
+
+Save the output to `$PREP_DIR/tailored_cv.json` and validate against the tailor skill's schema:
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
+  "$PREP_DIR/tailored_cv.json" \
+  "$SKILL_BASE_TAILOR/schemas/tailored_cv.schema.json"
+```
+
+**Forbidden-title post-check** — same as the tailor skill:
+
+```python
+from scripts.user_customization import find_forbidden_title_label_violations
+violations = find_forbidden_title_label_violations(tailored_cv, $CUSTOMIZATION["prefs"])
+# if violations: surface them and regenerate
+```
+
+### Step 6 — Speculative motivation letter + short letter
+
+Read `prompts/generate_motivation_letter_cold.md`. Use the fact base, company profile, selected role, and `$CUSTOMIZATION["prefs"]` (especially `tone_directives` and `team_context_companies`) as context. The letter must:
+
+- Open with a specific observation from the company profile (prefer `recent_news`, then `mission_statement`, then `products_services`).
+- Explicitly frame the outreach as speculative — no posting reference.
+- Set `letter_type: "speculative"` for the audit trail.
+
+Save to `$PREP_DIR/letter.json` and validate against the tailor skill's letter schema (which now accepts `letter_type`):
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
+  "$PREP_DIR/letter.json" \
+  "$SKILL_BASE_TAILOR/schemas/letter.schema.json"
+```
+
+Then read `prompts/generate_short_letter_cold.md`, pass it the full letter as context, save to `$PREP_DIR/short_letter.json`, validate against the same schema. Body between 500–750 characters, same cold-flow hook.
 
 ### Step 7 — Cold LinkedIn outreach *(placeholder — Phase E)*
 
@@ -260,9 +299,23 @@ New prompt `prompts/generate_linkedin_cold.md`. Extends `schemas/linkedin.schema
 
 Merged deliverable replacing the fit-score document. New prompt `prompts/generate_dossier_cold.md`, output to `$OUTPUT_DIR/company_dossier.md`. **Not implemented in Phase A.**
 
-### Step 9 — Generate output files *(placeholder — Phase D/E)*
+### Step 9 — Generate output files (Phase D — CV + letter only)
 
-Reuses `scripts/generate_outputs.py` with new flags `--letter-type speculative` and `--dossier-source`. **Not implemented in Phase A.**
+The tailor skill's `scripts/generate_outputs.py` now accepts **optional** `--linkedin-json` and `--interview-markdown` flags — omit them to produce a CV + letter pack without the Phase E deliverables. The pack is still recruiter-usable on its own.
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/generate_outputs.py \
+  --tailored-cv-json "$PREP_DIR/tailored_cv.json" \
+  --letter-json "$PREP_DIR/letter.json" \
+  --short-letter-json "$PREP_DIR/short_letter.json" \
+  --output-dir "$OUTPUT_DIR" \
+  --job-title "<selected_role.title>" \
+  --language "<fr|en>"
+```
+
+Pass the selected role's title as `--job-title`. The file-naming patterns in `config/naming_rules.yaml` substitute it into filenames like `CV_<Candidate>_<Role>.docx` and `Lettre_de_motivation_<Candidate>_<Role>.docx`. The `cold-` prefix on `$OUTPUT_DIR` already distinguishes the folder from offer-based packs.
+
+In Phase E, the same script will additionally receive `--linkedin-json`, `--interview-markdown` (or the new `--dossier-source` when added), producing the full cold-prospect pack.
 
 ### Step 10 — Record in job history *(placeholder — Phase F)*
 
@@ -272,5 +325,6 @@ Inserts with `source='cold'` and a `company_profile_snapshot`. Requires a migrat
 
 - **Phase A (scaffold)** — done.
 - **Phase B (research pipeline)** — done. Steps 0–3 produce `_prep/company_profile.json` + `_prep/raw_research.md`.
-- **Phase C (role inference loop)** — done. Step 4 produces `_prep/role_candidates.json`, prompts the user, writes `_prep/selected_role.json`. `/job-cold-prospect <name>` now runs Steps 0–4 and stops.
-- **Phases D–G** — not yet implemented. See `COLD_PROSPECT_ROADMAP.md`.
+- **Phase C (role inference loop)** — done. Step 4 produces `_prep/role_candidates.json`, prompts the user, writes `_prep/selected_role.json`.
+- **Phase D (CV + letters)** — done. Steps 5, 6, and a Phase-D variant of Step 9 produce the tailored CV DOCX, motivation-letter DOCX, and short-letter TXT. `letter_type: "speculative"` is recorded. LinkedIn + dossier outputs are Phase E. `/job-cold-prospect <name>` now runs end-to-end through the CV + letter pack and stops.
+- **Phases E–G** — not yet implemented. See `COLD_PROSPECT_ROADMAP.md`.

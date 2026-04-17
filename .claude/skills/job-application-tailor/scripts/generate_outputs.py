@@ -25,8 +25,8 @@ def main() -> None:
     parser.add_argument("--tailored-cv-json", required=True)
     parser.add_argument("--letter-json", required=True)
     parser.add_argument("--short-letter-json", default=None, help="Path to short_letter.json (optional)")
-    parser.add_argument("--linkedin-json", required=True)
-    parser.add_argument("--interview-markdown", required=True)
+    parser.add_argument("--linkedin-json", default=None, help="Path to linkedin.json (optional — omit for CV+letter-only packs, e.g. early cold-prospect phases)")
+    parser.add_argument("--interview-markdown", default=None, help="Path to interview_prep.md (optional — omit for CV+letter-only packs)")
     parser.add_argument("--output-folder", help="Parent folder — a date-title subfolder will be created inside")
     parser.add_argument("--output-dir", help="Exact output directory — use as-is, no subfolder created")
     parser.add_argument("--job-title", required=True)
@@ -44,15 +44,16 @@ def main() -> None:
 
     cv_data = load_json(Path(args.tailored_cv_json))
     letter_data = load_json(Path(args.letter_json))
-    linkedin_data = load_json(Path(args.linkedin_json))
-    interview_text = Path(args.interview_markdown).read_text(encoding="utf-8")
+    linkedin_data = load_json(Path(args.linkedin_json)) if args.linkedin_json else None
+    interview_text = Path(args.interview_markdown).read_text(encoding="utf-8") if args.interview_markdown else None
 
     # Validate all JSON inputs against schemas before generating files
     validations = [
         (Path(args.tailored_cv_json), SCHEMA_DIR / "tailored_cv.schema.json", "tailored CV"),
         (Path(args.letter_json), SCHEMA_DIR / "letter.schema.json", "motivation letter"),
-        (Path(args.linkedin_json), SCHEMA_DIR / "linkedin.schema.json", "LinkedIn messages"),
     ]
+    if args.linkedin_json:
+        validations.append((Path(args.linkedin_json), SCHEMA_DIR / "linkedin.schema.json", "LinkedIn messages"))
     for data_path, schema_path, label in validations:
         if schema_path.exists():
             errors = validate(data_path, schema_path)
@@ -99,25 +100,32 @@ def main() -> None:
         except PdfConversionError as exc:
             print(f"PDF conversion skipped: {exc}", file=sys.stderr)
 
-    lines = []
-    for variant in linkedin_data["variants"]:
-        target = variant.get("target", "unknown").replace("_", " ").title()
-        contact_name = variant.get("contact_name", "")
-        linkedin_url = variant.get("linkedin_url", "")
-        header = f"=== {target}"
-        if contact_name:
-            header += f": {contact_name}"
-        header += " ==="
-        lines.append(header)
-        if linkedin_url:
-            lines.append(f"LinkedIn: {linkedin_url}")
-        if variant.get("subject_hint"):
-            lines.append(f"Subject: {variant['subject_hint']}")
-        lines.append("")
-        lines.append(variant.get("message", ""))
-        lines.append("")
-    (out_dir / linkedin_name).write_text("\n".join(lines).strip(), encoding="utf-8")
-    (out_dir / interview_name).write_text(interview_text, encoding="utf-8")
+    linkedin_path = None
+    if linkedin_data is not None:
+        lines = []
+        for variant in linkedin_data["variants"]:
+            target = variant.get("target", "unknown").replace("_", " ").title()
+            contact_name = variant.get("contact_name", "")
+            linkedin_url = variant.get("linkedin_url", "")
+            header = f"=== {target}"
+            if contact_name:
+                header += f": {contact_name}"
+            header += " ==="
+            lines.append(header)
+            if linkedin_url:
+                lines.append(f"LinkedIn: {linkedin_url}")
+            if variant.get("subject_hint"):
+                lines.append(f"Subject: {variant['subject_hint']}")
+            lines.append("")
+            lines.append(variant.get("message", ""))
+            lines.append("")
+        linkedin_path = out_dir / linkedin_name
+        linkedin_path.write_text("\n".join(lines).strip(), encoding="utf-8")
+
+    interview_path = None
+    if interview_text is not None:
+        interview_path = out_dir / interview_name
+        interview_path.write_text(interview_text, encoding="utf-8")
 
     # Short motivation letter (plain text for online forms)
     short_letter_path = None
@@ -150,8 +158,8 @@ def main() -> None:
         "cv_pdf_file": str(cv_pdf_path) if cv_pdf_path else None,
         "letter_file": str(letter_path),
         "short_letter_file": str(short_letter_path) if short_letter_path else None,
-        "linkedin_file": str(out_dir / linkedin_name),
-        "interview_file": str(out_dir / interview_name),
+        "linkedin_file": str(linkedin_path) if linkedin_path else None,
+        "interview_file": str(interview_path) if interview_path else None,
         "job_title": args.job_title,
         "candidate_name": candidate_name,
     }

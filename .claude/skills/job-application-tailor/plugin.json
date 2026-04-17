@@ -1,6 +1,6 @@
 {
   "name": "job-tailor",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Generate tailored application packs (CV, cover letters, LinkedIn messages, interview prep) from a job offer and your master CV. Includes application tracking, duplicate detection, and reporting.",
   "author": "Eddie Gent",
   "skills": [

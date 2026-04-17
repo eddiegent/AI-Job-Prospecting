@@ -23,7 +23,12 @@
       "minItems": 1
     },
     "signoff": { "type": "string", "minLength": 1 },
-    "name": { "type": "string", "minLength": 1 }
+    "name": { "type": "string", "minLength": 1 },
+    "letter_type": {
+      "type": "string",
+      "enum": ["standard", "speculative"],
+      "description": "Optional audit tag. 'speculative' indicates a cold-call letter with no underlying job offer."
+    }
   },
   "additionalProperties": false
 }

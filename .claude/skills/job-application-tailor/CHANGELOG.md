@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0] - 2026-04-17
+
+### Added
+- **Optional LinkedIn + interview inputs in `generate_outputs.py`** — `--linkedin-json` and `--interview-markdown` are now optional (were required). Lets sibling skills like `job-cold-prospect` produce CV + letter-only packs without stubbing unused artefacts. Run summary correctly reports `null` for absent files. The standard tailor-skill path is unchanged: it still passes both flags and gets the full 5-file pack.
+- **Optional `letter_type` field in `letter.schema.json`** — enum `standard | speculative`. Backwards-compatible (existing tailor letters omit the field and validate fine). Lets the cold-prospect skill tag speculative letters for downstream audit.
+
 ## [1.2.0] - 2026-04-17
 
 ### Breaking
