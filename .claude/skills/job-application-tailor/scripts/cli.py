@@ -8,11 +8,14 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from job_history_db import JobHistoryDB
+
+SKILL_BASE = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +240,83 @@ def cmd_count(db: JobHistoryDB, args: argparse.Namespace) -> None:
     print(db.total_count(since=since))
 
 
+def _resolve_app_folder(db: JobHistoryDB, target: str) -> Path:
+    """Accept either an integer application id (DB lookup) or a filesystem path."""
+    if target.isdigit():
+        app = db.get_application(int(target))
+        if not app:
+            print(f"Application #{target} not found.", file=sys.stderr)
+            sys.exit(1)
+        folder = Path(app["output_folder"])
+    else:
+        folder = Path(target)
+    if not folder.exists():
+        print(f"Output folder does not exist: {folder}", file=sys.stderr)
+        sys.exit(1)
+    return folder
+
+
+def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    folder = _resolve_app_folder(db, args.target)
+    prep = folder / "_prep"
+
+    required = {
+        "tailored_cv.json": prep / "tailored_cv.json",
+        "letter.json": prep / "letter.json",
+        "linkedin.json": prep / "linkedin.json",
+        "interview_prep.md": prep / "interview_prep.md",
+        "job_offer_analysis.json": prep / "job_offer_analysis.json",
+    }
+    optional = {
+        "short_letter.json": prep / "short_letter.json",
+        "match_analysis.json": prep / "match_analysis.json",
+    }
+    missing = [n for n, p in required.items() if not p.exists()]
+
+    if args.check:
+        print(f"Target: {folder}")
+        print("Required:")
+        for name, p in required.items():
+            print(f"  [{'OK' if p.exists() else 'MISSING'}] {name}")
+        print("Optional:")
+        for name, p in optional.items():
+            print(f"  [{'OK' if p.exists() else 'absent'}] {name}")
+        sys.exit(1 if missing else 0)
+
+    if missing:
+        print(f"Cannot regenerate — missing required _prep/ files: {', '.join(missing)}", file=sys.stderr)
+        print("Run with --check for details. Re-run the upstream step(s) before retrying.", file=sys.stderr)
+        sys.exit(1)
+
+    job = json.loads(required["job_offer_analysis.json"].read_text(encoding="utf-8"))
+    job_title = job.get("job_title") or "Role"
+    language = job.get("detected_language") or "fr"
+
+    cmd = [
+        sys.executable,
+        str(SKILL_BASE / "scripts" / "generate_outputs.py"),
+        "--tailored-cv-json", str(required["tailored_cv.json"]),
+        "--letter-json", str(required["letter.json"]),
+        "--linkedin-json", str(required["linkedin.json"]),
+        "--interview-markdown", str(required["interview_prep.md"]),
+        "--output-dir", str(folder),
+        "--job-title", job_title,
+        "--settings", str(SKILL_BASE / "config" / "settings.default.yaml"),
+        "--naming-rules", str(SKILL_BASE / "config" / "naming_rules.yaml"),
+        "--language", language,
+    ]
+    if optional["short_letter.json"].exists():
+        cmd.extend(["--short-letter-json", str(optional["short_letter.json"])])
+    if optional["match_analysis.json"].exists():
+        cmd.extend(["--match-analysis-json", str(optional["match_analysis.json"])])
+    if args.skip_pdf:
+        cmd.append("--skip-pdf")
+
+    print(f"Regenerating outputs for: {folder}")
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
 # ---------------------------------------------------------------------------
 # Argument parser
 # ---------------------------------------------------------------------------
@@ -313,6 +393,15 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("count", help="Show total application count")
     p.add_argument("--since", help="Only count apps since date")
 
+    # regenerate-outputs
+    p = sub.add_parser(
+        "regenerate-outputs",
+        help="Rebuild DOCX/PDF/TXT/MD from existing _prep/ JSONs (Step 9 only)",
+    )
+    p.add_argument("target", help="Application id (integer) or path to an output folder")
+    p.add_argument("--check", action="store_true", help="Only report which _prep/ files are present or missing")
+    p.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion (DOCX only)")
+
     return parser
 
 
@@ -345,6 +434,7 @@ def main() -> None:
             "company-check": cmd_company_check,
             "export-csv": cmd_export_csv,
             "count": cmd_count,
+            "regenerate-outputs": cmd_regenerate_outputs,
         }
         handlers[args.command](db, args)
     finally:

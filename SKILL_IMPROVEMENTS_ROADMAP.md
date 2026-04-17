@@ -22,7 +22,7 @@ Status checkboxes track progress across sessions. Each item is one commit so any
 - [ ] **#2. Detect platform-vs-real-client at Step 3** — ~1.5 h, high user value
 - [x] **#3. Cache raw offer text** — ~20 min, trivial
 - [ ] **#4. Atomic `rename-application` CLI wrapper** — ~2.5 h, composes #2's `source_platform` field
-- [ ] **#5. `regenerate-outputs` CLI helper** — ~1 h, independent
+- [x] **#5. `regenerate-outputs` CLI helper** — ~1 h, independent
 
 Total budget ~6 hours. Suggested cadence:
 - **Session A**: #1 + #3 + #5 (low-risk, high-utility)

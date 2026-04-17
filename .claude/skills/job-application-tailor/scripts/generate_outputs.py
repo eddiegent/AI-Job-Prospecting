@@ -35,6 +35,7 @@ def main() -> None:
     parser.add_argument("--naming-rules", default="config/naming_rules.yaml")
     parser.add_argument("--match-analysis-json", default=None, help="Path to match_analysis.json for run summary enrichment")
     parser.add_argument("--language", default="fr")
+    parser.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion of the CV (DOCX only)")
     args = parser.parse_args()
 
     from paths import load_settings
@@ -92,10 +93,11 @@ def main() -> None:
     # Generate PDF version of the CV via the cross-platform pipeline
     # (docx2pdf → LibreOffice → pandoc). The DOCX is always preserved.
     cv_pdf_path = None
-    try:
-        cv_pdf_path = convert_docx_to_pdf(cv_path)
-    except PdfConversionError as exc:
-        print(f"PDF conversion skipped: {exc}", file=sys.stderr)
+    if not args.skip_pdf:
+        try:
+            cv_pdf_path = convert_docx_to_pdf(cv_path)
+        except PdfConversionError as exc:
+            print(f"PDF conversion skipped: {exc}", file=sys.stderr)
 
     lines = []
     for variant in linkedin_data["variants"]:

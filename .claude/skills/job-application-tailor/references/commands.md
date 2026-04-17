@@ -264,3 +264,16 @@ cd "$SKILL_BASE/scripts" && python generate_outputs.py \
   --naming-rules "$SKILL_BASE/config/naming_rules.yaml" \
   --language "<detected language>"
 ```
+
+Pass `--skip-pdf` to produce DOCX only.
+
+## Regenerate Outputs
+
+For subsequent runs against an existing folder, `regenerate-outputs` is the one-line wrapper. It reads `job_title` and `detected_language` from `_prep/job_offer_analysis.json` and invokes `generate_outputs.py` with all ten flags already composed. Use this for Step 9 regeneration (deterministic doc rebuilding); steps 5-8 still need the skill's LLM flow.
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
+  regenerate-outputs "$OUTPUT_DIR"
+```
+
+Accepts either a filesystem path or an integer application id (resolved via the DB). Add `--check` to validate `_prep/` completeness without running generation (exit 0 = ready, 1 = missing files). Add `--skip-pdf` to produce DOCX only.

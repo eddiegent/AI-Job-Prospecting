@@ -194,6 +194,8 @@ Read `prompts/generate_interview_prep.md`. Use all available context (CV fact ba
 
 Run `scripts/generate_outputs.py` with `--output-dir` pointing to `$OUTPUT_DIR`. The script validates all JSON inputs against schemas before generating anything, then produces DOCX (with professional styling), PDF (via Microsoft Word if available), TXT, and MD files plus `run_summary.json`. See `references/commands.md` § Generate Final Output Files.
 
+When regenerating outputs for an existing folder (not the first run), prefer `scripts/cli.py regenerate-outputs` — it reads `job_title` and `detected_language` from `_prep/job_offer_analysis.json` and assembles the 10-flag invocation automatically. See `references/commands.md` § Regenerate Outputs.
+
 ### Step 10 — Record in job history
 
 After all output files are generated, record this application in the database. See `references/commands.md` § Record Application. This stores the company, title, skills, fit score, and output folder path so future runs can detect duplicates and surface history.
@@ -257,4 +259,4 @@ Parse the user's request for keywords:
 3. **Read the required input files** from `$PREP_DIR` — if any are missing, inform the user which earlier step needs to run first.
 4. **Read the prompt file** for the target step (e.g. `prompts/generate_motivation_letter.md`) and follow its instructions using the existing `_prep/` files as context.
 5. **Validate** the generated JSON against its schema (same as the original step).
-6. **Re-run Step 9** to produce updated DOCX/PDF/TXT files from the new JSON. Use the full command from `references/commands.md` § Generate Final Output Files — it requires all JSON paths, settings, naming rules, and language.
+6. **Re-run Step 9** to produce updated DOCX/PDF/TXT files from the new JSON. Use `scripts/cli.py regenerate-outputs <app-folder-or-id>` — it reads job title and language from `_prep/job_offer_analysis.json` and assembles the full `generate_outputs.py` invocation. See `references/commands.md` § Regenerate Outputs.
