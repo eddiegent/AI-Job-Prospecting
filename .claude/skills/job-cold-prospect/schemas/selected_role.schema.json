@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Selected target role (cold prospect)",
+  "description": "The target-role angle the user picked (or supplied) for the cold application. Consumed by CV tailoring, motivation letter, LinkedIn outreach, and the dossier.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Role title to anchor downstream tailoring. For the generalist path, a synthetic title like 'Senior .NET — Desktop & Services, open to scope'."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["candidate_pick", "generalist", "user_override"],
+      "description": "How this role was selected. candidate_pick = one of the LLM proposals; generalist = 'open to discussion' path; user_override = free-form title supplied by the user when no proposal fit."
+    },
+    "candidate_index": {
+      "type": ["integer", "null"],
+      "description": "Zero-based index into role_candidates.candidates[] when source='candidate_pick'. Null otherwise."
+    },
+    "seniority_band": {
+      "type": "string",
+      "enum": ["junior", "mid", "senior", "lead", "principal", "manager", "unspecified"]
+    },
+    "emphasis_areas": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Carried over from the picked candidate, or user-supplied for overrides. Empty array is acceptable for the generalist path."
+    },
+    "risk_notes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Why this angle — carried over from the candidate, or the user's reason for the override/generalist pick."
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the selection was persisted."
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Sanity check against company_profile.json."
+    }
+  },
+  "required": ["title", "source", "seniority_band", "generated_at", "company_name"]
+}

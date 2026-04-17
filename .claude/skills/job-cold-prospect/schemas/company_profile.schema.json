@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Company profile (cold prospect)",
+  "description": "Researched profile of a target company for a speculative application. Every factual claim must be traceable to a source URL; inferred fields are marked as such.",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical company name as presented on the company's own site (may differ from the user-supplied input)."
+    },
+    "canonical_url": {
+      "type": "string",
+      "description": "The company's own primary website URL (not a LinkedIn or Indeed page). Empty string if the company has no discoverable website."
+    },
+    "industry": {"type": "string"},
+    "size_band": {
+      "type": "string",
+      "enum": ["startup", "scaleup", "midmarket", "enterprise", "unknown"],
+      "description": "Coarse size bucket. startup = <50, scaleup = 50-250, midmarket = 250-2000, enterprise = 2000+."
+    },
+    "headcount_estimate": {
+      "type": ["integer", "null"],
+      "description": "Numeric estimate when a source provides one (Indeed, LinkedIn, press). Null when no source gives a number."
+    },
+    "locations": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Known office locations or HQ + notable satellites, e.g. 'Paris, FR'."
+    },
+    "founded_year": {"type": ["integer", "null"]},
+    "mission_statement": {
+      "type": "string",
+      "description": "The company's own framing of what they do and why, quoted or closely paraphrased from their site. Empty string if not available."
+    },
+    "products_services": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Concrete products or service lines, in their own words where possible."
+    },
+    "tech_stack_hints": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Technologies the company likely uses, inferred from job listings / GitHub / blog posts. Always treated as inferred, not fact."
+    },
+    "values_culture_signals": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Stated values, cultural signals, work-style cues from Careers / About / Team pages."
+    },
+    "recent_news": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {"type": "string", "description": "ISO 8601 date (YYYY-MM-DD) or YYYY-MM if day unknown."},
+          "headline": {"type": "string"},
+          "url": {"type": "string"},
+          "relevance": {"type": "string", "description": "One-line note on why this item matters for the cold approach."}
+        },
+        "required": ["headline", "url"]
+      }
+    },
+    "leadership": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "role": {"type": "string"},
+          "source_url": {"type": "string"},
+          "linkedin_url": {"type": "string"}
+        },
+        "required": ["name", "role", "source_url"]
+      },
+      "description": "Named contacts relevant to a cold approach (CTO, VP Eng, hiring managers). Only include names that appear on a cited public source."
+    },
+    "hiring_signals": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Evidence the company is actively hiring (open reqs, LinkedIn hiring banner, press mentions of growth)."
+    },
+    "pain_points_inferred": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Plausible challenges the company may be facing, inferred from news/product/hiring signals. Always inferred — never presented as fact."
+    },
+    "research_gaps": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Things we could not verify (e.g. 'LinkedIn company page gated', 'no leadership names surfaced', 'tech stack not discoverable'). Non-empty when research is thin."
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {"type": "string"},
+          "fetched_at": {"type": "string", "description": "ISO 8601 timestamp when the source was read."},
+          "kind": {
+            "type": "string",
+            "enum": ["website", "indeed", "linkedin", "news", "github", "stackshare", "aggregator", "other"]
+          },
+          "note": {"type": "string"}
+        },
+        "required": ["url", "fetched_at"]
+      }
+    },
+    "generated_at": {"type": "string", "description": "ISO 8601 timestamp when this profile was assembled."},
+    "input_raw": {
+      "type": "string",
+      "description": "The original user-supplied company name or URL, preserved for audit."
+    }
+  },
+  "required": [
+    "company_name",
+    "canonical_url",
+    "size_band",
+    "mission_statement",
+    "products_services",
+    "research_gaps",
+    "sources",
+    "generated_at",
+    "input_raw"
+  ]
+}

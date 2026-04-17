@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Role candidates (cold prospect)",
+  "description": "1-3 plausible target-role angles for a cold application, inferred from the candidate's fact base and the target company's profile. The user picks one to anchor downstream tailoring.",
+  "type": "object",
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Plain-language role title the user would recognise, e.g. 'Tech Lead .NET — Desktop & Services'."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why this company, why this role, why this candidate. One short paragraph. Must not fabricate company needs — ground each claim in the company profile or fact base."
+          },
+          "seniority_band": {
+            "type": "string",
+            "enum": ["junior", "mid", "senior", "lead", "principal", "manager"]
+          },
+          "emphasis_areas": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Which parts of the CV this angle elevates (e.g. 'WPF Desktop', 'service architecture', 'team mentoring')."
+          },
+          "risk_notes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Gaps the user should be aware of before committing to this angle (e.g. 'no cloud-native experience on record', 'smaller team size than candidate's last role')."
+          }
+        },
+        "required": ["title", "rationale", "seniority_band", "emphasis_areas"]
+      }
+    },
+    "allow_generalist": {
+      "type": "boolean",
+      "description": "True when a 'generalist / open to discussion' pick is sensible for this company (e.g. small or diverse shop). When false, the user should pick a specific candidate or supply a free-form override.",
+      "default": true
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp."
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Company name this candidate list was generated for — sanity check against company_profile.json."
+    }
+  },
+  "required": ["candidates", "generated_at", "company_name"]
+}
