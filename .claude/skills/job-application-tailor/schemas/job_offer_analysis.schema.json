@@ -19,7 +19,15 @@
     "languages": {"type": "array", "items": {"type": "string"}},
     "ats_keywords": {"type": "array", "items": {"type": "string"}},
     "signals": {"type": "array", "items": {"type": "string"}},
-    "detected_language": {"type": "string", "description": "ISO 639-1 language code of the job offer, e.g. fr, en"}
+    "detected_language": {"type": "string", "description": "ISO 639-1 language code of the job offer, e.g. fr, en"},
+    "company_is_aggregator": {
+      "type": "boolean",
+      "description": "True when company_name currently holds a known job-board/platform (e.g. Free-Work) rather than the real employer. Used by Step 3 to prompt for the real client."
+    },
+    "source_platform": {
+      "type": "string",
+      "description": "Name of the job board/platform that posted the offer when the real employer is different (e.g. 'Free-Work'). Kept for audit trail and duplicate detection after company_name has been rewritten to the real client."
+    }
   },
   "required": [
     "job_title", "company_name", "required_skills", "preferred_skills",

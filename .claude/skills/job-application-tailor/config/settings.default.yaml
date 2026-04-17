@@ -40,3 +40,20 @@ fit_levels:
   good: 70
   medium: 50
   # below medium threshold = "low"
+
+aggregators:
+  # Job boards / platforms that post on behalf of real employers. When
+  # company_name matches one of these, Step 3 asks the user for the real
+  # client name and stashes the platform in source_platform for audit.
+  known_platforms:
+    - Free-Work
+    - Indeed
+    - Welcome to the Jungle
+    - LinkedIn
+    - reservoirjobs
+    - jooble
+    - APEC
+    - Hellowork
+    - Monster
+    - Glassdoor
+    - France Travail

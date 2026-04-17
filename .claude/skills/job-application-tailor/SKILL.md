@@ -111,6 +111,15 @@ If `$ARGUMENTS` is a URL, fetch it with WebFetch first. **Cache the raw offer te
 
 Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, validate against `schemas/job_offer_analysis.schema.json`. Note the `detected_language` — it drives the language of all subsequent output.
 
+**Platform-vs-client check.** Platforms like Free-Work, Indeed, LinkedIn etc. post on behalf of real employers — tailoring a pack to the platform rather than the real client wastes a run. The full list lives in `config/settings.default.yaml` → `aggregators.known_platforms`.
+
+1. If the LLM already set `company_is_aggregator: true` or `source_platform`, trust it.
+2. Otherwise post-annotate: call `scripts.common.matched_aggregator(company_name, known_platforms)`. If it returns a platform name, set `company_is_aggregator: true`. See `references/commands.md` § Platform Detection.
+3. When flagged, ask the user: *"`<company_name>` looks like a platform, not usually the employer. Who's the real client? (blank = keep `<company_name>` as-is, or 'force' to confirm you really mean this company.)"*
+4. If the user provides a real client name, rewrite `company_name` to that name, set `source_platform` to the original platform value, and set `company_is_aggregator: false`. Re-save and re-validate `job_offer_analysis.json`.
+5. If the user replies `force` (or confirms the platform really is the employer — e.g. they work at Free-Work itself), leave `company_name` alone, clear `company_is_aggregator` to `false`, and omit `source_platform`.
+6. If the user just presses enter, leave everything as the LLM produced it — the flagged fields stay for the history record.
+
 ### Step 3.5 — Duplicate & history check
 
 After the job offer analysis is complete (company name and required skills are known), check the job history database for duplicates. See `references/commands.md` § Duplicate Detection.

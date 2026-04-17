@@ -55,6 +55,28 @@ OFFER
 
 If you already have the text in a variable, pipe it in instead of the heredoc. The file is a sibling of the `_prep/` JSONs; no schema validation — it's a verbatim snapshot.
 
+## Platform Detection
+
+After Step 3 produces `job_offer_analysis.json`, probe the company name against the configured aggregator list. Returns the matched platform (to use as `source_platform`) or empty string if the company is a direct employer.
+
+```bash
+cd "$SKILL_BASE" && python -u -c "
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+from scripts.common import matched_aggregator
+from scripts.paths import load_settings
+from pathlib import Path
+import json
+settings = load_settings()
+platforms = settings.get('aggregators', {}).get('known_platforms', [])
+job = json.loads(Path('$PREP_DIR/job_offer_analysis.json').read_text(encoding='utf-8'))
+hit = matched_aggregator(job.get('company_name', ''), platforms)
+print(hit or '')
+"
+```
+
+After the user supplies the real client, patch `job_offer_analysis.json` directly (read, update `company_name`, set `source_platform` to the old value and `company_is_aggregator` to `false`, re-save, re-validate).
+
 ## CV Caching
 
 ### Check cache validity

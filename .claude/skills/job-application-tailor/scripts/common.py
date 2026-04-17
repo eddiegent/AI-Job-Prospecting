@@ -177,3 +177,26 @@ def copy_cached_cv_fact_base(cv_path: Path, prep_dir: Path) -> None:
     ensure_dir(prep_dir)
     if src.exists() and src != dst:
         shutil.copy2(str(src), str(dst))
+
+
+def matched_aggregator(name: str, platforms: Iterable[str]) -> str | None:
+    """Return the platform-list entry that matches ``name``, or None.
+
+    Matches on a case-insensitive word boundary so "Free-Work SA" resolves
+    to "Free-Work" but "LinkedInSoft" does not collide with "LinkedIn".
+    The human-in-the-loop Step 3 prompt catches any residual false positives.
+    """
+    if not name:
+        return None
+    for platform in platforms:
+        if not platform:
+            continue
+        pattern = re.compile(r"\b" + re.escape(platform) + r"\b", re.IGNORECASE)
+        if pattern.search(name):
+            return platform
+    return None
+
+
+def is_aggregator(name: str, platforms: Iterable[str]) -> bool:
+    """Return True if ``name`` matches any known-platform entry."""
+    return matched_aggregator(name, platforms) is not None

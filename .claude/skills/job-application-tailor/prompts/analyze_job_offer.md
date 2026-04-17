@@ -21,6 +21,7 @@ Return valid JSON matching `schemas/job_offer_analysis.schema.json`. Read that s
 Key points:
 - `company_size` should be one of: `"small"`, `"medium"`, `"large"`, `"unknown"`
 - Include a `detected_language` field (ISO 639-1 code, e.g. `"fr"`, `"en"`) — this drives the language of all subsequent outputs
+- **Platform vs real client** — some postings are republished by job boards (Free-Work, Indeed, Welcome to the Jungle, LinkedIn, reservoirjobs, jooble, APEC, Hellowork, Monster, Glassdoor, France Travail, etc.). If the posting identifies the employer only as one of these platforms and the body of the offer mentions a distinct real client, set `company_name` to the real client and `source_platform` to the platform. If no real client is discoverable, set `company_name` to the platform and `company_is_aggregator: true` so the skill can ask the user. Leave both fields unset when the posting is clearly from a direct employer.
 
 **Example structure** (abbreviated):
 ```json
