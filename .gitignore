@@ -28,6 +28,10 @@ resources/cv_fact_base.json
 resources/cv_addendum.md
 resources/user_prefs.yaml
 
+# First-run seeds copied by scripts/init.py into the user data dir (Phase 4)
+resources/cv_addendum.template.md
+resources/user_prefs.template.yaml
+
 # Job history database
 resources/job_history.db
 
