@@ -242,7 +242,7 @@ Each phase is one commit, independently revertible. Status checkboxes track prog
 - [ ] **Phase C — Role inference loop** (~2 h): Step 4 prompt + schema + interactive selection. Ends with `_prep/selected_role.json` written after user picks.
 - [ ] **Phase D — Tailor CV + letters** (~3 h): Phases 5 + 6 prompts + DOCX output for CV and motivation letter. First end-to-end dry run possible.
 - [x] **Phase E — LinkedIn + dossier** (~3 h): Steps 7 + 8. Full output pack complete.
-- [ ] **Phase F — History DB + cold source** (~1.5 h): migration + insert path + `job-stats` segmentation.
+- [x] **Phase F — History DB + cold source** (~1.5 h): migration + insert path + `job-stats` segmentation (stats segmentation deferred as a follow-up — not a launch blocker).
 - [ ] **Phase G — Tests + docs** (~1.5 h): unit tests for new schemas + prompts, README, CHANGELOG, sample run against a real company. Ready-to-ship check.
 
 **Total budget ~15 hours.** Suggested cadence:

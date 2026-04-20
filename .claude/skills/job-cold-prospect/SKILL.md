@@ -349,9 +349,78 @@ Final pack contents after Step 9:
 - `_prep/` with all intermediate JSONs (`company_profile.json`, `role_candidates.json`, `selected_role.json`, `tailored_cv.json`, `letter.json`, `short_letter.json`, `linkedin.json`) + `raw_research.md`
 - `run_summary.json`
 
-### Step 10 — Record in job history *(placeholder — Phase F)*
+### Step 10 — Record in job history
 
-Inserts with `source='cold'` and a `company_profile_snapshot`. Requires a migration to add the `source` column. **Not implemented in Phase A.**
+Insert the generated pack into the shared `job_history.db` so it segments cleanly from offer-based applications.
+
+**Schema.** The shared DB is now v2 (migration runs automatically on first open by any recent skill version): `applications` has two new columns — `source TEXT NOT NULL DEFAULT 'offer'` and `company_profile_snapshot TEXT`. Legacy rows migrate in place with `source='offer'` so no backfill script is needed.
+
+**Build the snapshot.** Take a small, stable subset of `company_profile.json` to persist — enough to drive future stats/dashboards without baking fragile research detail into the DB:
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python -u -c "
+import json, io, sys
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+from pathlib import Path
+profile = json.loads(Path(r'$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
+snapshot = {
+    'company_name': profile.get('company_name', ''),
+    'canonical_url': profile.get('canonical_url', ''),
+    'industry': profile.get('industry', ''),
+    'size_band': profile.get('size_band', 'unknown'),
+    'headcount_estimate': profile.get('headcount_estimate'),
+    'locations': profile.get('locations', []),
+    'mission_statement': profile.get('mission_statement', ''),
+    'research_gaps_count': len(profile.get('research_gaps', [])),
+}
+Path(r'$PREP_DIR/company_profile_snapshot.json').write_text(
+    json.dumps(snapshot, ensure_ascii=False), encoding='utf-8'
+)
+print(r'$PREP_DIR/company_profile_snapshot.json')
+"
+```
+
+**Insert.** `source='cold'` is the segmentation signal; `job_title` is the selected role title; `output_folder` is the cold-prefixed pack folder; `status='generated'` matches the offer-flow lifecycle:
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python -u -c "
+import json, io, sys
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+from pathlib import Path
+from scripts.job_history_db import JobHistoryDB
+
+profile = json.loads(Path(r'$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
+selected = json.loads(Path(r'$PREP_DIR/selected_role.json').read_text(encoding='utf-8'))
+snapshot = Path(r'$PREP_DIR/company_profile_snapshot.json').read_text(encoding='utf-8')
+
+# Location: prefer company's first known office when we have one.
+locations = profile.get('locations', [])
+location = locations[0] if locations else None
+
+db = JobHistoryDB(r'$PROJECT_ROOT/resources/job_history.db')
+app_id = db.add_application(
+    company_name=profile['company_name'],
+    job_title=selected['title'],
+    location=location,
+    source_url=profile.get('canonical_url') or None,
+    domain=profile.get('industry') or None,
+    seniority=selected.get('seniority_band') or None,
+    output_folder=r'$OUTPUT_DIR',
+    detected_language='<fr|en>',
+    status='generated',
+    source='cold',
+    company_profile_snapshot=snapshot,
+)
+db.close()
+print(f'Recorded cold application id={app_id}')
+"
+```
+
+**Do not populate `job_skills`.** The `required_skills` / `preferred_skills` parameters exist for offer-flow match analysis (required-keyword extraction from a JD). The cold flow has no JD, so skill rows stay empty — leave them unset. `fit_level` / `fit_pct` / `direct_count` / etc. also stay `NULL` by design; the cold flow has no scoreable matches.
+
+**Do not touch `job-stats` yet.** Its existing queries keep working because `source` defaults to `'offer'` for legacy rows; cold rows simply show up in counts alongside offer rows until the stats skill gains a `source` filter (tracked as follow-up in `COLD_PROSPECT_ROADMAP.md` Phase F second pass).
+
+After Step 10 completes, summarise back to the user: output folder path, selected role, source URLs referenced, any `research_gaps` the dossier flagged, and the application id for later status updates via `/job-status`.
 
 ## Build status
 
@@ -359,5 +428,6 @@ Inserts with `source='cold'` and a `company_profile_snapshot`. Requires a migrat
 - **Phase B (research pipeline)** — done. Steps 0–3 produce `_prep/company_profile.json` + `_prep/raw_research.md`.
 - **Phase C (role inference loop)** — done. Step 4 produces `_prep/role_candidates.json`, prompts the user, writes `_prep/selected_role.json`.
 - **Phase D (CV + letters)** — done. Steps 5, 6, and a Phase-D variant of Step 9 produce the tailored CV DOCX, motivation-letter DOCX, and short-letter TXT. `letter_type: "speculative"` is recorded.
-- **Phase E (LinkedIn + dossier)** — done. Step 7 produces cold-flow LinkedIn messages (2 variants per leadership contact, hiring-manager-targeted, `outreach_type: "cold"` recorded). Step 8 produces `company_dossier.md` — a 9-section deliverable replacing the fit-score document with a narrative angle of approach. `linkedin.schema.json` extended with optional `outreach_type` and `target_role` fields (backwards-compatible). `/job-cold-prospect <name>` now runs fully end-to-end through CV, letters, LinkedIn outreach, and dossier.
-- **Phases F–G** — not yet implemented. See `COLD_PROSPECT_ROADMAP.md`.
+- **Phase E (LinkedIn + dossier)** — done. Step 7 produces cold-flow LinkedIn messages (2 variants per leadership contact, hiring-manager-targeted, `outreach_type: "cold"` recorded). Step 8 produces `company_dossier.md` — a 9-section deliverable replacing the fit-score document with a narrative angle of approach. `linkedin.schema.json` extended with optional `outreach_type` and `target_role` fields (backwards-compatible).
+- **Phase F (history DB)** — done. Shared DB schema bumped to v2: `applications.source` (`'offer'` / `'cold'`) + `applications.company_profile_snapshot`. Existing DBs migrate in place on first open via `ALTER TABLE ADD COLUMN`; legacy rows default to `source='offer'`. Step 10 writes a cold row with a compact snapshot subset of the company profile. `add_application()` rejects unknown `source` values. `/job-cold-prospect <name>` now runs fully end-to-end including history recording.
+- **Phase G (tests + docs)** — not yet implemented. See `COLD_PROSPECT_ROADMAP.md`.

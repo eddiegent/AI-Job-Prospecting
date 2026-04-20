@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.0] - 2026-04-20
+
+### Added
+- **Schema v2 on `job_history.db`** — new `applications.source` column (`'offer'` default, `'cold'` for speculative applications from the `job-cold-prospect` skill) and `applications.company_profile_snapshot` column (compact JSON subset of the researched company profile). Migration runs automatically on first open via `ALTER TABLE ADD COLUMN`; legacy rows default to `source='offer'` with no backfill script required. `schema_version` advances to 2 only after the upgrade succeeds.
+- **`add_application()` accepts `source` + `company_profile_snapshot`** keyword arguments. `source` is validated against `{'offer', 'cold'}`. Defaults keep the offer-flow call sites unchanged.
+- **`_upgrade_schema(from_version)`** helper on `JobHistoryDB` — extension point for future incremental migrations. v1→v2 is the first clause.
+
+### Verified
+- Existing 104-test suite still green.
+- Ad-hoc round-trip test against a hand-rolled v1 DB confirms migration adds both columns, leaves legacy rows with `source='offer'`, accepts cold inserts, and rejects unknown `source` values.
+
 ## [1.3.0] - 2026-04-17
 
 ### Added

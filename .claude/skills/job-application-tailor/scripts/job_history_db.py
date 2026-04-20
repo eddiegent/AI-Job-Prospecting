@@ -67,7 +67,7 @@ def skill_overlap(skills_a: list[str], skills_b: list[str]) -> float:
 # Database class
 # ---------------------------------------------------------------------------
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS applications (
     output_folder   TEXT,
     detected_language TEXT,
     status          TEXT NOT NULL DEFAULT 'generated',
+    source          TEXT NOT NULL DEFAULT 'offer',
+    company_profile_snapshot TEXT,
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL
 );
@@ -136,9 +138,29 @@ class JobHistoryDB:
         cur = self._conn.cursor()
         cur.executescript(_CREATE_SQL)
         row = cur.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
-        if row["v"] is None:
+        current = row["v"]
+        if current is None:
             cur.execute("INSERT INTO schema_version(version) VALUES(?)", (_SCHEMA_VERSION,))
+        elif current < _SCHEMA_VERSION:
+            self._upgrade_schema(cur, from_version=current)
+            cur.execute("UPDATE schema_version SET version = ?", (_SCHEMA_VERSION,))
         self._conn.commit()
+
+    def _upgrade_schema(self, cur: sqlite3.Cursor, *, from_version: int) -> None:
+        """Incremental schema migrations. Each clause takes the DB from vN to vN+1."""
+        existing_cols = {r["name"] for r in cur.execute("PRAGMA table_info(applications)").fetchall()}
+        if from_version < 2:
+            # v1 -> v2: add source + company_profile_snapshot columns for the
+            # cold-prospect flow. Existing rows get source='offer' via the
+            # DEFAULT clause; snapshot stays NULL for offer-flow rows.
+            if "source" not in existing_cols:
+                cur.execute(
+                    "ALTER TABLE applications ADD COLUMN source TEXT NOT NULL DEFAULT 'offer'"
+                )
+            if "company_profile_snapshot" not in existing_cols:
+                cur.execute(
+                    "ALTER TABLE applications ADD COLUMN company_profile_snapshot TEXT"
+                )
 
     def close(self) -> None:
         self._conn.close()
@@ -162,10 +184,14 @@ class JobHistoryDB:
         output_folder: str | None = None,
         detected_language: str | None = None,
         status: str = "generated",
+        source: str = "offer",
+        company_profile_snapshot: str | None = None,
         created_at: str | None = None,
         required_skills: list[str] | None = None,
         preferred_skills: list[str] | None = None,
     ) -> int:
+        if source not in ("offer", "cold"):
+            raise ValueError(f"source must be 'offer' or 'cold', got {source!r}")
         now = created_at or datetime.now().isoformat()
         cur = self._conn.cursor()
         cur.execute(
@@ -173,14 +199,18 @@ class JobHistoryDB:
                (company_name, company_norm, job_title, job_title_norm,
                 location, source_url, domain, seniority,
                 fit_level, fit_pct, direct_count, transferable_count, gap_count,
-                output_folder, detected_language, status, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                output_folder, detected_language, status,
+                source, company_profile_snapshot,
+                created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 company_name, normalise_company(company_name),
                 job_title, _normalise(job_title),
                 location, source_url, domain, seniority,
                 fit_level, fit_pct, direct_count, transferable_count, gap_count,
-                output_folder, detected_language, status, now, now,
+                output_folder, detected_language, status,
+                source, company_profile_snapshot,
+                now, now,
             ),
         )
         app_id = cur.lastrowid

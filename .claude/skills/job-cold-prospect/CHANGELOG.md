@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 — 2026-04-20
+
+**Phase F — History DB integration.**
+
+- Shared `job_history.db` schema bumped to v2. New columns on `applications`: `source TEXT NOT NULL DEFAULT 'offer'` (segments offer-flow from cold-flow rows) and `company_profile_snapshot TEXT` (compact JSON subset of `company_profile.json` for future dashboards). Added in `job-application-tailor/scripts/job_history_db.py` so both skills share the migration path.
+- Migration is automatic on first open via `ALTER TABLE ADD COLUMN`. Legacy v1 rows default to `source='offer'` — no backfill script required. The `schema_version` row advances to 2 only after the upgrade succeeds.
+- `add_application()` gained `source` (`'offer'` | `'cold'`, rejects anything else) and `company_profile_snapshot` keyword arguments. Defaults preserve offer-flow behaviour unchanged.
+- `SKILL.md` Step 10 is now concrete: it builds a snapshot (company_name, canonical_url, industry, size_band, headcount, locations, mission_statement, research_gaps_count) and inserts the cold row with `source='cold'`, `status='generated'`, `job_title = selected_role.title`. `job_skills` is intentionally left empty for cold rows — no JD means no required-skill list. `fit_*` columns stay NULL.
+- Verified with a v1-DB round-trip test: legacy row retains `source='offer'`, cold row round-trips correctly, and bad source values are rejected. Tailor skill's 104-test suite still green.
+- `/job-cold-prospect <name>` now runs fully end-to-end including history recording. Follow-up in Phase G or later: update `job-stats` queries to optionally segment by `source`.
+
 ## 0.5.0 — 2026-04-20
 
 **Phase E — LinkedIn outreach + company dossier.**
