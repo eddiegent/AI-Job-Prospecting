@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-04-20
+
+**Phase G — Tests + docs. Skill is launch-ready.**
+
+- Added `tests/` under the cold-prospect skill with 17 schema-validation tests covering positive and negative cases for `company_profile`, `role_candidates`, `selected_role`, plus backwards-compatibility + cold-extension behaviour on the shared `linkedin.schema.json`. Tests go through `scripts.validate.validate` so they exercise the exact code path `SKILL.md` uses.
+- Added `tests/test_job_history_db_v2.py` to the tailor skill with 8 tests pinning the v1→v2 migration: legacy-row `source='offer'` preservation, cold-insert round-trip (including JSON snapshot), rejection of unknown `source` values, fresh-DB-direct-at-v2, reopen idempotency, and a half-migrated-state recovery case.
+- README updated: status block reflects launch-ready Phases A–G, "What it produces" table maps to real filenames, new "Sample run" walkthrough and "Tests" section.
+- Full test suite: tailor skill **112 pass / 2 skip** (was 104), cold-prospect skill **17 pass**. No regressions in the tailor flow.
+
 ## 0.6.0 — 2026-04-20
 
 **Phase F — History DB integration.**
