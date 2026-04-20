@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — 2026-04-20
+
+**Phase E — LinkedIn outreach + company dossier.**
+
+- Added `prompts/generate_linkedin_cold.md` — cold-flow LinkedIn messages targeting hiring managers / CTO / tech leads (not recruiters), two variants per contact (≤300-char connection request + ≤700-char post-acceptance direct message), hooks aligned with the motivation letter. Falls back to `[Prénom]` placeholder when `leadership[]` is empty.
+- Added `prompts/generate_dossier_cold.md` — merged deliverable replacing the fit-score document. Nine sections: Quick reference, Company at a glance, Why you / why them (narrative angle of approach), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, Research gaps. Every company fact cites a source URL; inferred fields stay flagged as inferred.
+- Extended the tailor skill's `schemas/linkedin.schema.json` with optional `outreach_type` (enum: `standard` | `cold`) and `target_role` fields. Backwards-compatible — existing offer-based LinkedIn JSONs omit both fields and still validate.
+- `SKILL.md` Steps 7 and 8 are now concrete. Step 9 passes `--linkedin-json` through to `generate_outputs.py`; the dossier is written directly to `$OUTPUT_DIR/company_dossier.md` as a first-class deliverable (not via `--interview-markdown` — the cold flow has no interview-prep file, the dossier replaces it). Added an alignment check requiring the motivation-letter hook, LinkedIn connection-request opener, and dossier § 3 to reference the same company fact.
+- `/job-cold-prospect <name>` now runs fully end-to-end: research → role pick → tailored CV → motivation letter + short letter → LinkedIn messages → company dossier.
+
 ## 0.4.0 — 2026-04-17
 
 **Phase D — CV tailoring + speculative letters.**

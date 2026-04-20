@@ -4,7 +4,7 @@ A Claude Code skill that generates a speculative (cold-call) application pack fo
 
 ## Status
 
-**Phase D — CV + speculative letters.** `/job-cold-prospect <name-or-url>` now runs end-to-end through the CV + letter pack: research + role selection (Phases B+C), then Step 5 tailoring anchored on the selected role and company profile (values/domain alignment, not JD keywords), Step 6 speculative motivation letter opening with a specific company observation and `letter_type: "speculative"` for the audit trail, the short-letter variant, and Step 9 DOCX generation via the tailor skill's shared `generate_outputs.py` (which now accepts optional `--linkedin-json` and `--interview-markdown` flags so the CV + letter pack can be produced standalone). LinkedIn outreach + company dossier + full pack assembly land in Phase E; history-DB migration in Phase F.
+**Phase E — full cold-prospect pack.** `/job-cold-prospect <name-or-url>` now runs fully end-to-end: research (Phase B), user-interactive role selection (Phase C), tailored CV + speculative motivation letter + short letter (Phase D), cold LinkedIn outreach (2 variants per leadership contact, hiring-manager-targeted), and a 9-section company dossier that replaces the fit-score document with a narrative angle of approach. The shared `linkedin.schema.json` now carries optional `outreach_type` and `target_role` fields to signal cold-flow provenance. History-DB segmentation by `source` lands in Phase F.
 
 See `../../COLD_PROSPECT_ROADMAP.md` for the full design and phased build plan.
 

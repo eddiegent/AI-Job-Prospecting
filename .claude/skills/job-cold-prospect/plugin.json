@@ -1,6 +1,6 @@
 {
   "name": "job-cold-prospect",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Generate a speculative (cold-call) application pack from a company name or URL — no job offer required. Sibling skill to job-tailor; reuses the same master CV, fact base, DOCX generation, and history DB.",
   "author": "Eddie Gent",
   "skills": [

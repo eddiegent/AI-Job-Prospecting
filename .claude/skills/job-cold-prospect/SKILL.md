@@ -291,31 +291,63 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
 
 Then read `prompts/generate_short_letter_cold.md`, pass it the full letter as context, save to `$PREP_DIR/short_letter.json`, validate against the same schema. Body between 500–750 characters, same cold-flow hook.
 
-### Step 7 — Cold LinkedIn outreach *(placeholder — Phase E)*
+### Step 7 — Cold LinkedIn outreach
 
-New prompt `prompts/generate_linkedin_cold.md`. Extends `schemas/linkedin.schema.json` with `outreach_type: "cold"`. **Not implemented in Phase A.**
+Read `prompts/generate_linkedin_cold.md` in full. Pass it: the fact base, `company_profile.json`, `selected_role.json`, the speculative motivation letter (so hooks stay aligned), and `$CUSTOMIZATION["prefs"]`.
 
-### Step 8 — Company dossier + interview prep *(placeholder — Phase E)*
+The prompt targets **hiring managers / CTO / tech leads** (from `company_profile.leadership[]`), **not recruiters**, and produces two variants per contact — a ≤300-char connection request and a ≤700-char post-acceptance direct message. If `leadership[]` is empty, it falls back to a single `hiring_manager` pair with `[Prénom]` placeholder and flags the missing name as a research gap.
 
-Merged deliverable replacing the fit-score document. New prompt `prompts/generate_dossier_cold.md`, output to `$OUTPUT_DIR/company_dossier.md`. **Not implemented in Phase A.**
+Save to `$PREP_DIR/linkedin.json` and validate against the tailor skill's linkedin schema (now extended with optional `outreach_type` and `target_role`):
 
-### Step 9 — Generate output files (Phase D — CV + letter only)
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
+  "$PREP_DIR/linkedin.json" \
+  "$SKILL_BASE_TAILOR/schemas/linkedin.schema.json"
+```
 
-The tailor skill's `scripts/generate_outputs.py` now accepts **optional** `--linkedin-json` and `--interview-markdown` flags — omit them to produce a CV + letter pack without the Phase E deliverables. The pack is still recruiter-usable on its own.
+**Set `outreach_type: "cold"` and `target_role: "<selected_role.title>"`** at the root of the JSON — these are the cold-flow audit signals carried into the dossier and the run summary.
+
+### Step 8 — Company dossier + interview prep
+
+The merged deliverable that replaces the fit-score document. It is the candidate-facing artefact the user opens before any conversation with the company.
+
+Read `prompts/generate_dossier_cold.md` in full. Pass it: the fact base, `company_profile.json`, `selected_role.json`, the tailored CV JSON, the motivation letter JSON, the LinkedIn outreach JSON, and `$CUSTOMIZATION["prefs"]`.
+
+The dossier has nine sections in order: Quick reference, Company at a glance, Why you / why them (the narrative angle of approach — replaces fit score), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, and Research gaps.
+
+**Write directly to the output folder root** — the dossier is a first-class deliverable, not an intermediate, so it lives next to the CV and letter, not under `_prep/`:
+
+```bash
+# The LLM output is pure markdown — write it to $OUTPUT_DIR/company_dossier.md via the Write tool.
+```
+
+**Alignment check.** Before moving to Step 9, confirm the opening hook is consistent across the motivation letter (§ 1), the LinkedIn connection request for the top contact (first variant), and § 3 "Why you, why them" in the dossier. Mismatched hooks across artefacts is the single most preventable cold-flow mistake. If they diverge, regenerate the LinkedIn or dossier step that drifted — do not ship the pack as-is.
+
+### Step 9 — Generate output files
+
+With Phases D–E complete, the tailor skill's `scripts/generate_outputs.py` receives both CV + letters AND the LinkedIn JSON. The dossier is already a standalone markdown file at `$OUTPUT_DIR/company_dossier.md` from Step 8, so it does not pass through the script.
 
 ```bash
 cd "$SKILL_BASE_TAILOR" && python scripts/generate_outputs.py \
   --tailored-cv-json "$PREP_DIR/tailored_cv.json" \
   --letter-json "$PREP_DIR/letter.json" \
   --short-letter-json "$PREP_DIR/short_letter.json" \
+  --linkedin-json "$PREP_DIR/linkedin.json" \
   --output-dir "$OUTPUT_DIR" \
   --job-title "<selected_role.title>" \
   --language "<fr|en>"
 ```
 
-Pass the selected role's title as `--job-title`. The file-naming patterns in `config/naming_rules.yaml` substitute it into filenames like `CV_<Candidate>_<Role>.docx` and `Lettre_de_motivation_<Candidate>_<Role>.docx`. The `cold-` prefix on `$OUTPUT_DIR` already distinguishes the folder from offer-based packs.
+Pass the selected role's title as `--job-title`. The file-naming patterns in `config/naming_rules.yaml` substitute it into filenames like `CV_<Candidate>_<Role>.docx`, `Lettre_de_motivation_<Candidate>_<Role>.docx`, and `LinkedIn_message_<Candidate>_<Role>.txt`. The `cold-` prefix on `$OUTPUT_DIR` already distinguishes the folder from offer-based packs. `--interview-markdown` is deliberately **omitted** in the cold flow — the dossier replaces the interview prep deliverable.
 
-In Phase E, the same script will additionally receive `--linkedin-json`, `--interview-markdown` (or the new `--dossier-source` when added), producing the full cold-prospect pack.
+Final pack contents after Step 9:
+- `CV_<Candidate>_<Role>.docx` + `.pdf`
+- `Lettre_de_motivation_<Candidate>_<Role>.docx` + `.pdf` (`Cover_letter_…` in English)
+- `Lettre_courte_<Candidate>_<Role>.txt` (`Short_cover_letter_…` in English)
+- `LinkedIn_message_<Candidate>_<Role>.txt`
+- `company_dossier.md`
+- `_prep/` with all intermediate JSONs (`company_profile.json`, `role_candidates.json`, `selected_role.json`, `tailored_cv.json`, `letter.json`, `short_letter.json`, `linkedin.json`) + `raw_research.md`
+- `run_summary.json`
 
 ### Step 10 — Record in job history *(placeholder — Phase F)*
 
@@ -326,5 +358,6 @@ Inserts with `source='cold'` and a `company_profile_snapshot`. Requires a migrat
 - **Phase A (scaffold)** — done.
 - **Phase B (research pipeline)** — done. Steps 0–3 produce `_prep/company_profile.json` + `_prep/raw_research.md`.
 - **Phase C (role inference loop)** — done. Step 4 produces `_prep/role_candidates.json`, prompts the user, writes `_prep/selected_role.json`.
-- **Phase D (CV + letters)** — done. Steps 5, 6, and a Phase-D variant of Step 9 produce the tailored CV DOCX, motivation-letter DOCX, and short-letter TXT. `letter_type: "speculative"` is recorded. LinkedIn + dossier outputs are Phase E. `/job-cold-prospect <name>` now runs end-to-end through the CV + letter pack and stops.
-- **Phases E–G** — not yet implemented. See `COLD_PROSPECT_ROADMAP.md`.
+- **Phase D (CV + letters)** — done. Steps 5, 6, and a Phase-D variant of Step 9 produce the tailored CV DOCX, motivation-letter DOCX, and short-letter TXT. `letter_type: "speculative"` is recorded.
+- **Phase E (LinkedIn + dossier)** — done. Step 7 produces cold-flow LinkedIn messages (2 variants per leadership contact, hiring-manager-targeted, `outreach_type: "cold"` recorded). Step 8 produces `company_dossier.md` — a 9-section deliverable replacing the fit-score document with a narrative angle of approach. `linkedin.schema.json` extended with optional `outreach_type` and `target_role` fields (backwards-compatible). `/job-cold-prospect <name>` now runs fully end-to-end through CV, letters, LinkedIn outreach, and dossier.
+- **Phases F–G** — not yet implemented. See `COLD_PROSPECT_ROADMAP.md`.

@@ -4,6 +4,15 @@
   "type": "object",
   "required": ["variants"],
   "properties": {
+    "outreach_type": {
+      "type": "string",
+      "enum": ["standard", "cold"],
+      "description": "Flow that produced these messages. 'standard' = offer-based (job-application-tailor). 'cold' = speculative / cold-call (job-cold-prospect). Optional for backwards compatibility; defaults to 'standard' when absent."
+    },
+    "target_role": {
+      "type": "string",
+      "description": "For the cold flow: the selected_role.title the outreach is anchored on. Carried into the dossier and the run summary for audit. Omitted for the standard (offer-based) flow."
+    },
     "variants": {
       "type": "array",
       "minItems": 1,
