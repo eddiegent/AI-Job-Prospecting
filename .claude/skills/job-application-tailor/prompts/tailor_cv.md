@@ -30,6 +30,35 @@ Include the candidate's residential location (from `candidate_location` in the C
 - Tighten wording, emphasize relevant responsibilities and technologies
 - Compress less relevant older detail to fewer bullets
 
+## Summary sourcing — every clause must be traceable
+
+`summary_paragraphs` is the freest-form prose in the CV and is where embellishment most easily creeps in. Every clause you write in the summary must be traceable to one of:
+
+- `cv_fact_base.summary`
+- a concrete fact already present in `cv_fact_base.experience[*].details`
+- `cv_fact_base.transition_signals` (for forward-looking / in-progress language)
+- `cv_fact_base.addendum_hidden_skills` or `cv_fact_base.addendum_off_cv_facts`
+
+If a clause cannot be traced to one of those sources, drop it. Do not infer it from the job offer, from the match analysis's `requirement` field, or from what would make the candidate "sound better for this role". The summary is prose, not a wishlist.
+
+Applies equally to the `tagline`: each bullet-point in the tagline must point back to a fact-base source, not to job-offer vocabulary.
+
+## Gap honesty — how to handle `match_analysis` gaps and qualified matches
+
+The match analysis is the source of truth for what the candidate actually has vs. what the job wants. Respect it when writing the CV.
+
+**When a requirement is `gap`:**
+- The CV must not state or imply current competence, production use, recent exposure, or active learning in that area.
+- Do not introduce tense/phase language for the gap technology — phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, *"ramping up on X"* — unless that specific technology appears by name in `cv_fact_base.transition_signals`. Transition signals come from the candidate; they are not inferred from the job offer's requirement list.
+- The safe move for a gap is silence. The motivation letter is the place to address gaps honestly; the CV is not.
+
+**When a requirement is `direct` or `transferable` but its `notes` field narrows the scope:**
+- Any CV claim on that topic must stay inside the narrowing. If `notes` says *"used for CI/CD builds, not for production orchestration"*, the CV cannot say *"used in production"*. If `notes` says *"conceptual knowledge only"*, the CV cannot imply hands-on use.
+- Prefer the wording already in `match_analysis.notes` or `evidence` over reinvented phrasing. Those fields were written with the caveats intact.
+
+**When the match analysis classifies a fact under one label but the job offer uses a different label:**
+- Keep the fact's original framing from the fact base. Don't relabel an experience to match the job's vocabulary (e.g. *"migration de données entre services cloud"* must not become *"intégration de systèmes tiers"* just because the job uses that exact phrase). Keyword coverage belongs in the skills section, not in reworded experience bullets.
+
 ## Preserving skill sections
 The master CV may contain dedicated skill/competency sections beyond the main technical skills table (e.g. "Développement assisté par IA", "Leadership", "Domain expertise"). These sections are part of the candidate's professional identity. Every such section must appear in the tailored CV's `skills_sections` array — you may reorder them for relevance but never drop them entirely. Check the CV fact base `technologies` and the raw CV structure to ensure no dedicated section is lost.
 
@@ -127,11 +156,24 @@ Reproduce the languages section as it appears in the master CV. If the CV uses a
 ## Forbidden
 - Inventing projects, achievements, tools, certifications, or leadership claims
 - Adding keywords not evidenced in the CV
+- **Injecting adjectives not in the fact base** — do not attach modifiers like *"cloud-native"*, *"event-driven"*, *"distributed"*, *"mission-critical"*, etc. to an existing fact unless that exact adjective (or a clear equivalent) is already in the fact base. Promoting *"architectures backend"* to *"architectures backend cloud-native"* is invention, not emphasis.
+- **Relabeling experience to match job-offer vocabulary** — if the fact base describes a piece of work one way (e.g. *"migration de données entre services cloud"*) and the job offer calls it something else (e.g. *"intégration de systèmes tiers"*), keep the fact base's framing. Keyword coverage belongs in the skills section, not in reworded bullets. The match analysis already records the correspondence; the CV does not need to force-align the vocabulary.
+- **Claiming active learning or in-progress competence for a gap technology** — see § Gap honesty. Phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, *"ramping up on X"* are only permitted when the specific technology appears in `cv_fact_base.transition_signals`.
+- **Contradicting `match_analysis.notes` qualifiers** — if a match's `notes` field narrows the scope of an experience ("not for production orchestration", "conceptual knowledge only", "not labelled as such internally"), the CV must stay inside that narrowing.
 - **Dropping dedicated skill sections** from the master CV — if the original CV has a section like "Développement assisté par IA" or "Automation & Low-Code", it must appear in the tailored output even if it's not directly relevant to the job offer. These sections reflect the candidate's identity and differentiators.
 - **Replacing the candidate's professional identity with job offer language** — the title and tagline must reflect how the candidate actually describes themselves, as evidenced in the master CV and reinforced by `user_prefs.yaml` → `preferred_title_labels`. Any label listed in `forbidden_title_labels` is an immediate disqualification for the title, even if the job offer uses that exact term.
 - **Reordering experiences** — strict reverse chronological order
 - **Creating timeline gaps between recent roles** — roles more recent than the compression cutoff must all appear individually. Only pre-cutoff roles may be folded into the consolidated "Earlier experience" line per § Earlier-experience compression, and only if they fail the load-bearing criteria.
 - **Dropping a load-bearing pre-cutoff role** — if the match analysis or the job's required skills point at it, it stays full. Consolidation is for roles the target job genuinely doesn't lean on.
+
+## Final self-check before returning
+
+Before emitting the JSON, run these checks in order. If any fails, fix the draft and re-check.
+
+1. **Gap check** — for every row in `match_analysis.matches` with `match_type: "gap"`, read the `requirement`. Confirm that requirement does **not** appear in `summary_paragraphs`, `tagline`, or any `experience[*].bullets` entry framed as a current, recent, or in-progress capability. If it appears only inside a neutral factual bullet already in the fact base, that's fine; if it appears as a bridging claim ("en apprentissage sur X", "familiarité avec X", "exposition à X"), remove it unless `cv_fact_base.transition_signals` supports it by name.
+2. **Qualifier check** — for every row with `match_type: "direct"` or `"transferable"` whose `notes` field narrows scope, confirm that no CV claim on that topic exceeds the narrowing. Prefer the `notes` or `evidence` wording when in doubt.
+3. **Summary traceability** — read each clause of `summary_paragraphs` and the `tagline`. For each clause, silently point to the fact-base location (`summary` / a specific `experience[*].details` entry / `transition_signals` / addendum). If you can't, drop the clause.
+4. **Adjective audit** — scan `summary_paragraphs` and `experience[*].bullets` for qualifiers that don't appear in the fact base (e.g. *"cloud-native"*, *"mission-critical"*, *"distributed"*). Strip any that aren't grounded.
 
 ## Output format
 Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema file for the exact structure.

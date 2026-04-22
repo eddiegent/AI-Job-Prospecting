@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 — 2026-04-22
+
+**CV truthfulness guardrails (mirrored from tailor skill 1.5.0).**
+
+- `prompts/tailor_cv_cold.md` picks up the same three sections the tailor skill added: **§ Summary sourcing** (every clause traceable to the fact base), **§ Honesty on technology claims** (inferred `company_profile.tech_stack_hints` are about the company, not the candidate — never reword bullets to echo a hint the candidate hasn't worked with; active-learning phrasing requires `cv_fact_base.transition_signals` to name the technology), and **§ Final self-check** (summary traceability, stack-hint check, learning-language check, adjective audit). Forbidden list also gains four items matching the tailor skill (adjective injection, vocabulary relabeling, unsupported active-learning claims, contradicting stack-hint scope).
+- No runtime code changes in this skill — the fix lives entirely in the prompt. Sibling skill `job-application-tailor` ships the matching guardrails and the `regenerate-outputs` filename-slug fix at 1.5.0.
+
 ## 0.7.0 — 2026-04-20
 
 **Phase G — Tests + docs. Skill is launch-ready.**

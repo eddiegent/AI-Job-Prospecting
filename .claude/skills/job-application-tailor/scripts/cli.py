@@ -395,6 +395,17 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
     job_title = job.get("job_title") or "Role"
     language = job.get("detected_language") or "fr"
 
+    # Reuse the existing folder slug for filenames so a regenerate run
+    # doesn't produce a second set of files under a different slug
+    # alongside the originals. The folder slug may differ from
+    # `slug_for_filename(job_title)` when the initial run built the slug
+    # from `{job_title}-{company}` or applied ASCII folding — we can't
+    # reconstruct that choice here, so we just reuse whatever the folder
+    # already has. `slug_for_filename` is idempotent on its own output,
+    # so filename sanitisation downstream stays a no-op.
+    _, existing_slug = _split_folder_prefix(folder.name)
+    title_for_filenames = existing_slug or job_title
+
     cmd = [
         sys.executable,
         str(SKILL_BASE / "scripts" / "generate_outputs.py"),
@@ -403,7 +414,7 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
         "--linkedin-json", str(required["linkedin.json"]),
         "--interview-markdown", str(required["interview_prep.md"]),
         "--output-dir", str(folder),
-        "--job-title", job_title,
+        "--job-title", title_for_filenames,
         "--settings", str(SKILL_BASE / "config" / "settings.default.yaml"),
         "--naming-rules", str(SKILL_BASE / "config" / "naming_rules.yaml"),
         "--language", language,

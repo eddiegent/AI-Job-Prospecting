@@ -38,6 +38,24 @@ Include the candidate's residential location (from `candidate_location` in the C
 - Tighten wording. Emphasise bullets that resonate with the company's mission and values. De-emphasise detail that doesn't land for this angle.
 - Compress older detail per the compression rule below.
 
+## Summary sourcing — every clause must be traceable
+
+`summary_paragraphs` and `tagline` are the freest-form prose in the CV and are where embellishment most easily creeps in. Every clause you write must be traceable to one of:
+
+- `cv_fact_base.summary`
+- a concrete fact already present in `cv_fact_base.experience[*].details`
+- `cv_fact_base.transition_signals` (for forward-looking / in-progress language)
+- `cv_fact_base.addendum_hidden_skills` or `cv_fact_base.addendum_off_cv_facts`
+
+If a clause cannot be traced to one of those sources, drop it. Do not infer it from `selected_role.emphasis_areas`, from `company_profile.tech_stack_hints` (which are **inferred** about the company, not claims about the candidate), or from what would make the candidate "sound better for this role".
+
+## Honesty on technology claims
+
+There is no job offer and no match analysis in the cold flow, so the CV is judged purely against the candidate's fact base. Two traps to avoid:
+
+- **Inferred stack mirroring.** `company_profile.tech_stack_hints` is a best-guess about what the company uses — it does **not** confer competence on the candidate. Do not reword a CV bullet to echo a company stack hint the candidate hasn't actually worked with.
+- **Active-learning / in-progress phrasing.** Do not introduce phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, or *"ramping up on X"* unless that specific technology appears by name in `cv_fact_base.transition_signals`. Transition signals come from the candidate; they are not inferred from the selected role or the company profile.
+
 ## Preserving skill sections
 
 The master CV may contain dedicated skill sections beyond the main technical skills table. Every such section must appear in the tailored CV's `skills_sections` array — you may reorder them for relevance but never drop them entirely.
@@ -86,11 +104,23 @@ Same as the tailor skill. Contact line, skills-section granularity, experience `
 - Inventing projects, achievements, tools, certifications, or leadership claims
 - **Claiming company facts you cannot cite.** If something isn't in `company_profile.json`, do not assume the company uses it. Stack hints are **inferred** — never reword a CV bullet as if the company confirmed they use that tech.
 - Adding keywords not evidenced in the CV
+- **Injecting adjectives not in the fact base** — do not attach modifiers like *"cloud-native"*, *"event-driven"*, *"distributed"*, *"mission-critical"*, etc. to an existing fact unless that exact adjective (or a clear equivalent) is already in the fact base. Promoting *"architectures backend"* to *"architectures backend cloud-native"* is invention, not emphasis.
+- **Relabeling experience to echo `selected_role.emphasis_areas` or `tech_stack_hints`** — if the fact base describes a piece of work one way, keep that framing. Keyword-style alignment belongs in the skills section, not in reworded bullets.
+- **Claiming active learning or in-progress competence for a technology** — phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, *"ramping up on X"* are only permitted when that specific technology appears in `cv_fact_base.transition_signals`. The selected role and company stack hints do not justify such claims.
 - Dropping dedicated skill sections from the master CV
 - Replacing the candidate's professional identity with `selected_role.title` wording when that title conflicts with `preferred_title_labels` / `forbidden_title_labels`
 - Reordering experiences
 - Creating timeline gaps between recent roles
 - Dropping a load-bearing pre-cutoff role
+
+## Final self-check before returning
+
+Before emitting the JSON, run these checks in order. If any fails, fix the draft and re-check.
+
+1. **Summary traceability** — read each clause of `summary_paragraphs` and the `tagline`. For each clause, silently point to the fact-base location (`summary` / a specific `experience[*].details` entry / `transition_signals` / addendum). If you can't, drop the clause.
+2. **Stack-hint check** — scan `experience[*].bullets` for any wording that mirrors `company_profile.tech_stack_hints` but doesn't come from the fact base. Revert to the fact base's original wording. Stack hints are about the company, not the candidate.
+3. **Learning-language check** — scan for any *"en apprentissage / learning / ramping up"* phrasing. For every occurrence, confirm the technology is named in `cv_fact_base.transition_signals`. If not, remove the claim.
+4. **Adjective audit** — scan `summary_paragraphs` and `experience[*].bullets` for qualifiers not in the fact base (*"cloud-native"*, *"mission-critical"*, *"distributed"*, etc.). Strip any that aren't grounded.
 
 ## Output format
 

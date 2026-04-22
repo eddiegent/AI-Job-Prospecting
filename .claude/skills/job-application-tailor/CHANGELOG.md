@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0] - 2026-04-22
+
+### Changed
+- **`prompts/tailor_cv.md` — CV truthfulness guardrails.** Added three sections and extended the Forbidden list to close gaps caught on a real run (K8s/OpenShift flagged as `gap` in the match analysis were still bridged in the CV summary as "en apprentissage", and `match_analysis.notes` qualifiers like "Docker used for CI/CD builds, not production orchestration" were contradicted by CV phrasing):
+  - **§ Summary sourcing** — every clause in `summary_paragraphs` and `tagline` must be traceable to `cv_fact_base.summary`, `experience[*].details`, `transition_signals`, or addendum. Untraceable clauses must be dropped.
+  - **§ Gap honesty** — `match_analysis` rows with `match_type: "gap"` cannot be bridged with learning-language unless the technology is named in `transition_signals`. Qualifiers in `match_analysis.notes` must be honoured verbatim.
+  - **§ Final self-check** — four pre-output checks (gap, qualifier, summary traceability, adjective audit) the model runs before returning JSON.
+  - **Forbidden list additions** — injecting adjectives not in the fact base, relabeling experience to mirror job-offer vocabulary, claiming active learning for gap tech, contradicting `match_analysis.notes`.
+
+### Fixed
+- **`cmd_regenerate_outputs` filename slug mismatch.** `regenerate-outputs` passed the raw `job_title` from `job_offer_analysis.json` through to `generate_outputs.py`, which re-sanitised it via `slug_for_filename()` and produced a UTF-8 slug (e.g. `Ingénieur_en_développement_NET_confirmé`) that didn't match the folder's original ASCII slug (e.g. `Ingenieur-Developpement-NET-Cardiweb`). The result was a duplicate file set alongside the originals on every regenerate. Fix extracts the existing slug from the folder name via `_split_folder_prefix()` and reuses it for filename generation (`slug_for_filename` is idempotent on its own output, so downstream sanitisation is a no-op).
+
 ## [1.4.0] - 2026-04-20
 
 ### Added
