@@ -3,6 +3,7 @@ fr:
     profile: "Profil professionnel"
     skills: "Compétences"
     experience: "Expérience professionnelle"
+    projects: "Projets personnels"
     education: "Formation"
     languages: "Langues"
   letter_labels:
@@ -31,6 +32,7 @@ en:
     profile: "Professional Profile"
     skills: "Skills"
     experience: "Professional Experience"
+    projects: "Personal Projects"
     education: "Education"
     languages: "Languages"
   letter_labels:

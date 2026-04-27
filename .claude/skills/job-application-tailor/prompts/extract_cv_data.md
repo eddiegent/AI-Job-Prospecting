@@ -8,11 +8,13 @@ This extractor only sees the raw `MASTER_CV.docx`. It must **not** incorporate a
 
 ## Extract
 - candidate name, headline / title, contact details
+- **contact.github** — if the CV header includes a GitHub URL (e.g. `github.com/janedoe` or `github.com/janedoe/my-project`), capture it verbatim in `contact.github`. Many CVs will not have one — if absent, **omit the field entirely** rather than writing an empty string.
 - **candidate location** — the candidate's residential location as it appears in the CV header or contact section (e.g. "Brunoy (91)", "London, UK", "Austin, TX"). Keep the original formatting. This is used later for commute and distance analysis against job locations.
 - summary
 - skills, tools / technologies, methodologies
 - experience by role (company, location, role, dates, details, metrics, international signals)
 - full-time training periods with dates — these must appear in the experience list with `"type": "training"` so they fill timeline gaps between roles
+- **personal projects** — if the CV has a dedicated section titled "Projets personnels", "Personal Projects", "Side Projects", "Projets open source", or similar, capture each project under the top-level `projects` array. Each item holds `name` (project title), `dates` (as written in the CV, optional), `link` (repo or live URL, optional), and `bullets` (the project's description points). Do **not** confuse personal projects with work experience — personal projects live in their own dedicated CV section; work done *inside* a role belongs in `experience[*].details`. If the CV has no personal-projects section, **omit the `projects` field entirely** — do not emit an empty array.
 - education / training
 - languages
 - explicit achievements or metrics
@@ -26,7 +28,7 @@ Return valid JSON matching `schemas/cv_fact_base.schema.json`. Read that schema 
 {
   "candidate_name": "Jane Doe",
   "headline": "Senior Software Engineer",
-  "contact": {"email": "jane@example.com", "phone": "+33 6 00 00 00 00", "linkedin": "linkedin.com/in/janedoe"},
+  "contact": {"email": "jane@example.com", "phone": "+33 6 00 00 00 00", "linkedin": "linkedin.com/in/janedoe", "github": "github.com/janedoe"},
   "candidate_location": "Paris (75)",
   "summary": "...",
   "skills": ["System design", "API integration"],
@@ -34,6 +36,9 @@ Return valid JSON matching `schemas/cv_fact_base.schema.json`. Read that schema 
   "methodologies": ["Scrum", "Clean Code", "SOLID"],
   "experience": [
     {"company": "Acme Corp", "location": "Paris", "role": "Senior Developer", "dates": "Jan 2020 – Present", "type": "role", "details": ["..."], "metrics": ["..."], "international_signals": ["..."]}
+  ],
+  "projects": [
+    {"name": "My side project", "dates": "2024 – ongoing", "link": "github.com/janedoe/my-project", "bullets": ["What it does", "Stack used"]}
   ],
   "education": ["2015 : University X – MSc Computer Science"],
   "languages": ["Bilingue Français / Anglais"],

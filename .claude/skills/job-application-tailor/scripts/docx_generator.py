@@ -119,6 +119,7 @@ _DEFAULT_LABELS = {
     "profile": "Profil professionnel",
     "skills": "Comp\u00e9tences",
     "experience": "Exp\u00e9rience professionnelle",
+    "projects": "Projets personnels",
     "education": "Formation",
     "languages": "Langues",
 }
@@ -160,6 +161,7 @@ def generate_cv_docx(output_path: Path, cv_data: dict[str, Any], settings: dict[
         "summary_paragraphs": cv_data.get("summary_paragraphs", []),
         "skills_sections": skills,
         "experience": cv_data.get("experience", []),
+        "projects": cv_data.get("projects", []),
         "education": cv_data.get("education", []),
         "languages_line": ", ".join(cv_data.get("languages", [])),
     }

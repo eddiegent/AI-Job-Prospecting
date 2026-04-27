@@ -9,7 +9,11 @@
       "properties": {
         "email": {"type": "string"},
         "phone": {"type": "string"},
-        "linkedin": {"type": "string"}
+        "linkedin": {"type": "string"},
+        "github": {
+          "type": "string",
+          "description": "GitHub URL as it appears in the CV header (e.g. 'github.com/janedoe' or 'github.com/janedoe/my-project'). Omit the field entirely if the CV has no GitHub link."
+        }
       }
     },
     "candidate_location": {
@@ -35,6 +39,20 @@
           "international_signals": {"type": "array", "items": {"type": "string"}}
         },
         "required": ["company", "role", "dates"]
+      }
+    },
+    "projects": {
+      "type": "array",
+      "description": "Personal / side projects from a dedicated section in the CV (e.g. 'PROJETS PERSONNELS', 'Personal Projects', 'Side Projects'). Omit the field entirely if the CV has no such section.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "dates": {"type": "string", "description": "Free-form date range as written in the CV (e.g. 'March 2026 – ongoing'). Omit if absent."},
+          "link": {"type": "string", "description": "Repository or live URL. Omit if absent."},
+          "bullets": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["name", "bullets"]
       }
     },
     "education": {"type": "array", "items": {"type": "string"}},

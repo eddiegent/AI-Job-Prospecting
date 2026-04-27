@@ -42,6 +42,7 @@ LABELS = {
         "profile": "Profil professionnel",
         "skills": "Comp\u00e9tences",
         "experience": "Exp\u00e9rience professionnelle",
+        "projects": "Projets personnels",
         "education": "Formation",
         "languages": "Langues",
     },
@@ -49,6 +50,7 @@ LABELS = {
         "profile": "Summary",
         "skills": "Skills",
         "experience": "Professional Experience",
+        "projects": "Personal Projects",
         "education": "Education",
         "languages": "Languages",
     },
@@ -277,6 +279,24 @@ def _add_template_content(doc: Document, labels: dict[str, str]) -> None:
     _para(doc, "\u2022 {{bullet}}", "BulletStyle")
     _para(doc, "{%p endfor %}")
     _para(doc, "{%p endfor %}")
+
+    # ── Personal projects ──
+    # Conditional: the whole section (heading + entries) only renders if the
+    # tailored CV has a non-empty `projects` array. Many CVs won't have this
+    # section at all; we don't want an orphaned "Personal Projects" heading
+    # above an empty block.
+    _para(doc, "{%p if projects %}")
+    _para(doc, labels["projects"], "SectionStyle")
+    _para(doc, "{%p for project in projects %}")
+    _para(doc, "{{project.name}}", "RoleStyle")
+    _para(doc, "{%p if project.metadata_line %}")
+    _para(doc, "{{project.metadata_line}}", "MetaStyle")
+    _para(doc, "{%p endif %}")
+    _para(doc, "{%p for bullet in project.bullets %}")
+    _para(doc, "• {{bullet}}", "BulletStyle")
+    _para(doc, "{%p endfor %}")
+    _para(doc, "{%p endfor %}")
+    _para(doc, "{%p endif %}")
 
     # ── Education ──
     _para(doc, "{%p if education %}")

@@ -69,6 +69,25 @@ This matters because a line like *"Product Builder No-Code / Low-Code (Formation
 
 Small visible timeline gaps in the experience section are acceptable; mixing training into Work Experience is not. Note: the fact base extraction step (`prompts/extract_cv_data.md`) deliberately adds training periods to the fact base `experience` array for internal timeline analysis — that's a different layer, and this rule only governs the *tailored CV output*.
 
+## Personal projects — passthrough with light filtering
+
+If `cv_fact_base.projects` is present and non-empty, build a `projects` array in the tailored CV from it. Each item has:
+- `name` — project name, verbatim from the fact base.
+- `metadata_line` — a single line combining dates and link. Build it from the fact base fields: if both `dates` and `link` are present, use `"<dates> | <link>"`; if only one is present, use that one alone; if neither, omit the field entirely.
+- `bullets` — the project's description points.
+
+**Allowed:**
+- Reorder bullets within a project to lead with the most relevant for the target job.
+- Drop individual bullets that are tangential to the target role.
+- Drop an entire project if it is **clearly unrelated** to the target role's domain (e.g. a cooking blog for a back-end infra role). The default is to keep every project — personal projects are a strong authenticity signal for mid-to-senior candidates, and dropping one is the exception, not the rule.
+
+**Forbidden:**
+- Inventing a project, a bullet, a date, or a link that isn't in the fact base.
+- Rewording a bullet to inject job-offer vocabulary (same rule as work experience — keyword coverage belongs in the skills section).
+- Promoting work done inside a paid role into a "personal project" entry.
+
+If `cv_fact_base.projects` is absent or empty, **omit the `projects` field entirely** from the tailored CV. Many candidates don't have a side-projects section; the renderer collapses the whole Projects section cleanly when the field is absent.
+
 ## Earlier-experience compression
 
 Senior profiles can carry 20+ years of history. Recruiters rarely read past the first page. To respect that attention budget — without ever hiding evidence the job actually relies on — apply this rule before writing the `experience` array:
@@ -132,6 +151,11 @@ The following formatting rules are derived from the master CV and must be applie
 Use the labeled format from the master CV:
 `Email: <email> | Tel: <phone> | LinkedIn: <linkedin> | <location>`
 
+If `cv_fact_base.contact.github` is present, insert `| GitHub: <github>` between the LinkedIn segment and the location:
+`Email: <email> | Tel: <phone> | LinkedIn: <linkedin> | GitHub: <github> | <location>`
+
+If `contact.github` is absent from the fact base, omit the GitHub segment entirely — do not leave a dangling label and do not invent a URL. The renderer auto-splits long contact lines across two centered lines at the midpoint, so adding GitHub is safe.
+
 ### Skills sections
 Preserve the master CV's granular skill categories as separate `skills_sections` entries. Each category from the skills table becomes its own section with its own heading (e.g. "Langages", "Plateformes & Frameworks", "Services & Communication", "Données", "Tests", "Outils & Environnements", "Architecture & Méthodes", "Systèmes"). Do not consolidate multiple categories into a single section. Dedicated sections outside the table (e.g. "Développement assisté par IA") are also preserved as separate entries. You may reorder sections for relevance but never merge or drop them.
 
@@ -183,7 +207,7 @@ Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema f
 {
   "candidate_name": "Jane Doe",
   "title": "Ingénieur Logiciel Senior C# / .NET",
-  "contact_line": "Email: jane@example.com | Tel: +33 6 00 00 00 00 | LinkedIn: linkedin.com/in/janedoe | Paris (75)",
+  "contact_line": "Email: jane@example.com | Tel: +33 6 00 00 00 00 | LinkedIn: linkedin.com/in/janedoe | GitHub: github.com/janedoe | Paris (75)",
   "tagline": "Applications critiques • Architecture de services • Qualité logicielle",
   "summary_paragraphs": ["Paragraph 1...", "Paragraph 2..."],
   "skills_sections": [
@@ -192,6 +216,9 @@ Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema f
   ],
   "experience": [
     {"role_line": "Senior Developer", "metadata_line": "Acme Corp | Paris | January 2020 – Present", "bullets": ["Developed...", "Migrated..."]}
+  ],
+  "projects": [
+    {"name": "My side project", "metadata_line": "2024 – ongoing | github.com/janedoe/my-project", "bullets": ["What it does", "Stack used"]}
   ],
   "education": ["2015 : University X – MSc Computer Science"],
   "languages": ["Bilingue Français / Anglais"]

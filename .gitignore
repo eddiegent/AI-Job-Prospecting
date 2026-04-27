@@ -26,6 +26,7 @@ resources/cv_fact_base.json
 
 # User-owned customization layer (Phase 1 — per-user, never committed)
 resources/cv_addendum.md
+resources/old_cv_addendum.md
 resources/user_prefs.yaml
 
 # First-run seeds copied by scripts/init.py into the user data dir (Phase 4)

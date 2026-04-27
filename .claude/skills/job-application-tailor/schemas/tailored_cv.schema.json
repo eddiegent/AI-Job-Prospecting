@@ -36,6 +36,22 @@
         "required": ["role_line", "metadata_line", "bullets"]
       }
     },
+    "projects": {
+      "type": "array",
+      "description": "Personal / side projects to include on the CV. Sourced from cv_fact_base.projects — may be reordered, may have tangential bullets dropped, but never invented. Omit the field entirely if the fact base has no projects or none are worth surfacing for this role.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "metadata_line": {
+            "type": "string",
+            "description": "Single line under the project name. Free-form; typically 'Dates | link' or just dates or just link. Omit if neither is present."
+          },
+          "bullets": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["name", "bullets"]
+      }
+    },
     "education": {"type": "array", "items": {"type": "string"}},
     "languages": {"type": "array", "items": {"type": "string"}}
   },

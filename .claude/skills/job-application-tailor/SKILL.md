@@ -109,6 +109,8 @@ This step must complete **before** the job offer is analysed, so the fact base i
 
 If `$ARGUMENTS` is a URL, fetch it with WebFetch first. **Cache the raw offer text** to `$PREP_DIR/raw_offer.md` before analysis — write the full WebFetch response (or the pasted text if the user supplied one) as-is. This gives an audit trail and survives the posting being pulled. See `references/commands.md` § Cache Raw Offer.
 
+**WebFetch language warning.** WebFetch processes pages through an internal summariser LLM, which can silently **translate** a non-English posting into English before returning it. That breaks language detection downstream and produces an application pack in the wrong language. Always include an explicit instruction in the WebFetch `prompt` like *"Return the full job posting text EXACTLY as it appears on the page, preserving the ORIGINAL LANGUAGE — do NOT translate."* Even with that instruction it may still translate, so the cross-checks in `prompts/analyze_job_offer.md` § *Language mis-detection cross-check* are the final safety net before setting `detected_language`.
+
 Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, validate against `schemas/job_offer_analysis.schema.json`. Note the `detected_language` — it drives the language of all subsequent output.
 
 **Platform-vs-client check.** Platforms like Free-Work, Indeed, LinkedIn etc. post on behalf of real employers — tailoring a pack to the platform rather than the real client wastes a run. The full list lives in `config/settings.default.yaml` → `aggregators.known_platforms`.
