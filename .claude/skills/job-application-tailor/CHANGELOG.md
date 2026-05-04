@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.1] - 2026-05-04
+
+### Fixed
+- **`rename-application` left stale old-slug deliverables in the folder.** When a rename triggered a slug change, `regenerate-outputs` wrote new-slug filenames but did not remove the pre-rename ones, so the folder ended up with two copies of every deliverable (CV, letter, LinkedIn, interview prep). New helper `scripts.common.delete_stale_slug_deliverables` is invoked before the regenerate step; it scans the folder root only (so `_prep/*.json` is never touched), matches `*_<old_slug>.<ext>`, and removes those files. No-op when the slug is unchanged or the rename was DB-only.
+- **Bare `python -c` blocks that print non-ASCII** (paths with accents, em-dashes in messages) crashed on Windows with `UnicodeEncodeError` because `cp1252` is the default console codepage. Fixed three such blocks in `references/commands.md` and `job-cold-prospect/SKILL.md` by adding the `python -u -c` + `io.TextIOWrapper(..., encoding='utf-8')` preamble already used by other blocks. Pure-ASCII one-liners (e.g. `print('OK')`) were left as-is.
+
+### Tests
+- Added `tests/test_rename_cleanup.py` — 5 tests for `delete_stale_slug_deliverables` covering: removing top-level deliverables, leaving `_prep/` alone, no-op on slug match, no-op on empty old slug, and slugs with `.`/`#` chars.
+- Full suite: tailor **117 pass / 2 skip** (was 112), cold-prospect **17 pass** (unchanged).
+
 ## [1.6.0] - 2026-05-04
 
 ### Changed

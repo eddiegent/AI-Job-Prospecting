@@ -14,6 +14,31 @@ import yaml
 FORBIDDEN_DEFAULT = set('/\\:*?"<>|')
 
 
+def delete_stale_slug_deliverables(
+    folder: Path, old_slug: str, new_slug: str
+) -> list[str]:
+    """Delete top-level deliverables matching the old slug after a rename.
+
+    ``regenerate-outputs`` writes new-slug filenames but does not remove the
+    pre-rename ones, so without this cleanup the folder ends up with two
+    copies of every deliverable. Matches files of the form
+    ``<anything>_<old_slug>.<ext>`` at the folder root only — files inside
+    ``_prep/`` are not slug-named and are left alone. No-op when the slug is
+    unchanged or empty.
+    """
+    if not old_slug or old_slug == new_slug:
+        return []
+    deleted: list[str] = []
+    for stale in folder.glob(f"*_{old_slug}.*"):
+        if stale.is_file():
+            try:
+                stale.unlink()
+                deleted.append(stale.name)
+            except OSError:
+                pass
+    return deleted
+
+
 def load_yaml(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}

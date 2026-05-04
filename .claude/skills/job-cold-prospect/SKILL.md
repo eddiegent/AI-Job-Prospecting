@@ -96,8 +96,9 @@ Validation must pass before continuing. If it fails, fix the flagged fields and 
 **Blacklist re-check against the canonical name.** Research may resolve "acme" to "Acme Robotics SAS" — that new name might itself be on the blacklist, so re-check:
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -c "
-import json
+cd "$SKILL_BASE_TAILOR" && python -u -c "
+import sys, io, json
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from pathlib import Path
 from scripts.job_history_db import JobHistoryDB
 profile = json.loads(Path('$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
@@ -136,8 +137,9 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
 **4b. Forbidden-label post-check.** The prompt tells the LLM to respect `forbidden_title_labels`, but surface-check in Python as a safety net (same spirit as `find_forbidden_title_label_violations` in the tailor skill):
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -c "
-import json
+cd "$SKILL_BASE_TAILOR" && python -u -c "
+import sys, io, json
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from pathlib import Path
 candidates = json.loads(Path(r'$PREP_DIR/role_candidates.json').read_text(encoding='utf-8'))
 # $CUSTOMIZATION['prefs']['forbidden_title_labels'] — pass in from context

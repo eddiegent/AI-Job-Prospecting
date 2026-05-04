@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1 — 2026-05-04
+
+**Windows Unicode fixes in SKILL.md.**
+
+- Two bare `python -c` blocks in `SKILL.md` (the company-name blacklist re-check in Step 3, and the forbidden-label post-check in Step 4b) printed non-ASCII content (em-dashes in messages, role titles with accents) and crashed under Windows' default `cp1252` console codepage with `UnicodeEncodeError`. Fixed by switching them to the `python -u -c` + `io.TextIOWrapper(..., encoding='utf-8')` preamble that the rest of the file already uses.
+- No script changes in this skill. Tailor skill carries the matching `delete_stale_slug_deliverables` fix at 1.6.1 (`rename-application` no longer leaves duplicate pre-rename files in the folder).
+
 ## 0.8.0 — 2026-05-04
 
 **Steps 0–2.5 delegated to a shared `job-prep-cv` sub-skill.**

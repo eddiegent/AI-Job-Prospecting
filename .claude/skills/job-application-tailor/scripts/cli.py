@@ -16,7 +16,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
-from common import matched_aggregator, sanitize_component
+from common import (
+    delete_stale_slug_deliverables,
+    matched_aggregator,
+    sanitize_component,
+)
 from job_history_db import JobHistoryDB
 from paths import load_settings
 
@@ -576,6 +580,13 @@ def cmd_rename_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
     if not new_folder.exists():
         print("Skipping regenerate-outputs (folder missing on disk).")
         return
+
+    # Remove stale old-slug deliverables before regenerating so the folder
+    # ends up with one copy of each file, not two.
+    removed = delete_stale_slug_deliverables(new_folder, _old_slug, new_slug)
+    for name in removed:
+        print(f"Removed stale: {name}")
+
     print("Running regenerate-outputs...")
     cmd_regenerate_outputs(
         db,

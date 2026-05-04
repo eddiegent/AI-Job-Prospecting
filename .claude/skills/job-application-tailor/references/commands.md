@@ -154,7 +154,9 @@ Schema mapping:
 
 ### Add fit-level prefix
 ```bash
-cd "$SKILL_BASE" && python -c "
+cd "$SKILL_BASE" && python -u -c "
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from scripts.common import rename_folder_with_fit, load_json
 from pathlib import Path
 match = load_json(Path('$PREP_DIR/match_analysis.json'))
@@ -203,7 +205,9 @@ Low-level primitives remain available for scripting beyond this step: `db.find_d
 
 ### Company Lists
 ```bash
-cd "$SKILL_BASE" && python -c "
+cd "$SKILL_BASE" && python -u -c "
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from scripts.job_history_db import JobHistoryDB
 db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
 result = db.check_company_list('<company_name>')
