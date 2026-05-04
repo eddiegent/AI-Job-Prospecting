@@ -36,89 +36,62 @@ The orchestrator sets these before reading this skill's body:
 
 The fact base lives at `$PREP_DIR/cv_fact_base.json` and has been verified against the raw master CV. The cache at `resources/cv_fact_base.json` is up to date.
 
-## Resolve paths
+## One consolidated invocation
 
-The shared infrastructure (scripts/, schemas/, config/, references/commands.md) lives in the `job-application-tailor` skill. Both flows import from it.
-
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-SKILL_BASE_TAILOR="$PROJECT_ROOT/.claude/skills/job-application-tailor"
-```
-
-## Step 0 — Pre-flight
-
-Verify dependencies and read config (`config/settings.default.yaml` merged with the optional user override at `<user-data-dir>/settings.yaml`, plus `config/naming_rules.yaml`).
-
-**Check for master CV** — if `<user-data-dir>/MASTER_CV.docx` does not exist, trigger first-run onboarding instead of stopping cold:
+The shared infrastructure (`scripts/`, `schemas/`, `config/`, `references/commands.md`) lives in the `job-application-tailor` skill. The new `scripts/preflight.py` collapses what used to be four to five separate one-liners — deps check, master CV check, DB init, customization load, output folder creation — plus the cache-hot path of Steps 1/2/2.5 (read CV, copy cached fact base, verify) into a single Python invocation that prints a JSON state blob.
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -m scripts.init
+SKILL_BASE_TAILOR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/skills/job-application-tailor"
+cd "$SKILL_BASE_TAILOR" && python -m scripts.preflight \
+  --flow "<offer|cold>" \
+  --input "<INPUT_SEED>" \
+  ${EARLY_BLACKLIST_NAME:+--early-blacklist-name "$EARLY_BLACKLIST_NAME"}
 ```
 
-`scripts/init.py` resolves the user data dir (via `scripts/paths.py::resolve_user_data_dir`, which honours `JOB_TAILOR_HOME`, the legacy `resources/` layout, or the OS-standard app data dir), creates the directory and its `output/` subfolder, and copies three files from `samples/`:
+Parse the printed JSON. Top-level fields:
 
-- `MASTER_CV.example.docx` — a fictional neutral CV the user can open in Word to see the section headers, skills-table structure, and date formats the extractor expects.
-- `cv_addendum.template.md` — a commented template for the per-run enrichment layer (Phase 1).
-- `user_prefs.template.yaml` — a commented template with every available preference key.
+| Field | Meaning |
+|---|---|
+| `status` | `ok` · `cache_stale` · `first_run` · `blacklisted` · `error` |
+| `project_root` | Resolved git toplevel (or skill-base parent fallback) |
+| `skill_base_tailor` | The tailor skill's path — assign to `$SKILL_BASE_TAILOR` |
+| `master_cv_path`, `user_data_dir` | Resolved CV / data dir |
+| `db_path`, `db_count` | History DB path and current row count |
+| `customization` | `{"addendum": {...}, "prefs": {...}}` — assign to `$CUSTOMIZATION` |
+| `output_dir`, `prep_dir` | Output folder and `_prep/` (already created) |
+| `fact_base_path`, `fact_base_verified`, `fact_base_verify_message` | Present when cache hit |
 
-Init is idempotent and **never** overwrites an existing `MASTER_CV.docx`, `cv_addendum.md`, or `user_prefs.yaml`. After running it, surface the printed "Next steps" to the user and stop until they save their real CV as `<user-data-dir>/MASTER_CV.docx`. Do not attempt to generate an application pack from the example CV — it is a reference, not a substitute.
+### Status handling
 
-**Initialise the job history database** — ensure `resources/job_history.db` exists. Only run the backfill script if the database is empty AND the `output/` folder exists and contains subdirectories with `_prep/job_offer_analysis.json` files. For a fresh install with no prior output, skip backfill entirely. See `$SKILL_BASE_TAILOR/references/commands.md` § Job History Database.
+- **`ok`** — fact base cache hit, fully verified. Skip Steps 1, 2, 2.5; jump straight to the orchestrator's Step 3. The fact base file is already in `$PREP_DIR`.
+- **`cache_stale`** — output folder is ready, customization is loaded, but the fact base needs LLM extraction. Continue to Steps 1–2.5 below; the verification step is still mandatory.
+- **`first_run`** — `MASTER_CV.docx` was missing; `init.py` ran and seeded the user data dir with templates and the example CV. Surface the `next_steps` field to the user verbatim and stop. Do **not** generate a pack from the example CV.
+- **`blacklisted`** — `$EARLY_BLACKLIST_NAME` matched the blacklist. Surface the `blacklist_hit` payload and stop unless the user explicitly overrides.
+- **`error`** — surface the `message` field and stop.
 
-**Early blacklist check (optional).** If `$EARLY_BLACKLIST_NAME` is set, check the blacklist before creating the output folder. If blacklisted, stop unless the user explicitly overrides. See `$SKILL_BASE_TAILOR/references/commands.md` § Company Lists. The cold flow uses this to catch obvious hits on the user's input string before research; the offer flow leaves `$EARLY_BLACKLIST_NAME` unset and lets Step 3.5 (`check-duplicate`) handle the blacklist as part of its bundled check.
+### What the script does (for reference)
 
-**Load user customization layer** — read the optional user-owned files `resources/cv_addendum.md` and `resources/user_prefs.yaml`:
+- Verifies `docx`, `yaml`, `jsonschema` import. Exits 1 with a clean error message if a dep is missing.
+- Resolves the user data dir via `scripts/paths.py::resolve_user_data_dir` (honours `JOB_TAILOR_HOME`, legacy `resources/` layout, or the OS-standard app data dir).
+- If the master CV is missing, runs `scripts.init` (which copies `MASTER_CV.example.docx`, `cv_addendum.template.md`, `user_prefs.template.yaml` into the user data dir without ever overwriting an existing `MASTER_CV.docx`, `cv_addendum.md`, or `user_prefs.yaml`) and returns `status: first_run`.
+- Initialises `resources/job_history.db` (creates if missing). Reports `db_count` for telemetry; backfill is a separate concern handled by Phase F migrations on the v1→v2 path.
+- Loads customization via `scripts/user_customization.py::load_customization_context`. Returns the typed-empty defaults when the user files are absent.
+- Creates the output folder. The slug is **a placeholder** for the offer flow (the orchestrator's Step 4 rebuilds it from `job_title` + `company_name` once the offer is analysed); the cold flow's `cold-` prefix is the canonical naming and is not changed later.
+- For the cache-hot path: copies the cached fact base into `$PREP_DIR` and runs `scripts/verify_fact_base.py` against it (forcing UTF-8 in the child process so non-ASCII output doesn't crash the subprocess decode on Windows). Returns the script's stdout in `fact_base_verify_message` so warnings are still visible.
 
-```python
-from scripts.user_customization import load_customization_context
-ctx = load_customization_context("resources")  # -> {"addendum": {...}, "prefs": {...}}
-```
+## Step 1 — Read the master CV (only when `cache_stale`)
 
-Both files are optional; missing files return typed empty defaults. Store the returned dict as `$CUSTOMIZATION` for later steps. This is the canonical place for:
+Skip when `status == "ok"`. Otherwise, extract text from the DOCX. See `$SKILL_BASE_TAILOR/references/commands.md` § CV Caching for the read command.
 
-- **Addendum** — additional experience bullets, hidden skills, off-CV facts. Merged into the in-memory fact base by `merge_addendum_into_fact_base()` at the orchestrator's CV-tailoring step. The addendum is a per-run in-memory layer only — it never mutates `resources/cv_fact_base.json`.
-- **User prefs** — `preferred_title_labels`, `forbidden_title_labels`, `tone_directives`, `team_context_companies`, `default_language`. Passed into CV tailoring, the motivation letter, and LinkedIn messages by the orchestrator.
+## Step 2 — Extract CV fact base (only when `cache_stale`)
 
-## Step 0d — Create the output folder
+Skip when `status == "ok"`. Read `$SKILL_BASE_TAILOR/prompts/extract_cv_data.md`, generate the fact base, validate against `$SKILL_BASE_TAILOR/schemas/cv_fact_base.schema.json`, then save the cache for future runs. See `$SKILL_BASE_TAILOR/references/commands.md` § CV Caching.
 
-Folder naming is flow-aware:
+The fact base cache is shared across both flows — once you save it here, the next run on the same `MASTER_CV.docx` returns `status: ok` from preflight directly.
 
-| `$FLOW` | Initial folder name | Notes |
-|---|---|---|
-| `offer` | `output/[date]-[slug]/` | The offer orchestrator renames it after match analysis to `[fit_level]-[date]-[slug]/`. |
-| `cold` | `output/cold-[date]-[slug]/` | The `cold-` prefix segments cold packs visually. The cold orchestrator may rename the slug once the canonical company name is resolved during research. |
+## Step 2.5 — Verify fact base against raw CV (only when `cache_stale`)
 
-```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.common import slug_for_filename, ensure_dir, current_date_ddmmyyyy
-from pathlib import Path
-date = current_date_ddmmyyyy()
-slug = slug_for_filename('<INPUT_SEED-replaced-by-orchestrator>')
-flow = '<offer-or-cold>'
-prefix = 'cold-' if flow == 'cold' else ''
-folder = Path('$PROJECT_ROOT/output') / f'{prefix}{date}-{slug}'
-ensure_dir(folder / '_prep')
-print(folder)
-"
-```
-
-Capture the printed path as `$OUTPUT_DIR`, and set `$PREP_DIR="$OUTPUT_DIR/_prep"`.
-
-## Step 1 — Read the master CV
-
-Extract text from the DOCX. See `$SKILL_BASE_TAILOR/references/commands.md` § CV Caching for the read command.
-
-## Step 2 — Extract CV fact base (cached)
-
-Check the cache first. If valid, copy `cv_fact_base.json` into `$PREP_DIR` and skip ahead. If stale, read `$SKILL_BASE_TAILOR/prompts/extract_cv_data.md`, generate the fact base, validate against `$SKILL_BASE_TAILOR/schemas/cv_fact_base.schema.json`, then save the cache for future runs. See `$SKILL_BASE_TAILOR/references/commands.md` § CV Caching.
-
-The fact base cache is shared across both flows — if the master CV has not changed, the cached extraction is reused regardless of which flow ran last.
-
-## Step 2.5 — Verify fact base against raw CV
-
-**This step is mandatory and must not be skipped.** It exists because the LLM can unconsciously contaminate the fact base with keywords from later context (job offer for the offer flow, company research for the cold flow), especially when both are processed in the same context window.
+Skip when `status == "ok"` (preflight already verified). When `cache_stale`, **this step is mandatory and must not be skipped.** It exists because the LLM can unconsciously contaminate the fact base with keywords from later context (job offer for the offer flow, company research for the cold flow), especially when both are processed in the same context window.
 
 Run `scripts/verify_fact_base.py` with the master CV and the fact base. See `$SKILL_BASE_TAILOR/references/commands.md` § Verify Fact Base Against Raw CV.
 

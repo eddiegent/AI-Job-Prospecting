@@ -111,9 +111,13 @@ Save as `$PREP_DIR/company_research.md` with a `## Contacts` section. If the res
 
 ### Step 4 — Match/gap analysis
 
-Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (direct / transferable / gap). Validate against `schemas/match_analysis.schema.json`.
+Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (direct / transferable / gap).
 
-After validation, **rename the output folder** with a fit-level prefix (`low` / `medium` / `good` / `very_good`) based on `overall_fit_pct`. Thresholds are in `config/settings.default.yaml`. See `references/commands.md` § Folder Rename. Update `$OUTPUT_DIR` and `$PREP_DIR`.
+**Always run `scripts/recount_match_summary.py` against the produced JSON before validating.** The LLM authors both `matches[]` and `match_summary` and the two regularly drift (counts and `overall_fit_pct` are easy to miscount). The recount script overwrites `match_summary` with the deterministically computed value so downstream steps (folder rename, fit gate, history record) operate on correct figures. See `references/commands.md` § Recount Match Summary.
+
+After the recount, validate against `schemas/match_analysis.schema.json`.
+
+After validation, **rename the output folder in one shot** — the helper adds the fit-level prefix (`low` / `medium` / `good` / `very_good`) AND rebuilds the trailing slug from the offer's `job_title` + `company_name`, replacing the placeholder slug that was created at preflight from `$ARGUMENTS`. This collapses two historical renames into one and gives the run a meaningful folder name from this step onward. Thresholds are in `config/settings.default.yaml`. See `references/commands.md` § Folder Rename. Update `$OUTPUT_DIR` and `$PREP_DIR`.
 
 **If `overall_fit_pct` is below 50%, STOP here.** Do not proceed to CV tailoring or any further steps. Inform the user of the fit score, summarise the key gaps, and explain why the application was not generated. The match analysis and renamed output folder are kept so the user can review the assessment.
 

@@ -17,9 +17,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from common import (
+    auto_slug,
     delete_stale_slug_deliverables,
     matched_aggregator,
-    sanitize_component,
 )
 from job_history_db import JobHistoryDB
 from paths import load_settings
@@ -447,15 +447,6 @@ def _split_folder_prefix(name: str) -> tuple[str, str]:
     return "", name
 
 
-def _auto_slug(job_title: str | None, new_company: str) -> str:
-    """Build a folder slug from job title and new company, dash-separated."""
-    raw = f"{job_title} {new_company}" if job_title else new_company
-    cleaned = sanitize_component(raw)
-    dashed = re.sub(r"\s+", "-", cleaned)
-    dashed = re.sub(r"-+", "-", dashed)
-    return dashed.strip("-") or "untitled"
-
-
 def cmd_rename_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
     app = db.get_application(args.id)
     if not app:
@@ -483,7 +474,7 @@ def cmd_rename_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
         except json.JSONDecodeError:
             pass
 
-    new_slug = args.new_slug.strip() if args.new_slug else _auto_slug(job_title, new_company)
+    new_slug = args.new_slug.strip() if args.new_slug else auto_slug(job_title, new_company)
     new_folder = parent / f"{prefix_part}{new_slug}"
 
     # Filesystem rename

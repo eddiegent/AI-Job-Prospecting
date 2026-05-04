@@ -14,6 +14,39 @@ import yaml
 FORBIDDEN_DEFAULT = set('/\\:*?"<>|')
 
 
+def recount_match_summary(matches: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """Compute match_summary deterministically from a matches[] array.
+
+    The LLM is asked to author both ``matches[]`` and ``match_summary`` in
+    the match analysis step, and the two regularly drift — the model
+    miscounts, or edits matches without updating the summary. The summary
+    is a pure function of the matches, so we let a script enforce it
+    rather than trusting the LLM's arithmetic.
+
+    ``overall_fit_pct`` formula matches ``prompts/match_analysis.md`` §
+    ``overall_fit_pct``: ``(direct + transferable * 0.5) / total * 100``,
+    rounded to the nearest integer. Empty matches array returns 0.
+    """
+    counts = {"direct": 0, "transferable": 0, "gap": 0}
+    for m in matches:
+        match_type = m.get("match_type") if isinstance(m, dict) else None
+        if match_type in counts:
+            counts[match_type] += 1
+    total = counts["direct"] + counts["transferable"] + counts["gap"]
+    if total == 0:
+        fit_pct = 0
+    else:
+        fit_pct = round(
+            (counts["direct"] + counts["transferable"] * 0.5) / total * 100
+        )
+    return {
+        "direct_count": counts["direct"],
+        "transferable_count": counts["transferable"],
+        "gap_count": counts["gap"],
+        "overall_fit_pct": fit_pct,
+    }
+
+
 def delete_stale_slug_deliverables(
     folder: Path, old_slug: str, new_slug: str
 ) -> list[str]:
@@ -118,14 +151,55 @@ def fit_level(pct: int) -> str:
     return "low"
 
 
-def rename_folder_with_fit(folder: Path, pct: int) -> Path:
-    """Rename an output folder to include the fit-level prefix. Returns the new path."""
+def auto_slug(job_title: str | None, company: str | None) -> str:
+    """Build a folder slug from job title and company, dash-separated.
+
+    Used both at folder rename time (after job offer analysis surfaces a
+    real title) and by ``rename-application`` when a real client is
+    identified post-fact. Returns ``"untitled"`` rather than empty so the
+    folder name is always well-formed.
+    """
+    raw = " ".join(part for part in (job_title, company) if part)
+    cleaned = sanitize_component(raw)
+    dashed = re.sub(r"\s+", "-", cleaned)
+    dashed = re.sub(r"-+", "-", dashed)
+    return dashed.strip("-") or "untitled"
+
+
+def rename_folder_with_fit(
+    folder: Path,
+    pct: int,
+    *,
+    job_title: str | None = None,
+    company: str | None = None,
+) -> Path:
+    """Rename an output folder to include the fit-level prefix.
+
+    By default the existing slug after the date prefix is preserved, so
+    this is a pure ``[date]-[slug]/`` -> ``[fit_level]-[date]-[slug]/``
+    operation. When ``job_title`` and/or ``company`` are supplied, the
+    slug is recomputed via ``auto_slug``. This collapses the pipeline's
+    historical two-step rename (placeholder slug at folder creation, then
+    fit prefix at Step 4) into a single rename to the final
+    ``[fit_level]-[date]-[job_title-company]/`` path.
+
+    Returns the new path. No-op when the destination already matches.
+    """
     level = fit_level(pct)
     current_name = folder.name
     # Avoid double-prefixing
     for prefix in ("very_good-", "good-", "medium-", "low-"):
         if current_name.startswith(prefix):
             current_name = current_name[len(prefix):]
+    # Detect the date prefix (DDMMYYYY-) so we can rebuild the trailing slug
+    # when caller passes job_title/company. Falls back to preserving whatever
+    # is there when the date prefix is missing or the caller didn't override.
+    if job_title or company:
+        date_match = re.match(r"^(\d{8}-)(.+)$", current_name)
+        if date_match:
+            date_prefix = date_match.group(1)
+            new_slug = auto_slug(job_title, company)
+            current_name = f"{date_prefix}{new_slug}"
     new_name = f"{level}-{current_name}"
     new_path = folder.parent / new_name
     if new_path != folder:

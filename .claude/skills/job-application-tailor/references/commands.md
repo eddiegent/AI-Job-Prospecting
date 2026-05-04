@@ -132,6 +132,20 @@ If this fails (exit code 1), technologies or methodologies were fabricated.
 Remove the flagged items from `cv_fact_base.json` and re-run verification before proceeding.
 Warnings about skills are non-blocking — review them but they may be valid abstractions.
 
+## Recount Match Summary
+
+After writing `match_analysis.json`, run this before validation. Overwrites
+`match_summary` with deterministically counted values from `matches[]`.
+Idempotent — safe to run on already-correct data.
+
+```bash
+cd "$SKILL_BASE" && python scripts/recount_match_summary.py "$PREP_DIR/match_analysis.json"
+```
+
+Prints `OK (already correct)` when the LLM-authored summary was already
+in sync, or `Updated match_summary: <before> -> <after>` when the script
+fixed a drift. Exit code 0 on success.
+
 ## Validation
 
 ### Validate any JSON against its schema
@@ -152,7 +166,15 @@ Schema mapping:
 
 ## Folder Rename (after match analysis)
 
-### Add fit-level prefix
+### Add fit-level prefix AND rebuild the slug (single rename)
+
+The offer flow creates the output folder eagerly with a placeholder slug
+derived from the user's input (often a URL). After Step 4 we know the
+real `job_title` and `company_name` from `job_offer_analysis.json`, so
+this rename rebuilds the slug at the same time as it adds the fit
+prefix — collapsing two historical renames into one and producing a
+meaningful folder name on the first try.
+
 ```bash
 cd "$SKILL_BASE" && python -u -c "
 import sys, io
@@ -160,12 +182,23 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from scripts.common import rename_folder_with_fit, load_json
 from pathlib import Path
 match = load_json(Path('$PREP_DIR/match_analysis.json'))
+job = load_json(Path('$PREP_DIR/job_offer_analysis.json'))
 pct = match['match_summary']['overall_fit_pct']
-new_path = rename_folder_with_fit(Path('$OUTPUT_DIR'), pct)
+new_path = rename_folder_with_fit(
+    Path('$OUTPUT_DIR'),
+    pct,
+    job_title=job.get('job_title'),
+    company=job.get('company_name'),
+)
 print(new_path)
 "
 ```
+
 Update `$OUTPUT_DIR` and `$PREP_DIR` to point to the renamed folder.
+
+For the cold flow, omit `job_title` / `company` — there's no fit score
+to anchor on and the cold prefix is set at folder creation, so the
+helper just becomes a no-op there.
 
 ## Job History Database
 

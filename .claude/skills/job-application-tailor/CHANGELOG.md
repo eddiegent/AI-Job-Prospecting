@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.0] - 2026-05-04
+
+### Added — determinism wins
+- **`scripts/recount_match_summary.py` + `common.recount_match_summary()`** (D1). The match-analysis step's LLM authors both `matches[]` and `match_summary` and the two regularly drift (counts and `overall_fit_pct` get miscounted; the recount-and-correct loop was a recurring tax on every run). The summary is now computed deterministically from the matches array. SKILL.md Step 4 invokes the script after writing `match_analysis.json` and before validation. Idempotent — `OK (already correct)` when the LLM happened to produce consistent figures, `Updated match_summary: <before> -> <after>` when it didn't. 7 unit tests, including a regression case for the real INGELINE 16/8/7=65% drift.
+- **`common.auto_slug(job_title, company)`** (D2, public). Same algorithm `cli.py rename-application` was using locally. Centralised so the fit-time rename can also use it.
+- **`scripts/preflight.py`** (D3) — one Python invocation that replaces four-to-five separate one-liners (deps check, master CV check with init fallback, DB init, customization load, output folder creation) and the cache-hot path of Steps 1/2/2.5 (read CV, copy cached fact base, verify). Prints a single JSON state blob the orchestrator parses. `status` field tells the orchestrator whether to continue (`ok`), do LLM extraction (`cache_stale`), surface onboarding (`first_run`), surface a blacklist hit (`blacklisted`), or stop on error. Forces `PYTHONIOENCODING=utf-8` in the verify_fact_base subprocess so non-ASCII output doesn't crash the decode on Windows. Resolves the project root via `git rev-parse` then `.git`/`.claude` markers, never via the legacy `resources/` path (the user-data path stays funnelled through `paths.py`).
+
+### Changed — single-rename folder naming (D2)
+- **`common.rename_folder_with_fit`** now accepts optional `job_title=` and `company=` kwargs. When supplied, the helper rebuilds the trailing slug via `auto_slug` at the same time as it adds the fit prefix, collapsing the historical "create folder with placeholder slug → fit-rename at Step 4 → optional `rename-application` later" dance into a single rename to the final `[fit_level]-[date]-[job_title-company]/` path. Backwards-compatible: the existing zero-kwarg call path (used by the cold flow) is unchanged. SKILL.md Step 4 and `references/commands.md § Folder Rename` both updated to pass the new kwargs.
+- **`cli.py`** drops the local `_auto_slug` helper in favour of `common.auto_slug` (single source of truth for the slug algorithm).
+
+### Tests
+- 9 tests for `auto_slug` + `rename_folder_with_fit` covering the new single-rename path, the backward-compatible cold-flow path, and the no-double-prefix invariant.
+- 7 tests for `recount_match_summary` covering basic counts, edge cases (only-direct, only-gaps, empty), unknown match_type defensiveness, the real-world INGELINE drift, and rounding.
+- Tailor full suite: **135 pass / 2 skip** (was 117). Cold-prospect **17 pass** (unchanged).
+
 ## [1.6.1] - 2026-05-04
 
 ### Fixed
