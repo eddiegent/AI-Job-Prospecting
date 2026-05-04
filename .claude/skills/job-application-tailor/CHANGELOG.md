@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.0] - 2026-05-04
+
+### Changed
+- **Steps 0–2.5 extracted to a shared `job-prep-cv` sub-skill.** The pre-flight, master-CV read, fact-base extract, and fact-base verification used to live verbatim in this `SKILL.md` and were referenced by `job-cold-prospect` via "follow tailor SKILL.md § Step X" pointers. They now live once at `.claude/skills/job-prep-cv/SKILL.md` (`disable-model-invocation: true`, orchestrators only — never user-facing). Both flows delegate to it via a single block that passes `$FLOW` (`offer` / `cold`), `$INPUT_SEED`, and an optional `$EARLY_BLACKLIST_NAME`. The sub-skill returns with `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR`, `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION` set and `$PREP_DIR/cv_fact_base.json` verified. Folder naming (`[date]-[slug]/` for offer, `cold-[date]-[slug]/` for cold) is the only flow-aware branch inside the sub-skill.
+- **Shared infrastructure unchanged.** `scripts/`, `schemas/`, `config/`, and `references/commands.md` still live in this skill. `job-prep-cv` and `job-cold-prospect` both import via `$SKILL_BASE_TAILOR` — same pattern cold-prospect already used. No Python touched.
+
+### Verified
+- Full test suites green: tailor **112 pass / 2 skip**, cold-prospect **17 pass** — same as before the refactor (no behaviour change).
+
 ## [1.5.0] - 2026-04-22
 
 ### Changed

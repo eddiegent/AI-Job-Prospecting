@@ -44,74 +44,25 @@ All hard rules from `job-application-tailor` apply unchanged (truthfulness, rece
 
 ## Workflow
 
-Steps 0–2.5 are reused from `job-application-tailor` unchanged. Steps 3–10 diverge. This scaffold leaves the divergent steps as placeholders; they are filled in across Phases B–G of `COLD_PROSPECT_ROADMAP.md`.
+Steps 0–2.5 are delegated to the shared `job-prep-cv` sub-skill. Steps 3–10 are cold-flow specific.
 
-### Step 0 — Pre-flight
+### Steps 0–2.5 — CV preparation (delegated)
 
-Follow `job-application-tailor` SKILL.md § Step 0 verbatim for: verify dependencies, read config, check for master CV (run `python -m scripts.init` in the tailor skill if missing), initialise the job history DB, load user customization into `$CUSTOMIZATION`.
+Read `.claude/skills/job-prep-cv/SKILL.md` and follow its instructions. Pass:
 
-**Resolve paths** — both skills must be on disk:
+- `$FLOW = "cold"` (selects the `cold-[date]-[slug]/` folder naming, distinct from offer-based packs)
+- `$INPUT_SEED = $ARGUMENTS` (the company name or URL — used for the initial folder slug)
+- `$EARLY_BLACKLIST_NAME = $ARGUMENTS` (the user's input string — the canonical-name re-check happens in Step 3 once research resolves the real name, so this first pass catches obvious hits early)
+
+Resolve `$SKILL_BASE` for this skill on top of what `job-prep-cv` already set:
 
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-cold-prospect"
-SKILL_BASE_TAILOR="$PROJECT_ROOT/.claude/skills/job-application-tailor"
 ```
 
-**Check dependencies** — same Python stack as the tailor skill:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python -c "import docx, yaml, jsonschema; print('OK')"
-```
-
-**Blacklist pre-check against the input name.** The user's input may be an informal short name — the full canonical-name re-check happens in Step 3 once research resolves the real name, so this first pass catches obvious hits early:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python -c "
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
-result = db.check_company_list('<input-company-name>')
-if result:
-    print(f\"{result['list_type'].upper()}: {result['company_name']} — {result.get('reason', 'no reason given')}\")
-else:
-    print('Not on any list')
-db.close()
-"
-```
-
-If the input hits the blacklist, stop and surface the reason to the user — only proceed on explicit override.
-
-**Create the output folder** — cold packs use a distinct `cold-` prefix so they are visually separate from offer-based packs:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.common import slug_for_filename, ensure_dir, current_date_ddmmyyyy
-from pathlib import Path
-date = current_date_ddmmyyyy()
-slug = slug_for_filename('<company-name-or-url>')
-folder = Path('$PROJECT_ROOT/output') / f'cold-{date}-{slug}'
-ensure_dir(folder / '_prep')
-print(folder)
-"
-```
-
-Capture the printed path as `$OUTPUT_DIR`, and set `$PREP_DIR="$OUTPUT_DIR/_prep"`.
+`job-prep-cv` returns with `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR`, `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION` set, and `$PREP_DIR/cv_fact_base.json` verified.
 
 **Default language.** Cold flow defaults to French (`fr`). Override via `$CUSTOMIZATION["prefs"]["default_language"]` or an explicit user request. There is no JD to auto-detect from.
-
-### Step 1 — Read the master CV
-
-Reused. Follow `job-application-tailor` SKILL.md § Step 1.
-
-### Step 2 — Extract CV fact base (cached)
-
-Reused. Follow `job-application-tailor` SKILL.md § Step 2. The fact base cache is shared with the tailor skill — if the CV has not changed, the cached extraction is reused.
-
-### Step 2.5 — Verify fact base against raw CV
-
-Reused, and mandatory. Follow `job-application-tailor` SKILL.md § Step 2.5. This must complete **before** any company research runs, so the fact base is locked before external context enters the window.
 
 ### Step 3 — Company research
 
@@ -431,5 +382,6 @@ After Step 10 completes, summarise back to the user: output folder path, selecte
 - **Phase E (LinkedIn + dossier)** — done. Step 7 produces cold-flow LinkedIn messages (2 variants per leadership contact, hiring-manager-targeted, `outreach_type: "cold"` recorded). Step 8 produces `company_dossier.md` — a 9-section deliverable replacing the fit-score document with a narrative angle of approach. `linkedin.schema.json` extended with optional `outreach_type` and `target_role` fields (backwards-compatible).
 - **Phase F (history DB)** — done. Shared DB schema bumped to v2: `applications.source` (`'offer'` / `'cold'`) + `applications.company_profile_snapshot`. Existing DBs migrate in place on first open via `ALTER TABLE ADD COLUMN`; legacy rows default to `source='offer'`. Step 10 writes a cold row with a compact snapshot subset of the company profile. `add_application()` rejects unknown `source` values.
 - **Phase G (tests + docs)** — done. Cold-prospect skill has a `tests/` directory with 17 schema-validation tests (including backwards-compat checks on the shared LinkedIn schema). Tailor skill has 8 new DB tests covering v1→v2 migration, legacy-row preservation, cold-insert round-trip, bad-source rejection, fresh-DB-at-v2, reopen idempotency, and half-migrated-state recovery. README walkthrough, CHANGELOG, and roadmap all updated. Full suites: **tailor 112 pass / 2 skip**, **cold-prospect 17 pass**.
+- **Post-launch refactor (2026-05-04)** — done. Steps 0–2.5 (pre-flight, master-CV read, fact-base extract, fact-base verify) extracted to a shared `job-prep-cv` sub-skill at `.claude/skills/job-prep-cv/SKILL.md` (`disable-model-invocation: true`). Both `job-application-tailor` and `job-cold-prospect` now delegate to it via a single ~10-line block, eliminating the verbatim "follow tailor SKILL.md § Step X" stubs that previously linked across skills. Folder naming is the only flow-aware branch inside the sub-skill (`[date]-[slug]/` for offer, `cold-[date]-[slug]/` for cold). No Python touched. Test suites unchanged: **tailor 112/2 skip**, **cold-prospect 17 pass**.
 
 **Skill is launch-ready.** `/job-cold-prospect <name>` runs fully end-to-end: research → role pick → tailored CV → motivation letter + short letter → LinkedIn messages → company dossier → history insert.

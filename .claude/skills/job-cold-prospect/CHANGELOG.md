@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 — 2026-05-04
+
+**Steps 0–2.5 delegated to a shared `job-prep-cv` sub-skill.**
+
+- This skill no longer carries its own copy of the pre-flight + CV-prep prose. Steps 0–2.5 now live once at `.claude/skills/job-prep-cv/SKILL.md` (a `disable-model-invocation: true` sub-skill — orchestrators only, never user-facing). The cold flow invokes it with `$FLOW="cold"`, `$INPUT_SEED=$ARGUMENTS`, and `$EARLY_BLACKLIST_NAME=$ARGUMENTS` (the input name early-blacklist check the cold flow needs). The sub-skill returns with `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR`, `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION` set, and `$PREP_DIR/cv_fact_base.json` verified. The cold-flow-specific Steps 3–10 are unchanged.
+- The output folder naming (`cold-[date]-[slug]/`) is now produced by `job-prep-cv` based on the `$FLOW` argument, but the on-disk naming convention is identical to before — cold packs still segment cleanly from offer packs in `output/`.
+- Removes the verbatim "Follow tailor SKILL.md § Step X" stubs that previously linked back into the tailor skill. The new delegation block is ~10 lines instead of ~60.
+- No prompt or schema changes. No Python touched. Tests still **17 pass** in this skill and **112 pass / 2 skip** in the tailor skill.
+
 ## 0.7.1 — 2026-04-22
 
 **CV truthfulness guardrails (mirrored from tailor skill 1.5.0).**

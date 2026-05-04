@@ -48,62 +48,17 @@ The skill bundles Python scripts, JSON schemas, and prompt files. Use them — t
 
 ## Workflow
 
-### Step 0 — Pre-flight
+### Steps 0–2.5 — CV preparation (delegated)
 
-Verify dependencies and read config (`config/settings.default.yaml` merged with the optional user override at `<user-data-dir>/settings.yaml`, plus `config/naming_rules.yaml`).
+Read `.claude/skills/job-prep-cv/SKILL.md` and follow its instructions. Pass:
 
-**Check for master CV** — if `<user-data-dir>/MASTER_CV.docx` does not exist, trigger first-run onboarding instead of stopping cold:
+- `$FLOW = "offer"` (selects the `[date]-[slug]/` folder naming used by the offer flow — Step 4 below renames it with a fit-level prefix once the match score is known)
+- `$INPUT_SEED = $ARGUMENTS` (the job offer text, URL, or job-title hint — used for the initial folder slug)
+- `$EARLY_BLACKLIST_NAME` is **unset** for the offer flow. The blacklist check happens later in Step 3.5 as part of `check-duplicate`, which uses the canonical company name from `job_offer_analysis.json`.
 
-```bash
-python -m scripts.init
-```
+When that sub-skill returns, the following are set: `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR` (= `$SKILL_BASE` for this flow), `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION`, and `$PREP_DIR/cv_fact_base.json` is verified. Continue from Step 3.
 
-`scripts/init.py` resolves the user data dir (via `scripts/paths.py::resolve_user_data_dir`, which honours `JOB_TAILOR_HOME`, the legacy `resources/` layout, or the OS-standard app data dir), creates the directory and its `output/` subfolder, and copies three files from `samples/`:
-
-- `MASTER_CV.example.docx` — a fictional neutral CV the user can open in Word to see the section headers, skills-table structure, and date formats the extractor expects.
-- `cv_addendum.template.md` — a commented template for the per-run enrichment layer (Phase 1).
-- `user_prefs.template.yaml` — a commented template with every available preference key.
-
-Init is idempotent and **never** overwrites an existing `MASTER_CV.docx`, `cv_addendum.md`, or `user_prefs.yaml`. After running it, surface the printed "Next steps" to the user and stop until they save their real CV as `<user-data-dir>/MASTER_CV.docx`. Do not attempt to generate an application pack from the example CV — it is a reference, not a substitute.
-
-Once confirmed, create the output folder with `_prep/` subfolder. Language defaults to `auto` (detected from the job offer later). See `references/commands.md` § Setup.
-
-**Initialise the job history database** — ensure `resources/job_history.db` exists. Only run the backfill script if the database is empty AND the `output/` folder exists and contains subdirectories with `_prep/job_offer_analysis.json` files. For a fresh install with no prior output, skip backfill entirely. See `references/commands.md` § Job History Database.
-
-**Check company blacklist** — if the company name is already known (e.g. from the URL or user input), check the blacklist before proceeding. If blacklisted, inform the user and stop unless they explicitly override. See `references/commands.md` § Company Lists.
-
-**Load user customization layer** — read the optional user-owned files `resources/cv_addendum.md` and `resources/user_prefs.yaml` via `scripts/user_customization.py`:
-
-```python
-from scripts.user_customization import load_customization_context
-ctx = load_customization_context("resources")  # -> {"addendum": {...}, "prefs": {...}}
-```
-
-Both files are optional; missing files return typed empty defaults. Store the returned dict as `$CUSTOMIZATION` for later steps. This is the canonical place for:
-
-- **Addendum** — additional experience bullets, hidden skills, off-CV facts. Merged into the in-memory fact base by `merge_addendum_into_fact_base()` at Step 5 (tailor_cv). The addendum is a per-run in-memory layer only — it never mutates `resources/cv_fact_base.json`.
-- **User prefs** — `preferred_title_labels`, `forbidden_title_labels`, `tone_directives`, `team_context_companies`, `default_language`. Passed into tailor_cv (Step 5), the motivation letter (Step 6), and LinkedIn messages (Step 7). Replaces what used to live in user-specific Claude memories.
-
-Store `$OUTPUT_DIR` and `$PREP_DIR` for later steps.
-
-### Step 1 — Read the master CV
-
-Extract text from the DOCX. See `references/commands.md` § CV Caching for the read command.
-
-### Step 2 — Extract CV fact base (cached)
-
-Check the cache first. If valid, copy `cv_fact_base.json` into `$PREP_DIR` and skip ahead. If stale, read `prompts/extract_cv_data.md`, generate the fact base, validate against `schemas/cv_fact_base.schema.json`, then save the cache for future runs. See `references/commands.md` § CV Caching.
-
-### Step 2.5 — Verify fact base against raw CV
-
-**This step is mandatory and must not be skipped.** It exists because the LLM can unconsciously contaminate the fact base with keywords from the job offer, especially when both are processed in the same context window.
-
-Run `scripts/verify_fact_base.py` with the master CV and the fact base. See `references/commands.md` § Verify Fact Base Against Raw CV.
-
-- **If verification fails** (exit code 1): technologies or methodologies were fabricated. Remove the flagged items from `cv_fact_base.json`, re-run verification, and only proceed once it passes. If the cache was just saved, re-save it after fixing.
-- **Warnings** about skills are non-blocking — review them but they are often valid abstractions of role descriptions.
-
-This step must complete **before** the job offer is analysed, so the fact base is locked before job-offer keywords enter the context.
+For this flow `$SKILL_BASE` is the same path as `$SKILL_BASE_TAILOR` — the rest of this document references `$SKILL_BASE`.
 
 ### Step 3 — Analyse the job offer
 
