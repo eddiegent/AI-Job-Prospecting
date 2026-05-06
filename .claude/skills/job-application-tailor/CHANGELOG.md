@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.8.0] - 2026-05-06
+
+### Added — false-direct match guard
+- **`scripts/check_match_grounding.py` + `scripts/_grounding_common.py`**. Step 4's match analysis would occasionally mark JD requirements as `match_type: "direct"` without any evidence in the fact base (e.g. JD lists Kubernetes → LLM marks it direct → `overall_fit_pct` inflates → role passes the 50% gate → tailored CV inherits the unfounded claim). The new deterministic post-check rejects any `direct` match whose tech tokens appear in the JD but not in `cv_fact_base.{technologies, skills, methodologies}` or `experience[*].details`. SKILL.md Step 4 invokes the script after the schema validate; non-zero exit means regenerate Step 4 with the offending requirements surfaced to the prompt. Soft-skill direct-match issues become non-blocking warnings (cross-language matching of plain phrases is too unreliable to gate on); tech tokens (acronyms, CamelCase, `.`/`#`/`/`/`+`-shaped, or in the synonym map) block. `_grounding_common.py` is shared with `check_role_grounding.py` so the synonym map and tokenizer can never drift between the offer and cold flows.
+- **Prompt-level guardrails in `prompts/match_analysis.md`** — adds a "No false directs" rule with concrete failures to avoid (Kubernetes when fact base only has Docker; Entity Framework when fact base only has Dapper) and a "Direct ≠ partial" rule for compound requirements like "C# / Kubernetes" (all tokens must be grounded for `direct`; otherwise downgrade with an explicit `notes` explanation).
+- **JD-stack contagion check in `prompts/tailor_cv.md`** — Step-5 self-check #5 forbids promoting a tech named in `job_offer_analysis.{required_skills, technologies, ats_keywords}` into `summary_paragraphs`, `tagline`, `skills_sections`, or `experience[*].bullets` unless that tech (or close synonym) is in `cv_fact_base` or `experience[*].details`. Last line of defence after the Step-4 grounding check.
+
+### Tests
+- 14 new tests for `check_match_grounding.py`: clean directs; transferable with notes; false-direct Kubernetes; false-direct Entity Framework; compound-requirement partial grounding (only ungrounded token flagged); soft-skill direct warns instead of blocks; soft-skill grounded via `skills` array passes; tech grounded via prose passes; synonym match (`dotnet` ↔ `.NET`); transferable without notes warns; versioned tech grounded by unversioned fact base; tech-shape gate (acronym, CamelCase) blocks when ungrounded; gap matches never flagged.
+- Tailor full suite: **151 pass / 2 skip** (was 135).
+
 ## [1.7.0] - 2026-05-04
 
 ### Added — determinism wins

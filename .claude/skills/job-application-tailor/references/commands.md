@@ -146,6 +146,31 @@ Prints `OK (already correct)` when the LLM-authored summary was already
 in sync, or `Updated match_summary: <before> -> <after>` when the script
 fixed a drift. Exit code 0 on success.
 
+## Match Grounding Check
+
+After validating `match_analysis.json`, run this guard against false-direct
+claims — `match_type: "direct"` requires the requirement's tech tokens to
+actually appear in `cv_fact_base.json`. If the LLM marked something direct
+without grounding (e.g. a JD asks for Kubernetes and there is no Kubernetes
+evidence in the fact base), the script flags it and exits 1.
+
+```bash
+cd "$SKILL_BASE" && python scripts/check_match_grounding.py \
+  --match-analysis "$PREP_DIR/match_analysis.json" \
+  --job-offer "$PREP_DIR/job_offer_analysis.json" \
+  --cv-fact-base "$PREP_DIR/cv_fact_base.json"
+```
+
+On violation: regenerate Step 4 with the offending requirements surfaced
+to the prompt. Downgrade unfounded `direct` claims to `transferable` (with
+a concrete `notes` explanation) or to `gap`. Do not proceed to Step 5 with
+false directs — the inflated `overall_fit_pct` may push a low-fit role
+through the 50% gate, and the tailored CV will inherit the unfounded
+claim.
+
+Warnings about transferable matches with empty `notes` are non-blocking
+but should be addressed — `match_analysis.md` requires the explanation.
+
 ## Validation
 
 ### Validate any JSON against its schema

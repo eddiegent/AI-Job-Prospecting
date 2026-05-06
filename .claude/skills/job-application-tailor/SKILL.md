@@ -117,6 +117,8 @@ Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (d
 
 After the recount, validate against `schemas/match_analysis.schema.json`.
 
+**After validation, run the grounding check.** This is the deterministic guard against false-direct claims — when the LLM marks a JD requirement (e.g. "Kubernetes") as `direct` despite no evidence in the fact base, the inflated `overall_fit_pct` may push a low-fit role through the 50% gate and the tailored CV will inherit the unfounded claim. See `references/commands.md` § Match Grounding Check. If the script exits non-zero, regenerate Step 4 — surface the offending requirements to the prompt and have the LLM downgrade them to `transferable` (with a concrete `notes` explanation) or `gap` before continuing.
+
 After validation, **rename the output folder in one shot** — the helper adds the fit-level prefix (`low` / `medium` / `good` / `very_good`) AND rebuilds the trailing slug from the offer's `job_title` + `company_name`, replacing the placeholder slug that was created at preflight from `$ARGUMENTS`. This collapses two historical renames into one and gives the run a meaningful folder name from this step onward. Thresholds are in `config/settings.default.yaml`. See `references/commands.md` § Folder Rename. Update `$OUTPUT_DIR` and `$PREP_DIR`.
 
 **If `overall_fit_pct` is below 50%, STOP here.** Do not proceed to CV tailoring or any further steps. Inform the user of the fit score, summarise the key gaps, and explain why the application was not generated. The match analysis and renamed output folder are kept so the user can review the assessment.

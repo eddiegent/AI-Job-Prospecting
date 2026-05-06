@@ -121,6 +121,7 @@ Before emitting the JSON, run these checks in order. If any fails, fix the draft
 2. **Stack-hint check** — scan `experience[*].bullets` for any wording that mirrors `company_profile.tech_stack_hints` but doesn't come from the fact base. Revert to the fact base's original wording. Stack hints are about the company, not the candidate.
 3. **Learning-language check** — scan for any *"en apprentissage / learning / ramping up"* phrasing. For every occurrence, confirm the technology is named in `cv_fact_base.transition_signals`. If not, remove the claim.
 4. **Adjective audit** — scan `summary_paragraphs` and `experience[*].bullets` for qualifiers not in the fact base (*"cloud-native"*, *"mission-critical"*, *"distributed"*, etc.). Strip any that aren't grounded.
+5. **Selected-role contagion check** — `selected_role.emphasis_areas` and `selected_role.rationale` are *intent signals*, not fact-base entries. Do not promote a tech named there into `summary_paragraphs`, `tagline`, `skills_sections`, or `experience[*].bullets` unless that tech also appears in `cv_fact_base.{technologies,skills,methodologies}` or in `experience[*].details`. The Step-4 grounding check should have already scrubbed `selected_role`, but this is the last line of defence before the CV ships.
 
 ## Output format
 

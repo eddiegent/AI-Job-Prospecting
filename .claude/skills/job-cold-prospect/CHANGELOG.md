@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.0 — 2026-05-06
+
+**Stack-mirroring guard for the role inference step.**
+
+- The 4a prompt (`prompts/infer_target_role.md`) was occasionally letting techs from `company_profile.tech_stack_hints` leak into candidate-side fields (`emphasis_areas`, rationale prose) without those techs being in `cv_fact_base`. Concrete failure: agap2's listing requires Entity Framework; the candidate has SQL Server + Dapper but no EF; the candidate's `emphasis_areas` ended up reading `"SQL Server / Entity Framework"`, and the rationale quoted the company's full tech list verbatim — which implies competence the candidate doesn't have, and would propagate into the CV, letters, LinkedIn, and dossier downstream.
+- Two prompt-level guardrails added: **No stack mirroring in candidate-side fields** (a tech that appears only in the company hints must not show up as a candidate strength), and **Don't quote the company's stack verbatim in rationale** (the "stack listée — A, B, C, D, E — recouvre ligne pour ligne" pattern is an attractive nuisance that invites copying the company's full tech list).
+- Deterministic post-check `scripts/check_role_grounding.py` (lives in the sibling tailor skill so both flows share the synonym map / tokenizer in `_grounding_common.py`). Runs twice in `SKILL.md`: once after Step 4a candidate generation, and once after Step 4b user pick / override (a free-form override can reintroduce a leak after the first check). Each run inspects `emphasis_areas` token-by-token and the rationale prose; flags any tech that is in `tech_stack_hints` and absent from `cv_fact_base.{technologies, skills, methodologies}` or `experience[*].details`. Domain phrases like "Architecture de services" never false-positive because they don't appear in `tech_stack_hints`.
+- Tailor skill ships the symmetric guard at 1.8.0 (`check_match_grounding.py`) — different failure mode (false-direct match claims in the offer flow), same shared infrastructure.
+
+**Tests.**
+- 11 new tests for `check_role_grounding.py`: clean candidates pass; domain phrase isn't false-flagged; synonym matches (`dotnet` ↔ `.NET`); EF in `emphasis_areas` blocks; EF in rationale blocks; selected_role override leak blocks; user-override free-form leak blocks; Blazor in company hints but not fact base blocks; Blazor blocked previously now passes after fact-base addition; tech grounded via prose-only (experience details) passes; company with no `tech_stack_hints` is no-op.
+- Cold-prospect full suite: **28 pass** (was 17). Tailor: **151 pass / 2 skip**.
+
 ## 0.8.1 — 2026-05-04
 
 **Windows Unicode fixes in SKILL.md.**

@@ -155,6 +155,17 @@ else:
 
 If violations appear, regenerate 4a — do not ship candidates with forbidden labels.
 
+**4b-bis. Stack-grounding post-check.** Run `scripts/check_role_grounding.py` to confirm no tech listed in `company_profile.tech_stack_hints` has leaked into the candidates' `emphasis_areas` or rationale unless that tech is actually in the candidate's fact base. This is the deterministic guard the 4a prompt cannot enforce on its own.
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/check_role_grounding.py \
+  --target "$PREP_DIR/role_candidates.json" --kind candidates \
+  --company-profile "$PREP_DIR/company_profile.json" \
+  --cv-fact-base "$PREP_DIR/cv_fact_base.json"
+```
+
+If the script exits non-zero, **regenerate 4a** with the offending techs surfaced to the prompt — do not ship candidates with stack-mirroring leaks. The check looks at every emphasis_areas item and at rationale prose; it ignores domain phrases (e.g. "Architecture de services") because those don't appear in `tech_stack_hints`.
+
 **4c. Present candidates to the user.** Format the list as a plain-text menu so the user can answer with a number, "generalist", or a free-form title:
 
 ```
@@ -194,6 +205,17 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
   "$PREP_DIR/selected_role.json" \
   "$SKILL_BASE/schemas/selected_role.schema.json"
 ```
+
+**Stack-grounding re-check.** A user override (or even a candidate-pick whose rationale was edited in flight) can reintroduce a leak after 4b. Run the same guard a second time:
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/check_role_grounding.py \
+  --target "$PREP_DIR/selected_role.json" --kind selected \
+  --company-profile "$PREP_DIR/company_profile.json" \
+  --cv-fact-base "$PREP_DIR/cv_fact_base.json"
+```
+
+If non-zero, surface the violations to the user, ask them to amend the override (or revisit the pick), and only proceed once the check passes — Step 5 onward consumes `selected_role.emphasis_areas` directly and any leak here propagates into the CV, letters, LinkedIn, and dossier.
 
 **Phase C stop point.** For now the pipeline ends here: research + selected role are locked. Summarise the pick back to the user — title, source, emphasis areas, risk notes — and note that Phases D+ (CV tailoring, letters, LinkedIn, dossier) are not yet implemented.
 
