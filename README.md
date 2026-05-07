@@ -110,6 +110,14 @@ Your master CV, generated outputs, and application history never enter the repo 
 
 Implementation roadmap and architectural decisions: [PLUGIN_ROADMAP.md](PLUGIN_ROADMAP.md).
 
+A pre-commit hook keeps CLI documentation in sync with `cli.py` and lints markdown for stale invocations. One-time setup on a fresh clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+See [CLAUDE.md](CLAUDE.md) for details. The canonical CLI reference is auto-generated at [.claude/skills/job-application-tailor/references/cli.md](.claude/skills/job-application-tailor/references/cli.md).
+
 ## License
 
 MIT

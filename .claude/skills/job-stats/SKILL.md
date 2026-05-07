@@ -9,6 +9,10 @@ allowed-tools: Read, Bash, Write, Glob
 
 Generate reports and insights from the job application history database.
 
+**Before composing any `cli.py` subcommand**, consult `references/cli.md` (under `.claude/skills/job-application-tailor/`) or run `python scripts/cli.py <subcommand> --help`. That file is the authoritative signature reference — never compose flags from convention.
+
+**Routing**: this skill is read-only. For status mutations (`update-status`, `update-company`, `update-output-folder`) or company-list management, invoke `/job-status` instead — it owns those operations and has the canonical invocations documented.
+
 ## Setup
 
 ```bash

@@ -19,6 +19,12 @@ Verify it worked:
 python -c "import docx, docxtpl, yaml, jsonschema; print('OK')"
 ```
 
+If you cloned the repo (rather than installing the plugin bundle), enable the pre-commit hook that keeps `references/cli.md` in sync with `cli.py` and lints docs for stale invocations:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Step 2 — Add your master CV
 
 Save your CV as a `.docx` file at:

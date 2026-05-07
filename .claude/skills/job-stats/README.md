@@ -57,3 +57,11 @@ Add a time period to any report: `/job-stats status last 30 days`, `/job-stats s
 ## Export
 
 `/job-stats export` writes all applications to `output/applications_export.csv`.
+
+## Status mutations
+
+This skill is read-only. To change an application's status (`applied`, `rejected`, `interview`, `offer`) or manage the company blacklist/whitelist, use `/job-status`.
+
+## CLI reference
+
+The skill calls `cli.py` under the hood. The authoritative signature reference is `.claude/skills/job-application-tailor/references/cli.md` (auto-generated from `cli.py`).

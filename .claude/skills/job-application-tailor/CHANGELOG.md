@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased] - 2026-05-07
+
+### Added — CLI signature drift protection
+- **`scripts/gen_cli_reference.py`** — auto-generates `references/cli.md` from the `cli.py` argparse parser. Imports `build_parser()` directly so the reference is always in lockstep with the source. Output is byte-stable (alphabetised, no timestamps). `--check` flag exits non-zero when the on-disk file would change, used by the pre-commit hook to detect drift.
+- **`scripts/lint_cli_usage.py`** — scans markdown for `python … cli.py … <subcommand>` invocations inside fenced code blocks and verifies every `--flag` exists for that subcommand. Stitches backslash line continuations. Skips prose mentions outside code fences and placeholder syntax (`<subcommand>`). Catches the failure mode where docs reference flags that were renamed, removed, or never existed (e.g. `update-status --id 50 --status applied` when the real signature is `update-status <id> <status>`).
+- **`.githooks/pre-commit`** — repo-level hook that regenerates `references/cli.md` when `scripts/cli.py` is staged, lints staged `*.md` files, and verifies the reference is in sync via `--check`. POSIX shell so it works under Git for Windows' bash. Auto-detects `python` / `py` / `python3`. One-time install: `git config core.hooksPath .githooks`.
+- **`references/cli.md`** — auto-generated reference covering all 17 subcommands. Each section: signature, args table (positional / required / optional / flag), and choices/defaults pulled from argparse. Marked do-not-edit at the top.
+- **Cross-link + routing rules**: `job-stats/SKILL.md` and `job-status/SKILL.md` now point to `references/cli.md` as the authoritative signature reference; `job-stats/SKILL.md` adds a routing rule that status mutations belong to `/job-status`.
+- **CLAUDE.md** documents the system + hook setup; SETUP.md adds the one-line `git config core.hooksPath .githooks` step for fresh clones.
+
+### Why
+Three incidents in three weeks, same root cause: composing a CLI/SQL/Python invocation from convention rather than reading the actual signature. Memory entries reminded me to check, but only reactively — by the time I'd composed the call, I'd already committed to a syntax. The fix moves the canonical signatures into a single auto-generated file (so the right answer is one Read away) and adds a pre-commit linter so any documented flag that doesn't exist fails the commit.
+
 ## [1.9.0] - 2026-05-07
 
 ### Added — `record-application` CLI wrapper

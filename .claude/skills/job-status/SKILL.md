@@ -9,6 +9,8 @@ allowed-tools: Read, Bash, Glob
 
 Update application statuses and manage company lists in the job history database.
 
+**Before composing any `cli.py` subcommand**, consult `references/cli.md` (under `.claude/skills/job-application-tailor/`) or run `python scripts/cli.py <subcommand> --help`. That file is the authoritative signature reference — never compose flags from convention.
+
 ## Setup
 
 ```bash

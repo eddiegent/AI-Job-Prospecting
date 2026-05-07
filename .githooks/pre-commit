@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Pre-commit hook: keep references/cli.md in sync with cli.py and lint markdown
+# for stale CLI invocations.
+#
+# Install (one-time):
+#   git config core.hooksPath .githooks
+#
+# Both checks runnable manually:
+#   python .claude/skills/job-application-tailor/scripts/gen_cli_reference.py
+#   python .claude/skills/job-application-tailor/scripts/lint_cli_usage.py
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SKILL="$REPO_ROOT/.claude/skills/job-application-tailor"
+GEN="$SKILL/scripts/gen_cli_reference.py"
+LINTER="$SKILL/scripts/lint_cli_usage.py"
+REF="$SKILL/references/cli.md"
+
+# Pick a Python interpreter (Windows ships `py`; Unix ships `python3`).
+if command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v py >/dev/null 2>&1; then
+  PY=py
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
+else
+  echo "pre-commit: no Python interpreter found on PATH" >&2
+  exit 1
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# 1. Regenerate CLI reference if cli.py changed
+if echo "$staged" | grep -qE '\.claude/skills/job-application-tailor/scripts/cli\.py$'; then
+  echo "pre-commit: cli.py changed → regenerating references/cli.md"
+  "$PY" "$GEN"
+  if ! git diff --quiet -- "$REF"; then
+    git add "$REF"
+    echo "pre-commit: staged updated references/cli.md"
+  fi
+fi
+
+# 2. Lint staged markdown for stale CLI invocations
+md_files=$(echo "$staged" | grep -E '\.md$' || true)
+if [ -n "$md_files" ]; then
+  # shellcheck disable=SC2086
+  "$PY" "$LINTER" $md_files
+fi
+
+# 3. Verify the reference is in sync (catches the case where someone edits
+#    cli.py but doesn't stage the regenerated references/cli.md, or edits
+#    references/cli.md by hand).
+"$PY" "$GEN" --check
