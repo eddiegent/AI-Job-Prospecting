@@ -326,72 +326,16 @@ Final pack contents after Step 9:
 
 ### Step 10 — Record in job history
 
-Insert the generated pack into the shared `job_history.db` so it segments cleanly from offer-based applications.
+Insert the generated pack into the shared `job_history.db` so it segments cleanly from offer-based applications. The shared DB is v2: `applications.source` (`'offer'` / `'cold'`) and `applications.company_profile_snapshot` (compact JSON subset of the company profile). Legacy v1 DBs migrate in place on first open.
 
-**Schema.** The shared DB is now v2 (migration runs automatically on first open by any recent skill version): `applications` has two new columns — `source TEXT NOT NULL DEFAULT 'offer'` and `company_profile_snapshot TEXT`. Legacy rows migrate in place with `source='offer'` so no backfill script is needed.
-
-**Build the snapshot.** Take a small, stable subset of `company_profile.json` to persist — enough to drive future stats/dashboards without baking fragile research detail into the DB:
+Use the `record-application` wrapper. The `cold-` folder prefix tells it to take the cold-flow path: read `selected_role.json` + `company_profile.json`, build the snapshot subset, set `source='cold'`, and leave the offer-only scoring columns (`fit_*`, `direct_count`, `transferable_count`, `gap_count`) NULL. `job_skills` rows stay empty by design — the cold flow has no JD to extract requirements from.
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import json, io, sys
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from pathlib import Path
-profile = json.loads(Path(r'$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
-snapshot = {
-    'company_name': profile.get('company_name', ''),
-    'canonical_url': profile.get('canonical_url', ''),
-    'industry': profile.get('industry', ''),
-    'size_band': profile.get('size_band', 'unknown'),
-    'headcount_estimate': profile.get('headcount_estimate'),
-    'locations': profile.get('locations', []),
-    'mission_statement': profile.get('mission_statement', ''),
-    'research_gaps_count': len(profile.get('research_gaps', [])),
-}
-Path(r'$PREP_DIR/company_profile_snapshot.json').write_text(
-    json.dumps(snapshot, ensure_ascii=False), encoding='utf-8'
-)
-print(r'$PREP_DIR/company_profile_snapshot.json')
-"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
+  record-application "$OUTPUT_DIR" --language "<fr|en>"
 ```
 
-**Insert.** `source='cold'` is the segmentation signal; `job_title` is the selected role title; `output_folder` is the cold-prefixed pack folder; `status='generated'` matches the offer-flow lifecycle:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import json, io, sys
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from pathlib import Path
-from scripts.job_history_db import JobHistoryDB
-
-profile = json.loads(Path(r'$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
-selected = json.loads(Path(r'$PREP_DIR/selected_role.json').read_text(encoding='utf-8'))
-snapshot = Path(r'$PREP_DIR/company_profile_snapshot.json').read_text(encoding='utf-8')
-
-# Location: prefer company's first known office when we have one.
-locations = profile.get('locations', [])
-location = locations[0] if locations else None
-
-db = JobHistoryDB(r'$PROJECT_ROOT/resources/job_history.db')
-app_id = db.add_application(
-    company_name=profile['company_name'],
-    job_title=selected['title'],
-    location=location,
-    source_url=profile.get('canonical_url') or None,
-    domain=profile.get('industry') or None,
-    seniority=selected.get('seniority_band') or None,
-    output_folder=r'$OUTPUT_DIR',
-    detected_language='<fr|en>',
-    status='generated',
-    source='cold',
-    company_profile_snapshot=snapshot,
-)
-db.close()
-print(f'Recorded cold application id={app_id}')
-"
-```
-
-**Do not populate `job_skills`.** The `required_skills` / `preferred_skills` parameters exist for offer-flow match analysis (required-keyword extraction from a JD). The cold flow has no JD, so skill rows stay empty — leave them unset. `fit_level` / `fit_pct` / `direct_count` / etc. also stay `NULL` by design; the cold flow has no scoreable matches.
+Pass the language explicitly — there is no JD to auto-detect from. Defaults to `fr` if omitted, matching the cold-flow default. The wrapper reads `company_profile.canonical_url` for `source_url`; pass `--url` if you want a different URL recorded (e.g. the leadership page used to anchor the outreach). See `$SKILL_BASE_TAILOR/references/commands.md` § Record Application for the full flag reference.
 
 **Do not touch `job-stats` yet.** Its existing queries keep working because `source` defaults to `'offer'` for legacy rows; cold rows simply show up in counts alongside offer rows until the stats skill gains a `source` filter (tracked as follow-up in `COLD_PROSPECT_ROADMAP.md` Phase F second pass).
 

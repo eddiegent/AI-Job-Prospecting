@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 — 2026-05-07
+
+**Step 10 collapses to the shared `record-application` wrapper.**
+
+- The cold-flow Step 10 used to compose two inline Python blocks — one to build the company profile snapshot, one to call `db.add_application(...)` with `source='cold'` and a literal `'<fr|en>'` placeholder for `detected_language`. Both are gone; SKILL.md Step 10 is now `python scripts/cli.py … record-application "$OUTPUT_DIR" --language "<fr|en>"` and the wrapper (shipped in tailor 1.9.0) reads `selected_role.json` + `company_profile.json`, builds the snapshot subset, and inserts in a single deterministic call. Removes the same class of "composed-from-memory" failures the offer flow was hit by during the Speechify run.
+
 ## 0.9.0 — 2026-05-06
 
 **Stack-mirroring guard for the role inference step.**

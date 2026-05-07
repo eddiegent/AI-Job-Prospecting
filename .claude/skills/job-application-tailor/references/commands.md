@@ -37,6 +37,29 @@ print(folder)
 "
 ```
 
+## URL Probe (before WebFetch)
+
+WebFetch silently consumes a round-trip on aggregators that block automated requests (e.g. lesjeudis returns 403). Probe with a HEAD request first so the failure is fast and the fallback ("paste below or share a file path") fires immediately.
+
+```bash
+python -u -c "
+import sys, urllib.request, urllib.error
+url = sys.argv[1]
+req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': 'Mozilla/5.0'})
+try:
+    urllib.request.urlopen(req, timeout=5)
+    print('OK')
+except urllib.error.HTTPError as e:
+    print(f'BLOCKED {e.code}' if e.code in (401, 403, 429, 451) else f'OTHER_HTTP {e.code}')
+except Exception as e:
+    print(f'OTHER_ERROR {type(e).__name__}: {e}')
+" "<offer-url>"
+```
+
+If the probe prints `BLOCKED <code>`, skip WebFetch and ask the user: *"`<host>` blocks automated requests (HTTP `<code>`). Paste the offer text below, or share a path to a local file."*
+
+If it prints `OTHER_ERROR` (DNS, TLS, corporate proxy, timeout) treat that as inconclusive — try WebFetch normally; the fallback messaging is the same if it fails too. The probe is conservative (5 s timeout, single shot) and exists to fail fast on aggregator 403s, not to be a general-purpose reachability check.
+
 ## Cache Raw Offer
 
 Write the raw offer text (WebFetch response or pasted input) to `$PREP_DIR/raw_offer.md` before analysis. Run once per offer, after `$PREP_DIR` exists and before Step 3 analysis.
@@ -278,46 +301,22 @@ db.close()
 ```
 
 ### Record Application
+
+`record-application` is the one-line wrapper for Step 10. It auto-detects offer vs. cold flow from the folder prefix (`cold-…` → cold), reads the appropriate `_prep/` artefacts (`job_offer_analysis.json` + `match_analysis.json` for offer; `selected_role.json` + `company_profile.json` for cold), composes the `add_application()` kwargs once, and inserts.
+
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io, json
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-from scripts.common import load_json
-from pathlib import Path
-db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
-job = load_json(Path('$PREP_DIR/job_offer_analysis.json'))
-match = load_json(Path('$PREP_DIR/match_analysis.json'))
-ms = match['match_summary']
-# Derive fit_level from folder name
-import re
-folder_name = Path('$OUTPUT_DIR').name
-fit_level = 'low'
-for prefix in ('very_good', 'good', 'medium'):
-    if folder_name.startswith(prefix + '-'):
-        fit_level = prefix
-        break
-app_id = db.add_application(
-    company_name=job['company_name'],
-    job_title=job['job_title'],
-    location=job.get('location'),
-    source_url=job.get('source_url'),
-    domain=job.get('domain'),
-    seniority=job.get('seniority'),
-    fit_level=fit_level,
-    fit_pct=ms['overall_fit_pct'],
-    direct_count=ms.get('direct_count'),
-    transferable_count=ms.get('transferable_count'),
-    gap_count=ms.get('gap_count'),
-    output_folder=str(Path('$OUTPUT_DIR')),
-    detected_language=job.get('detected_language'),
-    required_skills=job.get('required_skills', []),
-    preferred_skills=job.get('preferred_skills', []),
-)
-db.close()
-print(f'Recorded application #{app_id}')
-"
+cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
+  record-application "$OUTPUT_DIR"
 ```
+
+Accepts either a filesystem path or an integer application id (resolved via the DB — useful when re-recording an already-renamed run). Flags:
+
+- `--url <url>` — populate `source_url` when the offer JSON / company profile lacks one (e.g. older runs predating the schema field).
+- `--source {offer,cold}` — override the auto-detected flow. The default is `cold` for `cold-` prefixed folders and `offer` otherwise; only pass this when the folder name disagrees with the actual flow.
+- `--language <code>` — cold-flow language code (default `fr`). Ignored for offer flow — that one reads `detected_language` from `job_offer_analysis.json`.
+- `--dry-run` — print the kwargs JSON that would be inserted, then exit (no DB write). Use this when verifying the wrapper is composing things correctly.
+
+On success the command prints `Recorded application #<id>` on stdout. Exit codes: `0` = inserted (or dry-run completed), `1` = unknown id, `2` = missing/invalid `_prep/` artefacts.
 
 ## Generate Final Output Files
 

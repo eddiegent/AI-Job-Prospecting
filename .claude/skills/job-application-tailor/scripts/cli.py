@@ -439,6 +439,143 @@ _FOLDER_PREFIX_RE = re.compile(r"^((?:very_good|good|medium|low)-\d{8}-)(.+)$")
 _DATE_PREFIX_RE = re.compile(r"^(\d{8}-)(.+)$")
 
 
+def _detect_flow_from_folder(folder: Path) -> str:
+    """Folder name prefix encodes the flow: `cold-…` for speculative
+    applications, anything else for offer-based runs."""
+    return "cold" if folder.name.startswith("cold-") else "offer"
+
+
+def _derive_fit_level(folder_name: str) -> str:
+    for prefix in ("very_good", "good", "medium"):
+        if folder_name.startswith(prefix + "-"):
+            return prefix
+    return "low"
+
+
+def _build_offer_kwargs(folder: Path, prep: Path, url_override: str | None) -> dict:
+    job_path = prep / "job_offer_analysis.json"
+    if not job_path.exists():
+        print(f"Cannot find _prep/job_offer_analysis.json at {job_path}", file=sys.stderr)
+        sys.exit(2)
+    try:
+        job = json.loads(job_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"Could not parse {job_path}: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    match: dict | None = None
+    match_path = prep / "match_analysis.json"
+    if match_path.exists():
+        try:
+            match = json.loads(match_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(f"Could not parse {match_path}: {exc}", file=sys.stderr)
+            sys.exit(2)
+    ms = (match or {}).get("match_summary", {}) or {}
+
+    return {
+        "company_name": job.get("company_name", ""),
+        "job_title": job.get("job_title", ""),
+        "location": job.get("location"),
+        "source_url": url_override or job.get("source_url"),
+        "domain": job.get("domain"),
+        "seniority": job.get("seniority"),
+        "fit_level": _derive_fit_level(folder.name),
+        "fit_pct": ms.get("overall_fit_pct"),
+        "direct_count": ms.get("direct_count"),
+        "transferable_count": ms.get("transferable_count"),
+        "gap_count": ms.get("gap_count"),
+        "output_folder": str(folder),
+        "detected_language": job.get("detected_language"),
+        "required_skills": job.get("required_skills") or [],
+        "preferred_skills": job.get("preferred_skills") or [],
+        "source": "offer",
+    }
+
+
+def _build_cold_kwargs(
+    folder: Path,
+    prep: Path,
+    url_override: str | None,
+    language_override: str | None,
+) -> dict:
+    profile_path = prep / "company_profile.json"
+    role_path = prep / "selected_role.json"
+    for label, path in (("company_profile.json", profile_path), ("selected_role.json", role_path)):
+        if not path.exists():
+            print(f"Cannot find _prep/{label} at {path}", file=sys.stderr)
+            sys.exit(2)
+    try:
+        profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        role = json.loads(role_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"Could not parse cold-flow JSON: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    snapshot = {
+        "company_name": profile.get("company_name", ""),
+        "canonical_url": profile.get("canonical_url", ""),
+        "industry": profile.get("industry", ""),
+        "size_band": profile.get("size_band", "unknown"),
+        "headcount_estimate": profile.get("headcount_estimate"),
+        "locations": profile.get("locations", []),
+        "mission_statement": profile.get("mission_statement", ""),
+        "research_gaps_count": len(profile.get("research_gaps", [])),
+    }
+    locations = profile.get("locations") or []
+    location = locations[0] if locations else None
+
+    return {
+        "company_name": profile.get("company_name", ""),
+        "job_title": role.get("title", ""),
+        "location": location,
+        "source_url": url_override or (profile.get("canonical_url") or None),
+        "domain": profile.get("industry") or None,
+        "seniority": role.get("seniority_band") or None,
+        "fit_level": None,
+        "fit_pct": None,
+        "direct_count": None,
+        "transferable_count": None,
+        "gap_count": None,
+        "output_folder": str(folder),
+        # Cold flow has no JD to auto-detect from; default to fr (the
+        # cold-flow default) unless the caller passes --language.
+        "detected_language": language_override or "fr",
+        "required_skills": [],
+        "preferred_skills": [],
+        "source": "cold",
+        "company_profile_snapshot": json.dumps(snapshot, ensure_ascii=False),
+    }
+
+
+def cmd_record_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    """Step 10 wrapper — read `_prep/` artefacts and insert one
+    `applications` row. Detects offer vs. cold flow from the folder
+    prefix; `--source` overrides if needed."""
+    folder = _resolve_app_folder(db, args.target)
+    prep = folder / "_prep"
+    if not prep.exists():
+        print(f"No _prep/ directory under {folder}", file=sys.stderr)
+        sys.exit(2)
+
+    source = args.source or _detect_flow_from_folder(folder)
+    if source not in ("offer", "cold"):
+        print(f"--source must be 'offer' or 'cold', got {source!r}", file=sys.stderr)
+        sys.exit(2)
+
+    if source == "offer":
+        kwargs = _build_offer_kwargs(folder, prep, args.url)
+    else:
+        kwargs = _build_cold_kwargs(folder, prep, args.url, args.language)
+
+    if args.dry_run:
+        print(json.dumps(kwargs, ensure_ascii=False, indent=2, default=str))
+        return
+
+    app_id = db.add_application(**kwargs)
+    print(f"Recorded application #{app_id}")
+
+
 def _split_folder_prefix(name: str) -> tuple[str, str]:
     """Split a folder name into ('{fit_level}-{date}-' prefix, slug)."""
     m = _FOLDER_PREFIX_RE.match(name) or _DATE_PREFIX_RE.match(name)
@@ -682,6 +819,28 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--check", action="store_true", help="Only report which _prep/ files are present or missing")
     p.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion (DOCX only)")
 
+    # record-application
+    p = sub.add_parser(
+        "record-application",
+        help="Step 10 — read _prep/ artefacts and insert the history row",
+    )
+    p.add_argument("target", help="Application id (integer) or path to an output folder")
+    p.add_argument("--url", help="Override source URL when the offer JSON / profile lacks one")
+    p.add_argument(
+        "--source",
+        choices=["offer", "cold"],
+        help="Override the auto-detected flow (default: 'cold' for cold-* folders, 'offer' otherwise)",
+    )
+    p.add_argument(
+        "--language",
+        help="Detected language for cold flow (default: 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json.",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the kwargs that would be inserted, then exit (no DB write)",
+    )
+
     # rename-application
     p = sub.add_parser(
         "rename-application",
@@ -734,6 +893,7 @@ def main() -> None:
             "count": cmd_count,
             "regenerate-outputs": cmd_regenerate_outputs,
             "rename-application": cmd_rename_application,
+            "record-application": cmd_record_application,
         }
         handlers[args.command](db, args)
     finally:

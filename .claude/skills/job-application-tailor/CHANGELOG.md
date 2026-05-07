@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0] - 2026-05-07
+
+### Added — `record-application` CLI wrapper
+- **`scripts/cli.py record-application <output-dir-or-id>`**. Step 10 was the last DB-touching step still doing inline Python (`db.add_application(**kwargs)` composed by hand from the offer JSON + match summary + folder prefix), and it failed exactly the way every other inline-DB step has historically failed — wrong kwarg names composed from intuition. The new subcommand reads the appropriate `_prep/` artefacts, derives `fit_level` from the folder prefix, and constructs the kwargs dict in one place. Auto-detects offer vs. cold flow from the folder prefix (`cold-…` → cold), with `--source` available as an explicit override. Flags: `--url` (override `source_url` when the offer JSON / company profile lacks one), `--language` (cold-flow language code, default `fr` — the offer flow reads `detected_language` from `job_offer_analysis.json` directly), `--dry-run` (print kwargs JSON, no DB write), and integer-id resolution against the DB. SKILL.md Step 10 (offer + cold) and `references/commands.md § Record Application` collapse to a single one-line invocation.
+- **Aggregator URL probe in Step 3** (`references/commands.md § URL Probe`). Lesjeudis returns 403 on automated requests; WebFetch consumed a round-trip before the manual-paste fallback kicked in. A 5 s HEAD probe with `Mozilla/5.0` UA fails fast on `401/403/429/451` so the fallback fires immediately. SKILL.md Step 3 invokes the probe before WebFetch.
+- **Extended `aggregators.known_platforms`** with `Lesjeudis`, `RegionsJob`, `Cadremploi`, `Choose Your Boss`, `Talent.io`. The `matched_aggregator` regex is case-insensitive with word boundaries, so "lesjeudis.com posting" resolves to `Lesjeudis` and "Talent.io Sourcing" resolves to `Talent.io`.
+- **Compound-phrase rule in `prompts/match_analysis.md`**. Pre-empts the false-direct class the runtime grounding check caught during the Speechify run — comma-list concept phrases like `"OOP, design patterns, data structures, algorithms"` read as soft-skill prose but contain tech-shaped acronyms, so the existing "Direct ≠ partial" rule (built around `"C# / Kubernetes"`) didn't fire. New bullet applies the same all-or-nothing grounding rule to comma-lists. Belt-and-braces — `check_match_grounding.py` is still the runtime mechanism.
+
+### Tests
+- 12 new tests for `record-application`: offer-flow happy path; offer-flow without match analysis (fit columns NULL); offer-flow `low` fit fallback when no known prefix; `--url` override; cold-flow happy path (`source='cold'`, snapshot round-trips, `fit_*`/`job_skills` empty); cold `--language` override; `--dry-run` (no DB write); `--source offer` override on a cold-prefixed folder; missing `_prep/` files exit 2 with a clean error; missing `selected_role.json` likewise; integer-id resolution writes a new row using the seed row's `output_folder`; unknown integer id exits 1.
+- Tailor full suite: **163 pass / 2 skip** (was 151).
+
 ## [1.8.0] - 2026-05-06
 
 ### Added — false-direct match guard
