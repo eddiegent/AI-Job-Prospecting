@@ -166,6 +166,33 @@ def auto_slug(job_title: str | None, company: str | None) -> str:
     return dashed.strip("-") or "untitled"
 
 
+def rename_cold_folder_with_canonical_name(folder: Path, canonical_name: str) -> Path:
+    """Rebuild a ``cold-DDMMYYYY-<placeholder>/`` slug from the canonical
+    company name surfaced by Step 3 research. Mirrors the offer flow's
+    Step-4 rename: the slug created at preflight is a placeholder (built
+    from the raw user input, often a URL), and this call replaces it with
+    a clean ``cold-DDMMYYYY-<company-slug>/`` once research has resolved
+    what the company actually is. No-op when the slug already matches.
+    Raises ``FileExistsError`` if the target path is already taken.
+    """
+    current_name = folder.name
+    date_match = re.match(r"^cold-(\d{8})-(.+)$", current_name)
+    if not date_match:
+        return folder
+    date_prefix = date_match.group(1)
+    new_slug = auto_slug(None, canonical_name)
+    new_name = f"cold-{date_prefix}-{new_slug}"
+    new_path = folder.parent / new_name
+    if new_path == folder:
+        return folder
+    if new_path.exists():
+        raise FileExistsError(
+            f"Cannot rename {folder} -> {new_path}: target already exists"
+        )
+    folder.rename(new_path)
+    return new_path
+
+
 def rename_folder_with_fit(
     folder: Path,
     pct: int,

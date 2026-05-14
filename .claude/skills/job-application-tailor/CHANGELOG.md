@@ -1,8 +1,12 @@
 # Changelog
 
-## [Unreleased] - 2026-05-07
+## [Unreleased]
 
-### Added — CLI signature drift protection
+### Added — cold-flow slug rebuild helper (2026-05-14)
+- **`scripts/common.py::rename_cold_folder_with_canonical_name(folder, canonical_name)`** — companion to `rename_folder_with_fit`. Detects the `cold-DDMMYYYY-` prefix on a cold-prospect output folder, rebuilds the trailing slug via `auto_slug(None, canonical_name)`, renames atomically, and returns the new path. No-op when the slug already matches; raises `FileExistsError` on collision rather than overwriting. Used by `job-cold-prospect` Step 3 to replace the URL-derived placeholder slug with a readable one once research has resolved the canonical company name. See `job-cold-prospect` CHANGELOG 0.10.0 for the full motivation.
+- **4 new tests in `tests/test_folder_naming.py`** covering the LinkedIn-URL → canonical-name rename, idempotency, collision refusal, and the defensive no-op on non-cold folders. Folder-naming suite goes from 9 to 13.
+
+### Added — CLI signature drift protection (2026-05-07)
 - **`scripts/gen_cli_reference.py`** — auto-generates `references/cli.md` from the `cli.py` argparse parser. Imports `build_parser()` directly so the reference is always in lockstep with the source. Output is byte-stable (alphabetised, no timestamps). `--check` flag exits non-zero when the on-disk file would change, used by the pre-commit hook to detect drift.
 - **`scripts/lint_cli_usage.py`** — scans markdown for `python … cli.py … <subcommand>` invocations inside fenced code blocks and verifies every `--flag` exists for that subcommand. Stitches backslash line continuations. Skips prose mentions outside code fences and placeholder syntax (`<subcommand>`). Catches the failure mode where docs reference flags that were renamed, removed, or never existed (e.g. `update-status --id 50 --status applied` when the real signature is `update-status <id> <status>`).
 - **`.githooks/pre-commit`** — repo-level hook that regenerates `references/cli.md` when `scripts/cli.py` is staged, lints staged `*.md` files, and verifies the reference is in sync via `--check`. POSIX shell so it works under Git for Windows' bash. Auto-detects `python` / `py` / `python3`. One-time install: `git config core.hooksPath .githooks`.
