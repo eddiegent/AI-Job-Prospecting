@@ -246,10 +246,14 @@ class JobHistoryDB:
         results: list[dict[str, Any]] = []
         seen_ids: set[int] = set()
 
+        # Dropped applications are excluded from all duplicate checks — once
+        # the user has explicitly walked away from a role, it should not
+        # block or warn on a new application to the same company/title/URL.
+
         # 1. Exact URL match
         if source_url:
             rows = self._conn.execute(
-                "SELECT * FROM applications WHERE source_url = ? AND source_url IS NOT NULL",
+                "SELECT * FROM applications WHERE source_url = ? AND source_url IS NOT NULL AND status != 'dropped'",
                 (source_url,),
             ).fetchall()
             for row in rows:
@@ -260,7 +264,7 @@ class JobHistoryDB:
         comp_norm = normalise_company(company_name)
         title_norm = _normalise(job_title)
         rows = self._conn.execute(
-            "SELECT * FROM applications WHERE company_norm = ? AND job_title_norm = ?",
+            "SELECT * FROM applications WHERE company_norm = ? AND job_title_norm = ? AND status != 'dropped'",
             (comp_norm, title_norm),
         ).fetchall()
         for row in rows:
@@ -271,7 +275,7 @@ class JobHistoryDB:
         # 3. Company match + skill overlap
         if required_skills:
             rows = self._conn.execute(
-                "SELECT * FROM applications WHERE company_norm = ?",
+                "SELECT * FROM applications WHERE company_norm = ? AND status != 'dropped'",
                 (comp_norm,),
             ).fetchall()
             for row in rows:
@@ -315,7 +319,7 @@ class JobHistoryDB:
     # -- status updates ------------------------------------------------------
 
     def update_status(self, app_id: int, status: str) -> bool:
-        valid = ("generated", "applied", "rejected", "interview", "offer")
+        valid = ("generated", "applied", "rejected", "interview", "offer", "dropped")
         if status not in valid:
             raise ValueError(f"Invalid status '{status}'. Must be one of: {', '.join(valid)}")
         cur = self._conn.execute(

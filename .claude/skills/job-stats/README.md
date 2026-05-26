@@ -60,7 +60,7 @@ Add a time period to any report: `/job-stats status last 30 days`, `/job-stats s
 
 ## Status mutations
 
-This skill is read-only. To change an application's status (`applied`, `rejected`, `interview`, `offer`) or manage the company blacklist/whitelist, use `/job-status`.
+This skill is read-only. To change an application's status (`applied`, `rejected`, `interview`, `offer`, `dropped`) or manage the company blacklist/whitelist, use `/job-status`.
 
 ## CLI reference
 

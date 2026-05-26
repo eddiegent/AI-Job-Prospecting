@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added — `dropped` application status (2026-05-26)
+- **New `dropped` status** across the CLI and history DB. `cli.py update-status` accepts it as a positional choice, `list --status` documents it, and `JobHistoryDB.update_status()` adds it to its `valid` set. `references/cli.md` regenerated to match; `job-status/SKILL.md` (description + workflow), root `README.md`, and `job-stats/README.md` updated to list it.
+- **Dropped applications are excluded from duplicate detection.** `find_duplicates()` now appends `AND status != 'dropped'` to all three checks (exact URL, company+title, company+skill overlap). Rationale: once the user explicitly walks away from a role, a fresh application to the same company/title/URL should not be blocked or warned against. Use `dropped` for jobs you've decided not to pursue.
+
 ### Added — cold-flow slug rebuild helper (2026-05-14)
 - **`scripts/common.py::rename_cold_folder_with_canonical_name(folder, canonical_name)`** — companion to `rename_folder_with_fit`. Detects the `cold-DDMMYYYY-` prefix on a cold-prospect output folder, rebuilds the trailing slug via `auto_slug(None, canonical_name)`, renames atomically, and returns the new path. No-op when the slug already matches; raises `FileExistsError` on collision rather than overwriting. Used by `job-cold-prospect` Step 3 to replace the URL-derived placeholder slug with a readable one once research has resolved the canonical company name. See `job-cold-prospect` CHANGELOG 0.10.0 for the full motivation.
 - **4 new tests in `tests/test_folder_naming.py`** covering the LinkedIn-URL → canonical-name rename, idempotency, collision refusal, and the defensive no-op on non-cold folders. Folder-naming suite goes from 9 to 13.

@@ -140,7 +140,7 @@ list [--status <status>] [--company <company>] [--limit <limit>] [--since <since
 
 | Arg | Kind | Description |
 | --- | --- | --- |
-| `--status` | optional | Filter by status (generated/applied/rejected/interview/offer) |
+| `--status` | optional | Filter by status (generated/applied/rejected/interview/offer/dropped) |
 | `--company` | optional | Filter by company name |
 | `--limit` | optional | Max results (default: 50) (default: `50`) |
 | `--since` | optional | Only include apps since date (7d/30d/this-week/this-month/ISO) |
@@ -272,4 +272,4 @@ update-status <id> <status>
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `id` | positional | Application ID |
-| `status` | positional |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer` |
+| `status` | positional |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` |
