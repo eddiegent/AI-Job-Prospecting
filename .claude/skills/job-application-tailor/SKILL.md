@@ -171,9 +171,11 @@ Wait for both subagents to complete before proceeding to Step 8.
 
 Read `prompts/generate_interview_prep.md`. Use all available context (CV fact base, job offer analysis, match analysis, company research). Include a quick reference block (job URL from `$ARGUMENTS`, output folder path, application date), fit score banner, and company context section. Save as `$PREP_DIR/interview_prep.md`.
 
+The `_prep/` copy stays Markdown (easy to edit and re-run). Step 9 renders it into the **final deliverable as responsive HTML** (`Interview_prep_*.html`) via `scripts/md_to_html.py` — Markdown displays poorly in a phone/tablet viewer, so the shipped file is a styled, mobile-friendly HTML page (dark-mode aware, tappable links, horizontally-scrollable tables).
+
 ### Step 9 — Generate output files
 
-Run `scripts/generate_outputs.py` with `--output-dir` pointing to `$OUTPUT_DIR`. The script validates all JSON inputs against schemas before generating anything, then produces DOCX (with professional styling), PDF (via Microsoft Word if available), TXT, and MD files plus `run_summary.json`. See `references/commands.md` § Generate Final Output Files.
+Run `scripts/generate_outputs.py` with `--output-dir` pointing to `$OUTPUT_DIR`. The script validates all JSON inputs against schemas before generating anything, then produces DOCX (with professional styling), PDF (via Microsoft Word if available), TXT, and the interview-prep HTML plus `run_summary.json`. See `references/commands.md` § Generate Final Output Files.
 
 When regenerating outputs for an existing folder (not the first run), prefer `scripts/cli.py regenerate-outputs` — it reads `job_title` and `detected_language` from `_prep/job_offer_analysis.json` and assembles the 10-flag invocation automatically. See `references/commands.md` § Regenerate Outputs.
 
@@ -205,7 +207,7 @@ All files land in `$PROJECT_ROOT/output/[fit_level]-[date]-[job-slug]/`:
 | Motivation letter | DOCX |
 | Short motivation letter | TXT (500-750 chars, for online forms) |
 | LinkedIn messages | TXT (with contact names and LinkedIn URLs) |
-| Interview prep | MD (with quick reference links and fit score banner) |
+| Interview prep | HTML (responsive/mobile-friendly; quick reference links and fit score banner) |
 | Run summary | JSON (fit %, match counts, file paths) |
 
 Filename patterns are language-aware (FR: `Lettre_de_motivation_...`, EN: `Cover_letter_...`) — configured in `config/naming_rules.yaml`.

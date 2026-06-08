@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11.0 — 2026-06-08
+
+**Company dossier ships as responsive HTML instead of Markdown.**
+
+- The dossier is the artefact the candidate opens just before a conversation — often on a phone or tablet, where raw Markdown renders poorly. Step 8 now writes the Markdown *source* to `_prep/company_dossier.md` (instead of straight to the output root), and Step 9 renders it into `$OUTPUT_DIR/company_dossier.html`: a styled, mobile-friendly page (viewport meta, embedded dark-mode-aware CSS, horizontally-scrollable tables, tappable auto-linked URLs). This mirrors the offer flow's interview-prep treatment and reuses the same renderer.
+- New `--dossier-markdown` flag on the shared `scripts/generate_outputs.py` (tailor skill): when supplied it renders the given Markdown to `company_dossier.html` and records `dossier_file` in `run_summary.json`. The cold-flow Step 9 invocation now passes it. The dossier Markdown stays in `_prep/` as an editable, re-runnable source.
+- `cli.py regenerate-outputs` passes `--dossier-markdown` automatically when `_prep/company_dossier.md` is present (forward-compatible; a no-op for offer packs).
+
+**Implementation.** The conversion lives in the tailor skill's new dependency-free `scripts/md_to_html.py` (`render_html_document`), so a fresh clone needs no extra install. The cold flow's bounded Markdown subset (headings, pipe tables, lists with continuation lines, bold/italic/code, links) is fully covered.
+
+**Tests.** `tests/test_md_to_html.py` (13 cases) and `tests/test_generate_outputs_html.py` (interview + dossier end-to-end, and dossier-omitted) in the tailor skill. Full suite: **191 pass, 2 skipped**.
+
+**Docs.** `SKILL.md` Steps 8–9 and the pack-contents list, plus `README.md`, updated to describe `company_dossier.html` with the Markdown source in `_prep/`.
+
 ## 0.10.0 — 2026-05-14
 
 **Cold-flow output folder rebuilds its slug from the canonical company name.**

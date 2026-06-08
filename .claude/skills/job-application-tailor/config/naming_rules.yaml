@@ -9,7 +9,7 @@ filenames:
     letter: "Lettre_de_motivation_{candidate_name}_{job_title}.docx"
     short_letter: "Lettre_courte_{candidate_name}_{job_title}.txt"
     linkedin: "LinkedIn_message_{candidate_name}_{job_title}.txt"
-    interview: "Interview_prep_{candidate_name}_{job_title}.md"
+    interview: "Interview_prep_{candidate_name}_{job_title}.html"
     summary: "run_summary.json"
   en:
     cv: "CV_{candidate_name}_{job_title}.docx"
@@ -17,7 +17,7 @@ filenames:
     letter: "Cover_letter_{candidate_name}_{job_title}.docx"
     short_letter: "Short_cover_letter_{candidate_name}_{job_title}.txt"
     linkedin: "LinkedIn_message_{candidate_name}_{job_title}.txt"
-    interview: "Interview_prep_{candidate_name}_{job_title}.md"
+    interview: "Interview_prep_{candidate_name}_{job_title}.html"
     summary: "run_summary.json"
 
 sanitize:

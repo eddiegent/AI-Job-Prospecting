@@ -14,6 +14,7 @@ from common import (
     safe_filename,
 )
 from docx_generator import generate_cv_docx, generate_letter_docx
+from md_to_html import render_html_document
 from pdf_pipeline import PdfConversionError, convert_docx_to_pdf
 from validate import validate
 
@@ -27,6 +28,7 @@ def main() -> None:
     parser.add_argument("--short-letter-json", default=None, help="Path to short_letter.json (optional)")
     parser.add_argument("--linkedin-json", default=None, help="Path to linkedin.json (optional — omit for CV+letter-only packs, e.g. early cold-prospect phases)")
     parser.add_argument("--interview-markdown", default=None, help="Path to interview_prep.md (optional — omit for CV+letter-only packs)")
+    parser.add_argument("--dossier-markdown", default=None, help="Path to company_dossier.md (cold flow — rendered to company_dossier.html)")
     parser.add_argument("--output-folder", help="Parent folder — a date-title subfolder will be created inside")
     parser.add_argument("--output-dir", help="Exact output directory — use as-is, no subfolder created")
     parser.add_argument("--job-title", required=True)
@@ -46,6 +48,7 @@ def main() -> None:
     letter_data = load_json(Path(args.letter_json))
     linkedin_data = load_json(Path(args.linkedin_json)) if args.linkedin_json else None
     interview_text = Path(args.interview_markdown).read_text(encoding="utf-8") if args.interview_markdown else None
+    dossier_text = Path(args.dossier_markdown).read_text(encoding="utf-8") if args.dossier_markdown else None
 
     # Validate all JSON inputs against schemas before generating files
     validations = [
@@ -122,10 +125,25 @@ def main() -> None:
         linkedin_path = out_dir / linkedin_name
         linkedin_path.write_text("\n".join(lines).strip(), encoding="utf-8")
 
+    # Interview prep ships as styled, responsive HTML — Markdown renders poorly
+    # in a phone/tablet viewer. The Markdown source stays in _prep/ for re-runs.
     interview_path = None
     if interview_text is not None:
+        interview_html = render_html_document(
+            interview_text, title=f"{candidate_name} — {args.job_title}", lang=args.language
+        )
         interview_path = out_dir / interview_name
-        interview_path.write_text(interview_text, encoding="utf-8")
+        interview_path.write_text(interview_html, encoding="utf-8")
+
+    # Cold-flow company dossier — same responsive-HTML treatment as the
+    # interview prep. The Markdown source stays in _prep/ for re-runs.
+    dossier_path = None
+    if dossier_text is not None:
+        dossier_html = render_html_document(
+            dossier_text, title=f"{candidate_name} — {args.job_title}", lang=args.language
+        )
+        dossier_path = out_dir / "company_dossier.html"
+        dossier_path.write_text(dossier_html, encoding="utf-8")
 
     # Short motivation letter (plain text for online forms)
     short_letter_path = None
@@ -160,6 +178,7 @@ def main() -> None:
         "short_letter_file": str(short_letter_path) if short_letter_path else None,
         "linkedin_file": str(linkedin_path) if linkedin_path else None,
         "interview_file": str(interview_path) if interview_path else None,
+        "dossier_file": str(dossier_path) if dossier_path else None,
         "job_title": args.job_title,
         "candidate_name": candidate_name,
     }
