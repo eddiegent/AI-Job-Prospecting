@@ -34,8 +34,8 @@ Typical triggers:
 | `Lettre_de_motivation_<Candidate>_<Role>.docx` / `.pdf` | DOCX + PDF | Speculative cover letter opening with a specific observation about the company |
 | `Lettre_courte_<Candidate>_<Role>.txt` | TXT | 500–750-character email-ready version (same hook as the full letter) |
 | `LinkedIn_message_<Candidate>_<Role>.txt` | TXT | Cold connection requests + post-acceptance DMs, hiring-manager-targeted |
-| `company_dossier.md` | Markdown | 9-section dossier: glance, angle of approach, contacts, objections, openers, interview prep, transition narrative, research gaps |
-| `_prep/*.json` + `raw_research.md` | JSON / MD | Audit trail — company profile, role candidates, selected role, tailored CV JSON, letter JSON, LinkedIn JSON, raw research |
+| `company_dossier.html` | HTML | 9-section dossier (responsive/mobile-friendly): glance, angle of approach, contacts, objections, openers, interview prep, transition narrative, research gaps. Markdown source kept in `_prep/` |
+| `_prep/*.json` + `company_dossier.md` + `raw_research.md` | JSON / MD | Audit trail — company profile, role candidates, selected role, tailored CV JSON, letter JSON, LinkedIn JSON, dossier Markdown source, raw research |
 | `run_summary.json` | JSON | Company slug, selected role, file paths, status |
 
 Output folders are prefixed `cold-[DDMMYYYY]-[company-slug]/` so they are visually distinct from offer-based packs. Each run is also recorded in the shared `job_history.db` with `source='cold'` and a compact company-profile snapshot for later stats.
@@ -71,7 +71,7 @@ Walkthrough:
 2. Research fetches the company website, Indeed company data, LinkedIn page (best-effort), and recent news; writes `_prep/company_profile.json` and appends each raw source to `_prep/raw_research.md`. Blacklist re-checks the canonical name.
 3. Role inference proposes 1–3 candidate angles. You answer with a number, `generalist`, or a free-form title. The pick is written to `_prep/selected_role.json`.
 4. CV tailoring, speculative motivation letter, short letter, LinkedIn outreach, and the company dossier generate in sequence. Between artefacts the skill checks that the motivation-letter hook, LinkedIn connection-request opener, and dossier § 3 all reference the same company fact.
-5. `generate_outputs.py` renders DOCX + PDF files; the dossier lands at `$OUTPUT_DIR/company_dossier.md`.
+5. `generate_outputs.py` renders DOCX + PDF files and converts the dossier Markdown (`_prep/company_dossier.md`) into responsive HTML at `$OUTPUT_DIR/company_dossier.html`.
 6. A row is inserted into `job_history.db` with `source='cold'` and a compact profile snapshot. The application id comes back so you can update status later with `/job-status`.
 
 You can interrupt between any two steps — the `_prep/` JSONs are idempotent anchor points to resume from.

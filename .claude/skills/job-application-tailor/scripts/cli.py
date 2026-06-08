@@ -377,6 +377,7 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
     optional = {
         "short_letter.json": prep / "short_letter.json",
         "match_analysis.json": prep / "match_analysis.json",
+        "company_dossier.md": prep / "company_dossier.md",
     }
     missing = [n for n, p in required.items() if not p.exists()]
 
@@ -427,6 +428,8 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
         cmd.extend(["--short-letter-json", str(optional["short_letter.json"])])
     if optional["match_analysis.json"].exists():
         cmd.extend(["--match-analysis-json", str(optional["match_analysis.json"])])
+    if optional["company_dossier.md"].exists():
+        cmd.extend(["--dossier-markdown", str(optional["company_dossier.md"])])
     if args.skip_pdf:
         cmd.append("--skip-pdf")
 

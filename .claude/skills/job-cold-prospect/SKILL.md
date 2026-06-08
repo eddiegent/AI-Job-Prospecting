@@ -313,17 +313,18 @@ Read `prompts/generate_dossier_cold.md` in full. Pass it: the fact base, `compan
 
 The dossier has nine sections in order: Quick reference, Company at a glance, Why you / why them (the narrative angle of approach — replaces fit score), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, and Research gaps.
 
-**Write directly to the output folder root** — the dossier is a first-class deliverable, not an intermediate, so it lives next to the CV and letter, not under `_prep/`:
+**Write the Markdown source to `_prep/`** — the dossier is generated as Markdown (easiest for the model to author and for the user to re-run), then Step 9 renders it into the shipped deliverable as responsive HTML (`company_dossier.html`). Markdown reads poorly in a phone/tablet viewer, and the dossier is the artefact the user opens just before a conversation:
 
 ```bash
-# The LLM output is pure markdown — write it to $OUTPUT_DIR/company_dossier.md via the Write tool.
+# The LLM output is pure markdown — write it to $PREP_DIR/company_dossier.md via the Write tool.
+# Step 9 converts it to $OUTPUT_DIR/company_dossier.html (styled, mobile-friendly).
 ```
 
 **Alignment check.** Before moving to Step 9, confirm the opening hook is consistent across the motivation letter (§ 1), the LinkedIn connection request for the top contact (first variant), and § 3 "Why you, why them" in the dossier. Mismatched hooks across artefacts is the single most preventable cold-flow mistake. If they diverge, regenerate the LinkedIn or dossier step that drifted — do not ship the pack as-is.
 
 ### Step 9 — Generate output files
 
-With Phases D–E complete, the tailor skill's `scripts/generate_outputs.py` receives both CV + letters AND the LinkedIn JSON. The dossier is already a standalone markdown file at `$OUTPUT_DIR/company_dossier.md` from Step 8, so it does not pass through the script.
+With Phases D–E complete, the tailor skill's `scripts/generate_outputs.py` receives CV + letters, the LinkedIn JSON, AND the dossier Markdown. Passing `--dossier-markdown` makes the script render `$PREP_DIR/company_dossier.md` into `$OUTPUT_DIR/company_dossier.html` (responsive, mobile-friendly) — the same treatment the offer flow gives its interview prep.
 
 ```bash
 cd "$SKILL_BASE_TAILOR" && python scripts/generate_outputs.py \
@@ -331,20 +332,21 @@ cd "$SKILL_BASE_TAILOR" && python scripts/generate_outputs.py \
   --letter-json "$PREP_DIR/letter.json" \
   --short-letter-json "$PREP_DIR/short_letter.json" \
   --linkedin-json "$PREP_DIR/linkedin.json" \
+  --dossier-markdown "$PREP_DIR/company_dossier.md" \
   --output-dir "$OUTPUT_DIR" \
   --job-title "<selected_role.title>" \
   --language "<fr|en>"
 ```
 
-Pass the selected role's title as `--job-title`. The file-naming patterns in `config/naming_rules.yaml` substitute it into filenames like `CV_<Candidate>_<Role>.docx`, `Lettre_de_motivation_<Candidate>_<Role>.docx`, and `LinkedIn_message_<Candidate>_<Role>.txt`. The `cold-` prefix on `$OUTPUT_DIR` already distinguishes the folder from offer-based packs. `--interview-markdown` is deliberately **omitted** in the cold flow — the dossier replaces the interview prep deliverable.
+Pass the selected role's title as `--job-title`. The file-naming patterns in `config/naming_rules.yaml` substitute it into filenames like `CV_<Candidate>_<Role>.docx`, `Lettre_de_motivation_<Candidate>_<Role>.docx`, and `LinkedIn_message_<Candidate>_<Role>.txt`. The `cold-` prefix on `$OUTPUT_DIR` already distinguishes the folder from offer-based packs. `--interview-markdown` is deliberately **omitted** in the cold flow — the dossier (passed via `--dossier-markdown`) replaces the interview prep deliverable.
 
 Final pack contents after Step 9:
 - `CV_<Candidate>_<Role>.docx` + `.pdf`
 - `Lettre_de_motivation_<Candidate>_<Role>.docx` + `.pdf` (`Cover_letter_…` in English)
 - `Lettre_courte_<Candidate>_<Role>.txt` (`Short_cover_letter_…` in English)
 - `LinkedIn_message_<Candidate>_<Role>.txt`
-- `company_dossier.md`
-- `_prep/` with all intermediate JSONs (`company_profile.json`, `role_candidates.json`, `selected_role.json`, `tailored_cv.json`, `letter.json`, `short_letter.json`, `linkedin.json`) + `raw_research.md`
+- `company_dossier.html` (responsive, mobile-friendly; Markdown source kept at `_prep/company_dossier.md`)
+- `_prep/` with all intermediate JSONs (`company_profile.json`, `role_candidates.json`, `selected_role.json`, `tailored_cv.json`, `letter.json`, `short_letter.json`, `linkedin.json`) + `company_dossier.md` + `raw_research.md`
 - `run_summary.json`
 
 ### Step 10 — Record in job history
