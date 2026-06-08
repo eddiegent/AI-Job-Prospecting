@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -91,12 +92,32 @@ def dump_json(path: Path, data: dict[str, Any]) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def ascii_fold(value: str) -> str:
+    """Transliterate a string to plain ASCII for use in filesystem paths.
+
+    Accented Latin letters decompose and lose their combining marks
+    (``é`` -> ``e``, ``ç`` -> ``c``); any character that still isn't ASCII
+    after that (``œ``, ``€``, emoji, CJK, …) is dropped. This exists because
+    Windows mangles non-ASCII bytes when a path is round-tripped through a
+    subprocess argv on a cp1252 console, which crashed ``generate_outputs.py``
+    on French job titles like "Développeur IA Générative & … (F/H)". Folding
+    only governs folder/file names — document *content* keeps its accents.
+    """
+    decomposed = unicodedata.normalize("NFKD", value)
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return stripped.encode("ascii", "ignore").decode("ascii")
+
+
 def sanitize_component(text: str, replacement: str = "-", trim_chars: str = " .-_") -> str:
     if not text:
         return "untitled"
-    value = text
+    value = ascii_fold(text)
     for ch in FORBIDDEN_DEFAULT:
         value = value.replace(ch, replacement)
+    # '&' is filesystem-legal but reads as a shell operator and looks ugly in a
+    # slug; fold it to whitespace so the separator logic below collapses
+    # "R&D"/"A & B" cleanly instead of leaving a stray "_-_".
+    value = value.replace("&", " ")
     value = re.sub(r"\s+", " ", value)
     value = re.sub(r"-{2,}", "-", value)
     value = value.strip(trim_chars)

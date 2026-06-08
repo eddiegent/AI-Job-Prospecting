@@ -19,11 +19,47 @@ from scripts.common import (
     auto_slug,
     rename_cold_folder_with_canonical_name,
     rename_folder_with_fit,
+    slug_for_filename,
 )
 
 
 def test_auto_slug_with_title_and_company() -> None:
     assert auto_slug("Senior Developer", "Acme Corp") == "Senior-Developer-Acme-Corp"
+
+
+# --- ASCII folding for filesystem safety --------------------------------
+# Regression: a French title with accents and '&' crashed generate_outputs.py
+# on Windows because the non-ASCII path got mangled through the subprocess
+# argv. Slugs (folder + filename) must always be pure ASCII.
+
+
+def test_slug_for_filename_is_ascii_and_folds_accents() -> None:
+    out = slug_for_filename("Développeur IA Générative & Prototypage Rapide (F/H)")
+    assert out.isascii()
+    assert "Developpeur" in out and "Generative" in out
+    # '&' folded to a separator, parentheses dropped from the filename slug
+    assert "&" not in out and "(" not in out and ")" not in out
+    # no stray mixed "_-_" separator from the '&' fold
+    assert "_-_" not in out
+
+
+def test_auto_slug_is_ascii_and_folds_accents() -> None:
+    out = auto_slug("Développeur IA Générative & Prototypage Rapide", "Davidson")
+    assert out.isascii()
+    assert out.startswith("Developpeur-IA-Generative-")
+    assert "&" not in out
+
+
+def test_ascii_folding_handles_common_french_titles() -> None:
+    assert slug_for_filename("Ingénieur Études & Développement").isascii()
+    assert auto_slug("Chef de Projet — Données", "Société Générale").isascii()
+
+
+def test_auto_slug_drops_non_decomposable_non_ascii() -> None:
+    # Characters that don't NFKD-decompose to ASCII (œ, emoji) are dropped,
+    # never left to corrupt the path.
+    out = auto_slug("Cœur de métier 🚀", "Acme")
+    assert out.isascii()
 
 
 def test_auto_slug_company_only() -> None:
