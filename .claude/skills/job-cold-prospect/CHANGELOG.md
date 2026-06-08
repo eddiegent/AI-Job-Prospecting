@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.0 — 2026-05-14
+
+**Cold-flow output folder rebuilds its slug from the canonical company name.**
+
+- Preflight builds the initial folder slug from `$INPUT_SEED` — fine when the user passes a clean company name, but unreadable when the input is a URL (e.g. `https://www.linkedin.com/company/francebillet/` produced `cold-14052026-https-wwwlinkedincom-company-francebillet/`). The rename used to be deferred indefinitely — the `cold-` prefix was treated as canonical and the placeholder slug shipped through to the dossier, `run_summary.json`, and the history-DB row.
+- Step 3 now adds a slug-canonicalisation block right after the blacklist re-check, before any downstream artefact is written. It calls the new `scripts/common.py::rename_cold_folder_with_canonical_name` helper, which detects the `cold-DDMMYYYY-` prefix, rebuilds the trailing slug from `company_profile.company_name` via the existing `auto_slug` utility, and renames the folder atomically. The orchestrator reassigns `$OUTPUT_DIR` and `$PREP_DIR` to the new path and continues — `selected_role.json`, the tailored CV, the letters, LinkedIn, the dossier, the DOCX/PDF outputs, the run summary, and the DB insert all land in the renamed folder. No after-the-fact path fix-up needed.
+- Idempotent: re-running Step 3 (or running it after a manual rename) returns the same path back. Collision guard: if the target folder already exists from a previous run on the same company, the helper raises `FileExistsError` and surfaces the conflict to the user rather than silently overwriting.
+
+**Tests.**
+- 4 new tests in `tests/test_folder_naming.py` (tailor skill, where `common.py` lives): the LinkedIn-URL → canonical-name rename, idempotency when the slug already matches, collision refusal, and the defensive no-op when the input folder lacks a `cold-` prefix. Full folder-naming suite: **13 pass** (was 9).
+
+**Docs.**
+- `job-cold-prospect/SKILL.md` Step 3 documents the rename block with the exact shell snippet to capture and reassign `$OUTPUT_DIR` / `$PREP_DIR`.
+- `job-prep-cv/SKILL.md` line 79 — flipped the "the cold flow's `cold-` prefix is the canonical naming and is not changed later" sentence; the slug is now described as a placeholder in both flows, with the rename point spelled out for each.
+
 ## 0.9.1 — 2026-05-07
 
 **Step 10 collapses to the shared `record-application` wrapper.**

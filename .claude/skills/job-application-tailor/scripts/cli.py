@@ -734,7 +734,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # list
     p = sub.add_parser("list", help="List applications")
-    p.add_argument("--status", help="Filter by status (generated/applied/rejected/interview/offer)")
+    p.add_argument("--status", help="Filter by status (generated/applied/rejected/interview/offer/dropped)")
     p.add_argument("--company", help="Filter by company name")
     p.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
     p.add_argument("--since", help="Only include apps since date (7d/30d/this-week/this-month/ISO)")
@@ -748,7 +748,7 @@ def build_parser() -> argparse.ArgumentParser:
     # update-status
     p = sub.add_parser("update-status", help="Update application status")
     p.add_argument("id", type=int, help="Application ID")
-    p.add_argument("status", choices=["generated", "applied", "rejected", "interview", "offer"])
+    p.add_argument("status", choices=["generated", "applied", "rejected", "interview", "offer", "dropped"])
 
     # update-company
     p = sub.add_parser("update-company", help="Rename the company on an application")

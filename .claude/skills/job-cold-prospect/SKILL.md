@@ -114,7 +114,30 @@ db.close()
 
 If the canonical name is blacklisted, stop and surface the reason. If the whitelist hits, flag it to the user as a positive signal but continue.
 
-**Phase B stop point.** For now the pipeline ends here: the research has produced `company_profile.json` plus the cached raw research. Summarise the profile back to the user — company name, size band, mission, 3–5 top findings, research gaps — and note that Phases C+ (role inference, tailoring, letters, dossier) are not yet implemented. Do **not** attempt to generate a CV, letter, or LinkedIn pack in Phase B.
+**Canonicalise the folder slug.** Preflight built the output folder slug from the raw `$INPUT_SEED` — usually a URL, often unreadable (e.g. `cold-14052026-https-wwwlinkedincom-company-francebillet/`). Now that research has resolved `company_profile.company_name`, rebuild the slug in one shot. Idempotent — when the slug already matches, this prints the same path back and stops.
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python -u -c "
+import sys, io, json
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+from pathlib import Path
+from scripts.common import rename_cold_folder_with_canonical_name
+profile = json.loads(Path(r'$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
+new = rename_cold_folder_with_canonical_name(Path(r'$OUTPUT_DIR'), profile['company_name'])
+print(str(new))
+"
+```
+
+Capture the printed path and reassign the orchestrator's shell variables before continuing — every later step reads from these:
+
+```bash
+OUTPUT_DIR="<printed path>"
+PREP_DIR="$OUTPUT_DIR/_prep"
+```
+
+The rename happens **before** `selected_role.json`, the tailored CV, the letters, the LinkedIn output, the dossier, the DOCX/PDF files, the `run_summary.json`, and the history-DB insert are produced — so nothing downstream needs path fix-up. If the target folder already exists (left over from a previous run on the same company), the helper raises `FileExistsError`; surface the error to the user and let them decide whether to delete the old pack or pick a different angle.
+
+**Phase B stop point.** For now the pipeline ends here: the research has produced `company_profile.json` plus the cached raw research, and the output folder is named after the canonical company. Summarise the profile back to the user — company name, size band, mission, 3–5 top findings, research gaps — and note that Phases C+ (role inference, tailoring, letters, dossier) are not yet implemented. Do **not** attempt to generate a CV, letter, or LinkedIn pack in Phase B.
 
 ### Step 4 — Target-role inference
 

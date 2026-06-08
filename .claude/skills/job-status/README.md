@@ -71,3 +71,7 @@ Added "Consulting Corp" to blacklist.
 > /job-status blacklist remove "Consulting Corp"
 Removed "Consulting Corp" from blacklist.
 ```
+
+## CLI reference
+
+The skill calls `cli.py` under the hood. The authoritative signature reference is `.claude/skills/job-application-tailor/references/cli.md` (auto-generated from `cli.py`). Read it before composing any subcommand by hand — never compose flags from convention.

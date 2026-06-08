@@ -76,7 +76,7 @@ Parse the printed JSON. Top-level fields:
 - If the master CV is missing, runs `scripts.init` (which copies `MASTER_CV.example.docx`, `cv_addendum.template.md`, `user_prefs.template.yaml` into the user data dir without ever overwriting an existing `MASTER_CV.docx`, `cv_addendum.md`, or `user_prefs.yaml`) and returns `status: first_run`.
 - Initialises `resources/job_history.db` (creates if missing). Reports `db_count` for telemetry; backfill is a separate concern handled by Phase F migrations on the v1→v2 path.
 - Loads customization via `scripts/user_customization.py::load_customization_context`. Returns the typed-empty defaults when the user files are absent.
-- Creates the output folder. The slug is **a placeholder** for the offer flow (the orchestrator's Step 4 rebuilds it from `job_title` + `company_name` once the offer is analysed); the cold flow's `cold-` prefix is the canonical naming and is not changed later.
+- Creates the output folder. The slug is **a placeholder** in both flows: the offer flow rebuilds it from `job_title` + `company_name` in Step 4 once the offer is analysed; the cold flow rebuilds it from `company_profile.company_name` in Step 3 once research has resolved the canonical name. The `cold-` prefix is preserved by the rename — only the trailing slug changes.
 - For the cache-hot path: copies the cached fact base into `$PREP_DIR` and runs `scripts/verify_fact_base.py` against it (forcing UTF-8 in the child process so non-ASCII output doesn't crash the subprocess decode on Windows). Returns the script's stdout in `fact_base_verify_message` so warnings are still visible.
 
 ## Step 1 — Read the master CV (only when `cache_stale`)

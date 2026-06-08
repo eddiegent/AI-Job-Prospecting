@@ -1,6 +1,6 @@
 ---
 name: job-status
-description: Update the status of a job application (generated, applied, rejected, interview, offer), list recent applications and their statuses, or manage the company blacklist/whitelist. Use this skill whenever the user wants to update an application status, check application progress, mark a job as applied/rejected/interview/offer, add or remove a company from the blacklist or whitelist, or asks about their application pipeline.
+description: Update the status of a job application (generated, applied, rejected, interview, offer, dropped), list recent applications and their statuses, or manage the company blacklist/whitelist. Use this skill whenever the user wants to update an application status, check application progress, mark a job as applied/rejected/interview/offer/dropped, add or remove a company from the blacklist or whitelist, or asks about their application pipeline.
 argument-hint: [company-or-id] [status]
 allowed-tools: Read, Bash, Glob
 ---
@@ -8,6 +8,8 @@ allowed-tools: Read, Bash, Glob
 # Skill: job-status
 
 Update application statuses and manage company lists in the job history database.
+
+**Before composing any `cli.py` subcommand**, consult `references/cli.md` (under `.claude/skills/job-application-tailor/`) or run `python scripts/cli.py <subcommand> --help`. That file is the authoritative signature reference — never compose flags from convention.
 
 ## Setup
 
@@ -28,7 +30,7 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" <command> [args...]
 This skill interacts with the SQLite database at `resources/job_history.db` (managed by the `job-application-tailor` skill). It supports:
 
 1. **Listing applications** — show recent applications with their current status
-2. **Updating status** — change an application's status to: `generated`, `applied`, `rejected`, `interview`, or `offer`
+2. **Updating status** — change an application's status to: `generated`, `applied`, `rejected`, `interview`, `offer`, or `dropped` (use `dropped` for jobs you've decided not to pursue — dropped jobs are ignored by the duplicate-detection check)
 3. **Managing company lists** — add/remove companies from the blacklist or whitelist
 
 ## Workflow

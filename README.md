@@ -18,7 +18,7 @@ Nothing is invented. If a claim isn't in your master CV (or your `cv_addendum.md
 
 | Skill | Description |
 |-------|-------------|
-| `/job-status` | Update application statuses (applied, rejected, interview, offer), filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
+| `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped), filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
 | `/job-stats` | Application statistics, trends, skill gap analysis, exports |
 
 ## Install
@@ -109,6 +109,14 @@ Your master CV, generated outputs, and application history never enter the repo 
 ## Contributing
 
 Implementation roadmap and architectural decisions: [PLUGIN_ROADMAP.md](PLUGIN_ROADMAP.md).
+
+A pre-commit hook keeps CLI documentation in sync with `cli.py` and lints markdown for stale invocations. One-time setup on a fresh clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+See [CLAUDE.md](CLAUDE.md) for details. The canonical CLI reference is auto-generated at [.claude/skills/job-application-tailor/references/cli.md](.claude/skills/job-application-tailor/references/cli.md).
 
 ## License
 

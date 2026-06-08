@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Added — `dropped` application status (2026-05-26)
+- **New `dropped` status** across the CLI and history DB. `cli.py update-status` accepts it as a positional choice, `list --status` documents it, and `JobHistoryDB.update_status()` adds it to its `valid` set. `references/cli.md` regenerated to match; `job-status/SKILL.md` (description + workflow), root `README.md`, and `job-stats/README.md` updated to list it.
+- **Dropped applications are excluded from duplicate detection.** `find_duplicates()` now appends `AND status != 'dropped'` to all three checks (exact URL, company+title, company+skill overlap). Rationale: once the user explicitly walks away from a role, a fresh application to the same company/title/URL should not be blocked or warned against. Use `dropped` for jobs you've decided not to pursue.
+- **Tests** — `tests/test_dropped_status.py` (6 tests): `update-status` accepts `dropped` / still rejects garbage, each of the three duplicate checks excludes a dropped row (with a live-row control), and a live row is still detected alongside a dropped one to the same company+title. Suite: 175 pass / 2 skip.
+
+### Added — cold-flow slug rebuild helper (2026-05-14)
+- **`scripts/common.py::rename_cold_folder_with_canonical_name(folder, canonical_name)`** — companion to `rename_folder_with_fit`. Detects the `cold-DDMMYYYY-` prefix on a cold-prospect output folder, rebuilds the trailing slug via `auto_slug(None, canonical_name)`, renames atomically, and returns the new path. No-op when the slug already matches; raises `FileExistsError` on collision rather than overwriting. Used by `job-cold-prospect` Step 3 to replace the URL-derived placeholder slug with a readable one once research has resolved the canonical company name. See `job-cold-prospect` CHANGELOG 0.10.0 for the full motivation.
+- **4 new tests in `tests/test_folder_naming.py`** covering the LinkedIn-URL → canonical-name rename, idempotency, collision refusal, and the defensive no-op on non-cold folders. Folder-naming suite goes from 9 to 13.
+
+### Added — CLI signature drift protection (2026-05-07)
+- **`scripts/gen_cli_reference.py`** — auto-generates `references/cli.md` from the `cli.py` argparse parser. Imports `build_parser()` directly so the reference is always in lockstep with the source. Output is byte-stable (alphabetised, no timestamps). `--check` flag exits non-zero when the on-disk file would change, used by the pre-commit hook to detect drift.
+- **`scripts/lint_cli_usage.py`** — scans markdown for `python … cli.py … <subcommand>` invocations inside fenced code blocks and verifies every `--flag` exists for that subcommand. Stitches backslash line continuations. Skips prose mentions outside code fences and placeholder syntax (`<subcommand>`). Catches the failure mode where docs reference flags that were renamed, removed, or never existed (e.g. `update-status --id 50 --status applied` when the real signature is `update-status <id> <status>`).
+- **`.githooks/pre-commit`** — repo-level hook that regenerates `references/cli.md` when `scripts/cli.py` is staged, lints staged `*.md` files, and verifies the reference is in sync via `--check`. POSIX shell so it works under Git for Windows' bash. Auto-detects `python` / `py` / `python3`. One-time install: `git config core.hooksPath .githooks`.
+- **`references/cli.md`** — auto-generated reference covering all 17 subcommands. Each section: signature, args table (positional / required / optional / flag), and choices/defaults pulled from argparse. Marked do-not-edit at the top.
+- **Cross-link + routing rules**: `job-stats/SKILL.md` and `job-status/SKILL.md` now point to `references/cli.md` as the authoritative signature reference; `job-stats/SKILL.md` adds a routing rule that status mutations belong to `/job-status`.
+- **CLAUDE.md** documents the system + hook setup; SETUP.md adds the one-line `git config core.hooksPath .githooks` step for fresh clones.
+
+### Why
+Three incidents in three weeks, same root cause: composing a CLI/SQL/Python invocation from convention rather than reading the actual signature. Memory entries reminded me to check, but only reactively — by the time I'd composed the call, I'd already committed to a syntax. The fix moves the canonical signatures into a single auto-generated file (so the right answer is one Read away) and adds a pre-commit linter so any documented flag that doesn't exist fails the commit.
+
 ## [1.9.0] - 2026-05-07
 
 ### Added — `record-application` CLI wrapper

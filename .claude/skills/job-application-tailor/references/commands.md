@@ -1,5 +1,7 @@
 # Command Reference
 
+This file documents the **workflow** — the bash blocks in pipeline order, with their surrounding context (why this step exists, what artefacts it reads, what it writes). For a flat **signature reference** of every `cli.py` subcommand (positional args, flags, choices, defaults), see [`cli.md`](cli.md) — auto-generated from `cli.py` and kept in lockstep by the pre-commit hook. Always cross-check the signature there before composing a `cli.py` invocation by hand.
+
 All commands assume these variables are set:
 - `PROJECT_ROOT` — the git repo root or current working directory
 - `SKILL_BASE` — `$PROJECT_ROOT/.claude/skills/job-application-tailor`
