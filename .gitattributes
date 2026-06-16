@@ -1,0 +1,27 @@
+# Normalize all text files to LF — in the repo and on checkout — so Windows
+# editors don't reintroduce CRLF churn. Git auto-detects binary vs text.
+* text=auto eol=lf
+
+# Explicit binaries — never normalize, diff, or alter these.
+*.docx   binary
+*.doc    binary
+*.pdf    binary
+*.xlsx   binary
+*.xls    binary
+*.pptx   binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.zip    binary
+*.db     binary
+*.sqlite binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+
+# Windows-only scripts (should any be added) keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
