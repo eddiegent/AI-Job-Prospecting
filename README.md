@@ -1,6 +1,6 @@
 # Job Prospecting — a Claude Code plugin
 
-Three [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills that automate a job search end-to-end: generate a fully tailored application pack from a job offer and your master CV, track every application in SQLite, and report on your pipeline.
+Four [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills that automate a job search end-to-end: generate a fully tailored application pack from a job offer and your master CV, send speculative (cold) applications to companies with no advertised vacancy, track every application in SQLite, and report on your pipeline.
 
 ## What you get
 
@@ -13,6 +13,8 @@ Three [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills that 
 - **Fit score** — honest assessment, not a sales pitch
 
 Nothing is invented. If a claim isn't in your master CV (or your `cv_addendum.md`), it doesn't appear in the output.
+
+`/job-cold-prospect` does the same for companies with **no advertised vacancy**. Give it a company name or URL and it researches a company profile, helps you pick a target role, and produces a full speculative pack — tailored CV, motivation letter, short letter, LinkedIn outreach, and a company dossier with interview prep. Instead of a fit score (there's no job description to score against), the dossier gives you a narrative "angle of approach", and every factual claim about the company cites a source URL.
 
 ### Satellite skills
 
@@ -40,7 +42,7 @@ Clone this repo and point Claude Code at it:
 claude --plugin-dir /path/to/job-prospecting
 ```
 
-Skills become `/job-prospecting:job-application-tailor`, `/job-prospecting:job-stats`, `/job-prospecting:job-status`.
+Skills become `/job-prospecting:job-application-tailor`, `/job-prospecting:job-cold-prospect`, `/job-prospecting:job-stats`, `/job-prospecting:job-status`.
 
 ### C. From a built bundle
 
