@@ -5,10 +5,28 @@ status tracking, reporting, and export.
 """
 from __future__ import annotations
 
+import atexit
 import csv
+import hashlib
 import io
+import os
 import re
+import shutil
 import sqlite3
+import tempfile
+import threading
+import time
+
+try:                       # POSIX advisory locks (auto-released if a process dies)
+    import fcntl as _fcntl
+except ImportError:        # Windows
+    _fcntl = None
+    try:
+        import msvcrt as _msvcrt
+    except ImportError:    # pragma: no cover - neither primitive available
+        _msvcrt = None
+else:
+    _msvcrt = None
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -121,16 +139,227 @@ CREATE TABLE IF NOT EXISTS company_lists (
 """
 
 
+
+# ---------------------------------------------------------------------------
+# Cross-process write lock
+# ---------------------------------------------------------------------------
+#
+# The history DB is designed for sequential access. To make *parallel* access
+# safe too (e.g. several `record-application` processes at once), every
+# JobHistoryDB holds an exclusive advisory lock on a local lockfile for its
+# whole lifetime. Because each process's critical section — mirror-in, operate,
+# write-back — runs fully under the lock, the whole-file write-back can no
+# longer interleave or lose updates: process B can't start until A has released
+# (i.e. finished syncing its rows to the target), so B reads A's result first.
+#
+# The lockfile lives on local disk (keyed by the canonical target path), so the
+# lock is reliable even when the DB itself sits on a network/mounted filesystem
+# whose own locking is unreliable. The lock is RE-ENTRANT within a process (a
+# refcount, so one process opening the same DB twice never deadlocks itself) and
+# EXCLUSIVE across processes. Acquisition is best-effort: if the lock primitive
+# errors or the wait times out, the DB still opens (degraded to the old
+# behaviour) rather than blocking the caller.
+
+_LOCK_REGISTRY: dict[str, list] = {}          # lock_path -> [fd, refcount]
+_LOCK_REGISTRY_GUARD = threading.Lock()
+
+
+def _lock_path_for(target: Path) -> Path:
+    key = hashlib.sha1(str(target.resolve()).encode()).hexdigest()[:16]
+    return Path(tempfile.gettempdir()) / f"jobhist-{key}.lock"
+
+
+def _try_lock_fd(fd: int) -> bool:
+    """Attempt a non-blocking exclusive lock on `fd`. True on success."""
+    try:
+        if _fcntl is not None:
+            _fcntl.flock(fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+            return True
+        if _msvcrt is not None:
+            os.lseek(fd, 0, os.SEEK_SET)
+            _msvcrt.locking(fd, _msvcrt.LK_NBLCK, 1)
+            return True
+    except OSError:
+        return False
+    # No lock primitive available — proceed unlocked (best effort).
+    return True
+
+
+def acquire_db_lock(target: Path, timeout: float = 60.0) -> bool:
+    """Acquire the process-wide / cross-process lock for `target`.
+
+    Returns True if the lock is now held (or re-entered, or unguarded because no
+    primitive exists). Returns False only if the wait timed out — the caller
+    still proceeds, just without serialisation, so a stuck peer can't deadlock
+    the whole tool."""
+    lock_path = _lock_path_for(target)
+    key = str(lock_path)
+    with _LOCK_REGISTRY_GUARD:
+        ent = _LOCK_REGISTRY.get(key)
+        if ent is not None:                  # re-entrant within this process
+            ent[1] += 1
+            return True
+    try:
+        fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o644)
+        os.write(fd, b"\0")                  # ensure >=1 byte for msvcrt locking
+    except OSError:
+        return True                          # can't create lockfile -> unlocked
+    deadline = time.time() + timeout
+    while True:
+        if _try_lock_fd(fd):
+            with _LOCK_REGISTRY_GUARD:
+                _LOCK_REGISTRY[key] = [fd, 1]
+            return True
+        if time.time() >= deadline:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            return False                     # timed out -> proceed unlocked
+        time.sleep(0.1)
+
+
+def release_db_lock(target: Path) -> None:
+    """Release one reference to `target`'s lock; unlock when the last ref drops."""
+    key = str(_lock_path_for(target))
+    with _LOCK_REGISTRY_GUARD:
+        ent = _LOCK_REGISTRY.get(key)
+        if ent is None:
+            return
+        ent[1] -= 1
+        if ent[1] > 0:
+            return
+        fd = ent[0]
+        del _LOCK_REGISTRY[key]
+    try:
+        if _fcntl is not None:
+            _fcntl.flock(fd, _fcntl.LOCK_UN)
+        elif _msvcrt is not None:
+            os.lseek(fd, 0, os.SEEK_SET)
+            _msvcrt.locking(fd, _msvcrt.LK_UNLCK, 1)
+    except OSError:
+        pass
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
 class JobHistoryDB:
     """Thin wrapper around the SQLite job history database."""
 
     def __init__(self, db_path: str | Path):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.db_path))
+        self._mirror_path: Path | None = None
+        self._closed = False
+        self._lock_held = False
+
+        # Serialise the whole open->operate->write-back critical section across
+        # processes so parallel runs can't interleave / lose updates / corrupt.
+        self._lock_held = acquire_db_lock(self.db_path)
+
+        # Work on a local-disk mirror to dodge SQLite "disk I/O error" /
+        # corruption on networked/mounted filesystems. The mirror is keyed by
+        # the canonical target path so sequential opens see the latest data;
+        # every commit (and close) copies the mirror atomically back to target.
+        connect_path = self.db_path
+        try:
+            key = hashlib.sha1(str(self.db_path.resolve()).encode()).hexdigest()[:16]
+            mirror = Path(tempfile.gettempdir()) / f"jobhist-mirror-{key}.db"
+            if self.db_path.exists():
+                if (not mirror.exists()
+                        or self.db_path.stat().st_mtime >= mirror.stat().st_mtime):
+                    shutil.copy2(self.db_path, mirror)
+            self._mirror_path = mirror
+            connect_path = mirror
+        except Exception:
+            # Mirroring is best-effort; fall back to operating on the target.
+            self._mirror_path = None
+            connect_path = self.db_path
+
+        self._conn = sqlite3.connect(str(connect_path))
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
+        try:
+            self._conn.execute("PRAGMA busy_timeout = 8000")
+        except sqlite3.DatabaseError:
+            pass
         self._init_schema()
+        # Flush schema creation / v1->v2 upgrade to the canonical target now, so
+        # callers that inspect the target file without closing still see it.
+        # Writes back only at init + close (not per-commit): minimises writes to
+        # the canonical file, which matters on flaky network/mounted filesystems.
+        self._sync_back()
+        atexit.register(self._safe_close)
+
+    @staticmethod
+    def _verify_sqlite(path: Path) -> bool:
+        """Return True iff `path` is a structurally sound SQLite DB.
+
+        Reads are done on a local-disk copy because direct reads of a
+        networked/mounted file can themselves raise spurious I/O errors;
+        copying off first makes the integrity check trustworthy."""
+        local = Path(tempfile.gettempdir()) / f"jobhist-verify-{os.getpid()}-{id(path)}.db"
+        try:
+            shutil.copy2(path, local)
+            con = sqlite3.connect(str(local))
+            try:
+                row = con.execute("PRAGMA integrity_check").fetchone()
+            finally:
+                con.close()
+            return bool(row) and row[0] == "ok"
+        except Exception:
+            return False
+        finally:
+            try:
+                local.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    def _sync_back(self) -> None:
+        """Copy the local mirror back onto the canonical target, verifying the
+        result and retrying on failure. Never replaces a healthy target with a
+        corrupt copy: some mounts mangle SQLite files on write, so each attempt
+        is integrity-checked off-mount before AND after the swap, and if no
+        attempt yields a clean file the existing target is left untouched (the
+        mirror remains the durable working copy)."""
+        mirror = getattr(self, "_mirror_path", None)
+        if not mirror:
+            return
+        for attempt in range(4):
+            tmp = self.db_path.with_name(
+                self.db_path.name + f".sync.{os.getpid()}.{attempt}.tmp"
+            )
+            try:
+                shutil.copy2(mirror, tmp)
+                try:
+                    with open(tmp, "rb") as fh:
+                        os.fsync(fh.fileno())
+                except OSError:
+                    pass
+                if not self._verify_sqlite(tmp):
+                    tmp.unlink(missing_ok=True)
+                    time.sleep(0.2)
+                    continue
+                os.replace(tmp, self.db_path)
+                if self._verify_sqlite(self.db_path):
+                    return
+            except Exception:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+            time.sleep(0.2)
+        # All attempts failed — leave the prior target in place (don't corrupt
+        # good data). The mirror at self._mirror_path holds the latest state.
+
+    def _safe_close(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -163,7 +392,16 @@ class JobHistoryDB:
                 )
 
     def close(self) -> None:
-        self._conn.close()
+        if getattr(self, "_closed", False):
+            return
+        try:
+            self._sync_back()
+        finally:
+            self._conn.close()
+            self._closed = True
+            if getattr(self, "_lock_held", False):
+                release_db_lock(self.db_path)
+                self._lock_held = False
 
     # -- insert --------------------------------------------------------------
 

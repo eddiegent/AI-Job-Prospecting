@@ -27,7 +27,17 @@ SYNONYMS: dict[str, list[str]] = {
 }
 
 
-_SEPARATORS = re.compile(r"[/,;&|·]|\s+et\s+|\s+and\s+|→|\bvs\b", re.IGNORECASE)
+_SEPARATORS = re.compile(
+    r"[/,;&|·]|\s+et\s+|\s+and\s+|\s+à\s+|→|\bvs\b|\s+[–-]\s+",
+    re.IGNORECASE,
+)
+# Brackets are treated as separators so parenthetical sub-lists / version
+# ranges become their own tokens, e.g. "SQL avancé (PostgreSQL, SQL Server)"
+# -> "SQL avancé", "PostgreSQL", "SQL Server".
+_BRACKETS = re.compile(r"[()\[\]{}]")
+# A token that is purely a version / number (e.g. "3.5", "v4", "2022", "3.5 4.8")
+# carries no tech identity on its own and must not be flagged.
+_PURE_VERSION = re.compile(r"^v?\d+(?:\.\d+)*(?:\s+v?\d+(?:\.\d+)*)*$")
 
 
 def canonical(token: str) -> str:
@@ -40,10 +50,53 @@ def canonical(token: str) -> str:
     return n
 
 
+def _alias_boundary(alias: str) -> re.Pattern:
+    """Word-bounded matcher for a synonym alias, tolerant of tech chars (#, ., +)."""
+    return re.compile(r"(?<![\w#.+])" + re.escape(alias) + r"(?![\w#.+])", re.IGNORECASE)
+
+
+def _explode_compound(token: str) -> list[str]:
+    """If a multi-word token CONTAINS one or more known synonym aliases as
+    word-bounded substrings (but is not itself a known tech), return those
+    aliases so each grounds independently. Otherwise return [] (keep as-is)."""
+    if canonical(token) in SYNONYMS:        # token IS a known tech — keep whole
+        return []
+    if len(token.split()) < 2:              # single word — nothing to explode
+        return []
+    found: list[str] = []
+    for canon, aliases in SYNONYMS.items():
+        for alias in aliases:
+            if _alias_boundary(alias).search(token):
+                found.append(canon)
+                break
+    return found
+
+
 def split_tokens(text: str) -> list[str]:
-    """Split a phrase like 'C# / .NET / WPF' into individual tokens."""
-    parts = _SEPARATORS.split(text)
-    return [p.strip() for p in parts if p.strip()]
+    """Split a phrase like 'C# / .NET / WPF' into individual tokens.
+
+    Beyond the coarse separators, this also: turns brackets into separators so
+    parenthetical sub-lists split out; drops pure version/number tokens; and
+    explodes space-joined compounds that embed a known synonym alias (e.g.
+    'C# .NET Framework' -> 'c#', '.net framework') so each grounds on its own.
+    """
+    coarse = _SEPARATORS.split(_BRACKETS.sub(",", text))
+    out: list[str] = []
+    for part in coarse:
+        tok = part.strip()
+        if not tok or _PURE_VERSION.fullmatch(tok):
+            continue
+        exploded = _explode_compound(tok)
+        out.extend(exploded if exploded else [tok])
+    # de-duplicate, preserving order (case-insensitive)
+    seen: set[str] = set()
+    result: list[str] = []
+    for tok in out:
+        key = tok.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(tok)
+    return result
 
 
 def tech_in_text(canon: str, text_lower: str) -> bool:

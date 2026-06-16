@@ -191,11 +191,53 @@ After all output files are generated, record this application in the database. S
 
 3. **Fact base verification failure** — Remove flagged items from `cv_fact_base.json` and re-verify. If the cache was just saved, re-save it after fixing. This usually means job offer keywords leaked into the fact base during extraction.
 
-4. **Database missing or corrupted** — If `job_history.db` doesn't exist, it's created automatically on first run. If corrupted, delete it and re-run — the backfill script can reimport from existing output folders.
+4. **Database missing or corrupted** — If `job_history.db` doesn't exist, it's created automatically on first run. If it's corrupted (e.g. `disk I/O error`, `database disk image is malformed` — common when the DB lives on a network/mounted filesystem), **do NOT just delete and re-run**: `backfill_history.py` only reimports applications that still have an output folder, so any history whose folder was since cleaned would be lost silently. Instead, **salvage first**: copy the DB to local disk and recover surviving rows one at a time by rowid into a fresh DB (a bulk `SELECT *` aborts on the first bad page, but row-by-row reads skip only the damaged rows), then re-record today's runs from their output folders. Delete-and-backfill is a last resort only when no rows are recoverable. See the network-FS note below — the DB layer now mirrors writes through local temp to avoid this class of corruption in the first place.
 
 5. **DOCX generation failure** — Check that all required JSON files exist in `_prep/`. Common cause: missing `letter.json` or `linkedin.json`. Re-run the missing step before retrying Step 9.
 
-6. **PDF conversion failure** — PDF generation requires Microsoft Word. If unavailable, DOCX files are still generated successfully. The user can convert manually.
+6. **PDF conversion** — PDF generation is **cross-platform** and does NOT require Microsoft Word. `scripts/pdf_pipeline.py` tries three converters in order and stops at the first that works: `docx2pdf` (needs Word, Windows/Mac) -> **LibreOffice** (`soffice` headless, works anywhere it's on PATH) -> `pandoc` (needs a LaTeX engine). Do NOT pass `--skip-pdf` assuming "no Word = no PDF" - on Linux/CI the LibreOffice fallback handles it. Only if *none* of the three are installed does the PDF step skip (with an actionable message); the DOCX is always still produced. In a bare environment install LibreOffice (`apt install libreoffice`) so `soffice` is on PATH.
+
+## Database durability & concurrency (network/mounted filesystems)
+
+`job_history.db` is SQLite. SQLite is reliable on local disks but its file
+locking and rollback journals are **unreliable on networked / mounted
+filesystems** (NFS, SMB/CIFS, 9p, many container/VM mounts): operating on it
+directly there can raise `disk I/O error` or even leave the file
+`database disk image is malformed`. `scripts/job_history_db.py` handles this so
+callers don't have to:
+
+- **Local mirror.** Every `JobHistoryDB` opens a fast local-disk copy (keyed by
+  the canonical target path, under the system temp dir) and does all SQL there.
+  The canonical file is touched only at open and close — minimising writes to
+  the flaky filesystem.
+- **Verified, retrying write-back.** Each write-back is integrity-checked
+  *off-mount* before and after the swap and retried; a copy that fails to verify
+  is discarded, so a healthy target is **never** replaced by a corrupt one. If
+  no attempt yields a clean file the prior target is left intact and the local
+  mirror remains the durable copy.
+- **Cross-process lock.** Each instance holds an exclusive advisory lock
+  (`fcntl` on POSIX, `msvcrt` on Windows — both auto-released if the process
+  dies) on a **local** lockfile for its whole lifetime, so the
+  open -> operate -> write-back section is serialised across processes. This is
+  what makes *parallel* writers safe: a second process can't start until the
+  first has finished syncing its rows, so the whole-file write-back can't
+  interleave, lose updates, or duplicate rows. The lock is **re-entrant within a
+  process** (a refcount, so opening the same DB twice never self-deadlocks) and
+  **fail-safe** (if the lock primitive errors or a 60 s wait times out, the DB
+  still opens, degraded, rather than blocking the tool).
+
+**Scope / boundary.** This guarantees correctness for multiple processes **on a
+single machine** (the skill's single-user model). It does **not** coordinate
+writers on *different* machines against the same networked DB file — that is a
+distributed-locking problem and out of scope; don't run the skill against one
+shared `job_history.db` from several hosts at once.
+
+**Recovery.** If the file is already corrupt, follow Error recovery item 4
+(salvage rows row-by-row off-mount first; delete-and-backfill only as a last
+resort). Concurrency and durability behaviour is covered by
+`tests/test_db_concurrency.py` (re-entrancy, serialisation via non-overlapping
+critical sections, and a teeth test proving the serialisation check fails
+without the lock).
 
 ## Output
 
