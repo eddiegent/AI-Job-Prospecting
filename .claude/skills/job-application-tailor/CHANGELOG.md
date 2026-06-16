@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Added — network-FS-safe history DB with cross-process locking (2026-06-16)
+- **Local mirror + verified write-back.** `JobHistoryDB` now operates on a fast local-disk mirror and copies back to the canonical file only at open and close. SQLite's file locking and rollback journals are unreliable on networked/mounted filesystems (NFS/SMB/9p, many container/VM mounts), which produced `disk I/O error` and `database disk image is malformed`. Each write-back is integrity-checked *off-mount* before and after the swap and retried; a copy that fails to verify is discarded, so a healthy target is never replaced by a corrupt one (the mirror stays the durable copy if all retries fail).
+- **Re-entrant cross-process lock.** Each instance holds an exclusive advisory lock (`fcntl` on POSIX / `msvcrt` on Windows, auto-released if the process dies) on a *local* lockfile for its lifetime, serialising the open → operate → write-back critical section across processes so parallel writers can't interleave, lose updates, or duplicate rows. Re-entrant within a process (refcount registry) so it can't self-deadlock; fail-safe — if the lock primitive errors or a 60 s wait times out, the DB still opens (degraded) rather than blocking the tool.
+- **Tests** — `tests/test_db_concurrency.py`: lock re-entrancy; serialisation proven via non-overlapping critical-section intervals of parallel subprocess writers; and a teeth test confirming the serialisation assertion *fails* when the lock is disabled (so it isn't vacuous).
+- **Docs** — new SKILL.md "Database durability & concurrency" section documents the design and its single-machine boundary (it does not coordinate writers across different hosts). The corruption-recovery note now says to salvage rows row-by-row off-mount first and only delete-and-backfill as a last resort, since backfill can't recover history whose output folders were cleaned.
+
+### Added — `technologies_to_deepen` proficiency tier (2026-06-16)
+- **New optional `technologies_to_deepen` field** in `schemas/cv_fact_base.schema.json`. Skills the master CV marks "Familier / à approfondir", or tech only *evaluated and not adopted* (e.g. Kafka when RabbitMQ was chosen), were being flattened into `technologies` and then promoted into core CV skill groups — overstating proficiency. `prompts/extract_cv_data.md` now routes such items into `technologies_to_deepen` (and keeps them out of `technologies`); `prompts/tailor_cv.md` renders them only in a clearly-labelled trailing "Familier / à approfondir" (FR) / "Familiar / to deepen" (EN) section, never a core group, and never presents evaluated-not-adopted tech as a held skill.
+
+### Fixed — grounding tokenizer false positives on compound tech labels (2026-06-16)
+- `scripts/_grounding_common.py::split_tokens` now splits parenthetical sub-lists and version ranges, drops bare version/number tokens, and explodes synonym-bearing compounds — so e.g. "C# .NET Framework (3.5 à 4.8)" grounds as `c#` + `.net` instead of being flagged as a single ungrounded token. Removes the recurring false-direct positives that forced requirement labels to be reworded on most runs, while leaving genuinely-ungrounded tech (e.g. RabbitMQ) correctly flagged.
+
+### Fixed — PDF generation docs (2026-06-16)
+- SKILL.md error-recovery item 6 corrected: PDF is **cross-platform** (`docx2pdf` → LibreOffice → `pandoc`) and does NOT require Microsoft Word. Removes the misleading "PDF requires Word" wording that caused blanket `--skip-pdf` / DOCX-only output on Linux/CI where the LibreOffice fallback is available.
+
+### Added — aggregator platforms `LesJeudis`, `Station F` (2026-06-16)
+- `config/settings.default.yaml § aggregators.known_platforms` += `LesJeudis`, `Station F`. Both surfaced as posting fronts for real employers (Estreem behind LesJeudis, Sekoia behind Station F), so real-employer detection now catches them automatically.
+
+### Changed — repository line-ending normalisation (2026-06-16)
+- Added root `.gitattributes` (`* text=auto eol=lf`; binaries marked `binary`; `.bat`/`.cmd` kept CRLF) and set `core.autocrlf=input`. Windows editors had been rewriting tracked files with CRLF, surfacing whole files as EOL-only "modifications". The working tree was normalised to LF; the tracked `.docx` templates were verified byte-identical (binary).
+
+
 ### Added — `dropped` application status (2026-05-26)
 - **New `dropped` status** across the CLI and history DB. `cli.py update-status` accepts it as a positional choice, `list --status` documents it, and `JobHistoryDB.update_status()` adds it to its `valid` set. `references/cli.md` regenerated to match; `job-status/SKILL.md` (description + workflow), root `README.md`, and `job-stats/README.md` updated to list it.
 - **Dropped applications are excluded from duplicate detection.** `find_duplicates()` now appends `AND status != 'dropped'` to all three checks (exact URL, company+title, company+skill overlap). Rationale: once the user explicitly walks away from a role, a fresh application to the same company/title/URL should not be blocked or warned against. Use `dropped` for jobs you've decided not to pursue.
