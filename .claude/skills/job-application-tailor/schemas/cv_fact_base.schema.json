@@ -2,14 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "candidate_name": {"type": "string"},
-    "headline": {"type": "string"},
+    "candidate_name": {
+      "type": "string"
+    },
+    "headline": {
+      "type": "string"
+    },
     "contact": {
       "type": "object",
       "properties": {
-        "email": {"type": "string"},
-        "phone": {"type": "string"},
-        "linkedin": {"type": "string"},
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "linkedin": {
+          "type": "string"
+        },
         "github": {
           "type": "string",
           "description": "GitHub URL as it appears in the CV header (e.g. 'github.com/janedoe' or 'github.com/janedoe/my-project'). Omit the field entirely if the CV has no GitHub link."
@@ -20,25 +30,82 @@
       "type": "string",
       "description": "Candidate's residential location as shown in the CV header, e.g. 'Brunoy (91)', 'London, UK', 'Austin, TX'"
     },
-    "summary": {"type": "string"},
-    "skills": {"type": "array", "items": {"type": "string"}},
-    "technologies": {"type": "array", "items": {"type": "string"}},
-    "methodologies": {"type": "array", "items": {"type": "string"}},
+    "summary": {
+      "type": "string"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "technologies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "technologies_to_deepen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Technologies the candidate is familiar with but has NOT used in anger / is still deepening (e.g. a master-CV 'Familier / à approfondir' section, or tech only evaluated-not-adopted). Kept separate so tailoring never lists them as core skills."
+    },
+    "methodologies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "experience": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "company": {"type": "string"},
-          "location": {"type": "string"},
-          "role": {"type": "string"},
-          "dates": {"type": "string"},
-          "type": {"type": "string", "enum": ["role", "training"]},
-          "details": {"type": "array", "items": {"type": "string"}},
-          "metrics": {"type": "array", "items": {"type": "string"}},
-          "international_signals": {"type": "array", "items": {"type": "string"}}
+          "company": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "dates": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "role",
+              "training"
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "international_signals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
-        "required": ["company", "role", "dates"]
+        "required": [
+          "company",
+          "role",
+          "dates"
+        ]
       }
     },
     "projects": {
@@ -47,18 +114,57 @@
       "items": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "dates": {"type": "string", "description": "Free-form date range as written in the CV (e.g. 'March 2026 – ongoing'). Omit if absent."},
-          "link": {"type": "string", "description": "Repository or live URL. Omit if absent."},
-          "bullets": {"type": "array", "items": {"type": "string"}}
+          "name": {
+            "type": "string"
+          },
+          "dates": {
+            "type": "string",
+            "description": "Free-form date range as written in the CV (e.g. 'March 2026 – ongoing'). Omit if absent."
+          },
+          "link": {
+            "type": "string",
+            "description": "Repository or live URL. Omit if absent."
+          },
+          "bullets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
-        "required": ["name", "bullets"]
+        "required": [
+          "name",
+          "bullets"
+        ]
       }
     },
-    "education": {"type": "array", "items": {"type": "string"}},
-    "languages": {"type": "array", "items": {"type": "string"}},
-    "constraints": {"type": "array", "items": {"type": "string"}},
-    "transition_signals": {"type": "array", "items": {"type": "string"}}
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "transition_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
   },
-  "required": ["candidate_name", "experience"]
+  "required": [
+    "candidate_name",
+    "experience"
+  ]
 }

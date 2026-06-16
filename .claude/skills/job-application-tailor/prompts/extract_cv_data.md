@@ -33,6 +33,7 @@ Return valid JSON matching `schemas/cv_fact_base.schema.json`. Read that schema 
   "summary": "...",
   "skills": ["System design", "API integration"],
   "technologies": ["C#", ".NET", "SQL Server"],
+  "technologies_to_deepen": ["Kubernetes", "Kafka"],
   "methodologies": ["Scrum", "Clean Code", "SOLID"],
   "experience": [
     {"company": "Acme Corp", "location": "Paris", "role": "Senior Developer", "dates": "Jan 2020 – Present", "type": "role", "details": ["..."], "metrics": ["..."], "international_signals": ["..."]}
@@ -61,6 +62,21 @@ Key points:
 - Do not merge different roles
 - Full-time training periods that have specific dates must appear in the experience array so the timeline has no gaps
 - List all experiences in strict reverse chronological order
+
+## Proficiency tiers — `technologies` vs `technologies_to_deepen`
+
+`technologies` is for tech the candidate has actually worked with. Put into the
+separate `technologies_to_deepen` array (and do **not** also list it in
+`technologies`) any tech the CV itself marks as lower-proficiency, e.g.:
+
+- a dedicated "Familier / à approfondir", "Familiar / to deepen", "Notions" or
+  "En découverte" (or equivalent) section/column;
+- a technology the CV only **evaluated but did not adopt** — e.g. "évaluation
+  RabbitMQ vs Kafka (RabbitMQ retenu)" means RabbitMQ is the held tool and
+  **Kafka belongs in `technologies_to_deepen`, not `technologies`**.
+
+This stops the tailoring step from presenting exploratory tech as a core skill.
+If the CV makes no such distinction, leave `technologies_to_deepen` empty.
 
 ## CRITICAL — Contamination prevention
 If a job offer is present in context, **ignore it completely** when extracting the fact base. The `technologies` and `methodologies` arrays must contain ONLY items that appear as written text in the CV. A verification script will cross-check every item against the raw CV text and block the pipeline if fabrications are detected. Common contamination patterns to avoid:

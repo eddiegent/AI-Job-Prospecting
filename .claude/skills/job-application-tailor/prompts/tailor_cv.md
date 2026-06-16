@@ -159,6 +159,8 @@ If `contact.github` is absent from the fact base, omit the GitHub segment entire
 ### Skills sections
 Preserve the master CV's granular skill categories as separate `skills_sections` entries. Each category from the skills table becomes its own section with its own heading (e.g. "Langages", "Plateformes & Frameworks", "Services & Communication", "Données", "Tests", "Outils & Environnements", "Architecture & Méthodes", "Systèmes"). Do not consolidate multiple categories into a single section. Dedicated sections outside the table (e.g. "Développement assisté par IA") are also preserved as separate entries. You may reorder sections for relevance but never merge or drop them.
 
+**Proficiency honesty — `technologies_to_deepen`.** Items in `cv_fact_base.technologies_to_deepen` are familiar-but-not-mastered (or only evaluated, not adopted). They must NEVER be mixed into a core skills group. If some are relevant to the target role, surface them only in a single clearly-labelled trailing section — heading `"Familier / à approfondir"` (FR) or `"Familiar / exploring"` (EN) — after the core skill sections; otherwise omit them. Never present an evaluated-not-adopted technology (e.g. Kafka when the candidate chose RabbitMQ) as a held skill anywhere in the CV.
+
 ### Experience line format
 Each experience entry has two separate fields:
 - `role_line` — the role/job title **only** (e.g. `"IT Project Manager"`, `"R&D Engineer"`, `"Development Manager"`). No company, no dates. Rendered bold on its own line.
