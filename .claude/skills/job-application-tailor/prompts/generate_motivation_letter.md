@@ -37,6 +37,7 @@ Recruiters read dozens of letters a day. The ones that stand out feel genuine, n
 - If the candidate lives near the job location, it's worth mentioning naturally (e.g. "basé à Brunoy, à proximité de vos locaux" or "based locally in..."). Geographic proximity is a real advantage — recruiters prefer candidates who won't need relocation. But don't force it if the role is fully remote or if the candidate is far away.
 - Keep it short (3-4 paragraphs max)
 - Paragraphs should be 2-4 sentences, not dense blocks
+- Don't headline the same metric/achievement in more than one paragraph — state each strongest proof point once and let other paragraphs cover different ground (e.g. don't repeat a throughput figure or a signature phrase like "reverse engineering" in several places).
 - Signoff must be "Cordialement," or "Bien cordialement," — nothing more formal
 - The closing salutation goes ONLY in the `signoff` field. Never repeat it as the last item of `paragraphs` — `paragraphs` is body text only (no "Cordialement,", no sender name). The renderer appends `signoff` and `name` itself.
 - Align to the language of the job offer unless a target language is specified

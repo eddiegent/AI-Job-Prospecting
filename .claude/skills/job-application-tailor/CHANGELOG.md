@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed — reduce cross-document repetition in letters & LinkedIn messages (2026-06-16)
+- The motivation letter, short letter, and three LinkedIn variants tended to reach for the same hero facts (e.g. "15+ ans C#/.NET", a backup-throughput figure) and the LinkedIn variants read like copies of each other. Added prompt rules: `generate_linkedin_message.md` now requires each variant to take a distinct angle (recruiter → fit/availability; hiring_manager → one concrete technical proof; internal_contact → a genuine question) and to vary which fact leads; `generate_short_letter.md` must lead with a different hook than the cover letter and not reproduce its sentences verbatim; `generate_motivation_letter.md` must not headline the same metric/phrase in more than one paragraph. Applies to all future runs, including the daily scheduled task. Existing packs unchanged (regenerate on demand per pack).
+
+
 ### Fixed — duplicate closing salutation in motivation letters (2026-06-16)
 - `scripts/docx_generator.py::generate_letter_docx` now strips trailing body paragraphs that are empty, echo the `signoff`/sender name, or are a closing salutation, before appending the signoff block. The letter generator occasionally emitted the salutation (e.g. "Cordialement,") as the last `paragraphs` item AND in `signoff`, so the rendered DOCX showed it twice. `prompts/generate_motivation_letter.md` now also states the closing salutation belongs only in `signoff`, never in `paragraphs`. Regression test: `tests/test_letter_signoff_dedup.py`.
 

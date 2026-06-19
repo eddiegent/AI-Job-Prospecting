@@ -29,6 +29,14 @@ If no contacts were found for a category, use "[Prénom]" as placeholder.
 - Adapt tone: slightly more formal for hiring managers, warmer for internal contacts, direct for recruiters
 - Write in the same language as the job offer
 
+## Differentiation (required)
+The three variants are alternatives sent to *different* people — they must not read like copies of each other. Do NOT open all three with the same sentence or the same headline fact, and do not reuse the cover letter's opening line. Give each a distinct angle:
+- **recruiter** — lead with role fit + practical signals (seniority match, location/commute, language, availability). Keep deep tech light; one relevant credential is enough.
+- **hiring_manager** — lead with ONE concrete, role-specific technical proof point that shows you grasp their actual challenge. Skip generic "X years of Y".
+- **internal_contact** — lead with a genuine question about the team, environment, or culture; at most one short line of background. A conversation-opener, not a pitch.
+
+Vary which fact you lead with across the three, so the same metric (e.g. a backup-throughput number) doesn't headline more than one message.
+
 ## Output format
 Return valid JSON matching `schemas/linkedin.schema.json`. Read that schema file for the exact structure.
 
