@@ -222,6 +222,14 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(hyperlink)
 
 
+_CLOSING_SALUTATION = re.compile(
+    r"^(cordialement|bien cordialement|sinc[eè]rement|salutations(\s+distingu[eé]es)?|"
+    r"bien [aà] vous|respectueusement|veuillez agr[eé]er|best regards|kind regards|"
+    r"warm regards|sincerely|regards|yours (sincerely|faithfully|truly))\b",
+    re.IGNORECASE,
+)
+
+
 def generate_letter_docx(output_path: Path, letter_data: dict[str, Any], settings: dict[str, Any]) -> Path:
     _require(letter_data, "paragraphs", "Letter DOCX")
     _require(letter_data, "name", "Letter DOCX")
@@ -261,10 +269,30 @@ def generate_letter_docx(output_path: Path, letter_data: dict[str, Any], setting
         r.bold = True
     if letter_data.get("greeting"):
         doc.add_paragraph(letter_data["greeting"])
-    for para in letter_data.get("paragraphs", []):
-        doc.add_paragraph(para)
     signoff = letter_data.get("signoff", "")
     name = letter_data.get("name", "")
+    paragraphs = list(letter_data.get("paragraphs", []))
+
+    # Guard against a duplicated closing salutation: generators occasionally
+    # append the signoff (e.g. "Cordialement,") as the final body paragraph AND
+    # also set `signoff`, which then rendered the salutation twice. Drop trailing
+    # body paragraphs that are empty, echo the signoff / sender name, or are just
+    # a closing salutation, so the signoff block below is the only one.
+    def _is_trailing_closing(text: str) -> bool:
+        t = (text or "").strip().rstrip(",.").lower()
+        if not t:
+            return True
+        if signoff and t == signoff.strip().rstrip(",.").lower():
+            return True
+        if name and t == name.strip().lower():
+            return True
+        return len(t) < 40 and bool(_CLOSING_SALUTATION.match(t))
+
+    while paragraphs and _is_trailing_closing(paragraphs[-1]):
+        paragraphs.pop()
+
+    for para in paragraphs:
+        doc.add_paragraph(para)
     if signoff:
         doc.add_paragraph(signoff)
     if name:

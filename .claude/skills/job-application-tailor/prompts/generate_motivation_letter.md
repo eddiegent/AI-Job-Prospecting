@@ -38,6 +38,7 @@ Recruiters read dozens of letters a day. The ones that stand out feel genuine, n
 - Keep it short (3-4 paragraphs max)
 - Paragraphs should be 2-4 sentences, not dense blocks
 - Signoff must be "Cordialement," or "Bien cordialement," — nothing more formal
+- The closing salutation goes ONLY in the `signoff` field. Never repeat it as the last item of `paragraphs` — `paragraphs` is body text only (no "Cordialement,", no sender name). The renderer appends `signoff` and `name` itself.
 - Align to the language of the job offer unless a target language is specified
 
 ## Suggested structure

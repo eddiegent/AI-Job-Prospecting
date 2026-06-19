@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed — duplicate closing salutation in motivation letters (2026-06-16)
+- `scripts/docx_generator.py::generate_letter_docx` now strips trailing body paragraphs that are empty, echo the `signoff`/sender name, or are a closing salutation, before appending the signoff block. The letter generator occasionally emitted the salutation (e.g. "Cordialement,") as the last `paragraphs` item AND in `signoff`, so the rendered DOCX showed it twice. `prompts/generate_motivation_letter.md` now also states the closing salutation belongs only in `signoff`, never in `paragraphs`. Regression test: `tests/test_letter_signoff_dedup.py`.
+
+
 ### Added — network-FS-safe history DB with cross-process locking (2026-06-16)
 - **Local mirror + verified write-back.** `JobHistoryDB` now operates on a fast local-disk mirror and copies back to the canonical file only at open and close. SQLite's file locking and rollback journals are unreliable on networked/mounted filesystems (NFS/SMB/9p, many container/VM mounts), which produced `disk I/O error` and `database disk image is malformed`. Each write-back is integrity-checked *off-mount* before and after the swap and retried; a copy that fails to verify is discarded, so a healthy target is never replaced by a corrupt one (the mirror stays the durable copy if all retries fail).
 - **Re-entrant cross-process lock.** Each instance holds an exclusive advisory lock (`fcntl` on POSIX / `msvcrt` on Windows, auto-released if the process dies) on a *local* lockfile for its lifetime, serialising the open → operate → write-back critical section across processes so parallel writers can't interleave, lose updates, or duplicate rows. Re-entrant within a process (refcount registry) so it can't self-deadlock; fail-safe — if the lock primitive errors or a 60 s wait times out, the DB still opens (degraded) rather than blocking the tool.
