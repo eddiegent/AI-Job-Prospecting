@@ -7,6 +7,14 @@ Philosophy: no real Word/LibreOffice/pandoc calls. Every converter is
 monkeypatched so the tests run offline and deterministically on any OS.
 The production module must look up the three private helpers via module
 globals (not via a frozen module-level list) so monkeypatching works.
+
+LibreOffice conversion runs against a COPY of the DOCX inside an isolated
+temp dir (with a dedicated ``-env:UserInstallation`` profile), then moves
+only the finished PDF back to the requested destination. This keeps
+LibreOffice's ``.~lock.*#`` / ``lu*.tmp`` artefacts off the (often
+delete-restricted, network-mounted) output folder. The subprocess-level
+fakes below therefore emit their PDF into the ``--outdir`` directory, the
+same way real soffice does.
 """
 from __future__ import annotations
 
@@ -35,6 +43,27 @@ def _recording_fake(name: str, calls: list[str], *, succeed: bool):
         return False
 
     return fake
+
+
+def _fake_soffice_run(cmd, **kwargs):
+    """Stand-in for subprocess.run that mimics soffice's --outdir behaviour.
+
+    Real soffice writes ``<src-stem>.pdf`` into the directory given by
+    ``--outdir`` (never directly to the final destination), so the fake does
+    the same. This is what lets _try_libreoffice find the produced file in the
+    temp dir and move it onward.
+    """
+    cmd = list(cmd)
+    outdir = Path(cmd[cmd.index("--outdir") + 1])
+    src = Path(cmd[-1])
+    (outdir / (src.stem + ".pdf")).write_bytes(b"%PDF-1.4 fake")
+
+    class _Result:
+        returncode = 0
+        stdout = b""
+        stderr = b""
+
+    return _Result()
 
 
 def test_pdf_pipeline_tries_docx2pdf_first(tmp_path, monkeypatch):
@@ -110,23 +139,12 @@ def test_detect_libreoffice_on_path(tmp_path, monkeypatch):
     assert mod._try_libreoffice(docx, pdf) is False
     assert subprocess_called == [], "subprocess.run must not be called when soffice is absent"
 
-    # Case 2: soffice present — helper attempts subprocess.
+    # Case 2: soffice present — helper attempts subprocess and produces the PDF.
     fake_soffice = str(tmp_path / "soffice")
     monkeypatch.setattr(mod.shutil, "which", lambda name: fake_soffice if name == "soffice" else None)
-
-    def fake_run(cmd, **kwargs):
-        # Simulate a successful conversion by writing the expected output file.
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        class _Result:
-            returncode = 0
-            stdout = b""
-            stderr = b""
-
-        return _Result()
-
-    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod.subprocess, "run", _fake_soffice_run)
     assert mod._try_libreoffice(docx, pdf) is True
+    assert pdf.exists()
 
 
 def test_libreoffice_invocation_uses_headless_flag(tmp_path, monkeypatch):
@@ -142,14 +160,7 @@ def test_libreoffice_invocation_uses_headless_flag(tmp_path, monkeypatch):
     def fake_run(cmd, **kwargs):
         recorded["cmd"] = list(cmd)
         recorded["kwargs"] = kwargs
-        pdf.write_bytes(b"%PDF-1.4 fake")
-
-        class _Result:
-            returncode = 0
-            stdout = b""
-            stderr = b""
-
-        return _Result()
+        return _fake_soffice_run(cmd, **kwargs)
 
     monkeypatch.setattr(mod.subprocess, "run", fake_run)
     mod._try_libreoffice(docx, pdf)
@@ -161,4 +172,73 @@ def test_libreoffice_invocation_uses_headless_flag(tmp_path, monkeypatch):
     # The format argument immediately follows --convert-to
     fmt_index = cmd.index("--convert-to") + 1
     assert cmd[fmt_index] == "pdf", f"Expected 'pdf' format arg, got {cmd[fmt_index]}"
-    assert str(docx) in cmd, f"DOCX path missing from command: {cmd}"
+    # The source handed to soffice is a COPY (same basename) inside the temp
+    # outdir — NOT the original DOCX on the (mounted) output folder.
+    src_arg = Path(cmd[-1])
+    assert src_arg.name == docx.name, f"soffice source should share the DOCX name: {cmd}"
+    assert src_arg != docx, "soffice must convert a temp copy, not the original DOCX on the mount"
+
+
+def test_libreoffice_uses_isolated_user_profile(tmp_path, monkeypatch):
+    """Each conversion must pass a dedicated -env:UserInstallation profile so
+    soffice runs as its own instance and shuts down cleanly (no shared
+    background process holding locks; safe under parallel runs)."""
+    docx = _make_docx(tmp_path)
+    pdf = docx.with_suffix(".pdf")
+    import scripts.pdf_pipeline as mod
+
+    fake_soffice = str(tmp_path / "soffice")
+    monkeypatch.setattr(mod.shutil, "which", lambda name: fake_soffice if name == "soffice" else None)
+
+    recorded: dict = {}
+
+    def fake_run(cmd, **kwargs):
+        recorded["cmd"] = list(cmd)
+        return _fake_soffice_run(cmd, **kwargs)
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    mod._try_libreoffice(docx, pdf)
+
+    profile_args = [a for a in recorded["cmd"] if a.startswith("-env:UserInstallation=")]
+    assert profile_args, f"Missing -env:UserInstallation profile flag: {recorded['cmd']}"
+    assert profile_args[0].startswith("-env:UserInstallation=file:"), \
+        f"Profile must be a file URI: {profile_args[0]}"
+
+
+def test_libreoffice_converts_off_mount_and_cleans_up(tmp_path, monkeypatch):
+    """The conversion must happen in a temp dir distinct from the output folder,
+    leave NO lock/scratch files behind in the output folder, and remove the
+    temp dir afterwards."""
+    outdir_mount = tmp_path / "output_folder"
+    outdir_mount.mkdir()
+    docx = _make_docx(outdir_mount, "CV.docx")
+    pdf = docx.with_suffix(".pdf")
+    import scripts.pdf_pipeline as mod
+
+    fake_soffice = str(tmp_path / "soffice")
+    monkeypatch.setattr(mod.shutil, "which", lambda name: fake_soffice if name == "soffice" else None)
+
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        cmd = list(cmd)
+        workdir = Path(cmd[cmd.index("--outdir") + 1])
+        seen["workdir"] = workdir
+        # Simulate the lock/scratch debris LibreOffice would create next to the
+        # file it opens — it must all live in the temp workdir, never the mount.
+        (workdir / ".~lock.CV.docx#").write_text("lock")
+        (workdir / "lu12345.tmp").write_text("scratch")
+        return _fake_soffice_run(cmd, **kwargs)
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    ok = mod._try_libreoffice(docx, pdf)
+
+    assert ok is True and pdf.exists(), "conversion should succeed and produce the PDF"
+    # Work happened OFF the output folder.
+    assert seen["workdir"] != outdir_mount
+    # The temp workdir (with all its lock/scratch debris) is gone.
+    assert not seen["workdir"].exists(), "temp workdir must be cleaned up"
+    # The output folder contains ONLY the original DOCX and the new PDF — no
+    # .~lock.*# and no lu*.tmp leaked onto the mount.
+    leftovers = sorted(p.name for p in outdir_mount.iterdir())
+    assert leftovers == ["CV.docx", "CV.pdf"], f"output folder must be clean, got {leftovers}"

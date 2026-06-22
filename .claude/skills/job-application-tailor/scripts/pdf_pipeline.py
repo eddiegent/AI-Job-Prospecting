@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -43,29 +44,52 @@ def _try_libreoffice(docx: Path, pdf: Path) -> bool:
     soffice = shutil.which("soffice")
     if soffice is None:
         return False
+    # Convert inside an isolated temp dir with a dedicated LibreOffice profile.
+    #
+    # Why not point soffice straight at the output folder? LibreOffice creates
+    # a ``.~lock.<file>#`` lock and ``lu*.tmp`` scratch files next to whatever
+    # it opens. When the output folder lives on a network/restricted mount it
+    # often refuses deletes, so those markers linger forever. Converting a copy
+    # in a local temp dir keeps every lock/scratch file OFF the output folder,
+    # and ``shutil.rmtree`` removes them with the temp dir.
+    #
+    # The unique ``-env:UserInstallation`` profile means each call gets its own
+    # LibreOffice instance that starts and shuts down cleanly, instead of
+    # attaching to a shared background ``soffice`` process that can hold locks
+    # open — which also makes parallel conversions safe.
+    workdir = Path(tempfile.mkdtemp(prefix="soffice_pdf_"))
     try:
-        subprocess.run(
-            [
-                soffice,
-                "--headless",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                str(pdf.parent),
-                str(docx),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=120,
-        )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        return False
-    # soffice names the output <docx-stem>.pdf in --outdir; rename if the
-    # caller asked for a different name.
-    produced = pdf.parent / (docx.stem + ".pdf")
-    if produced != pdf and produced.exists():
-        produced.replace(pdf)
-    return pdf.exists()
+        src = workdir / docx.name
+        shutil.copy2(docx, src)
+        profile = (workdir / "profile").as_uri()
+        try:
+            subprocess.run(
+                [
+                    soffice,
+                    f"-env:UserInstallation={profile}",
+                    "--headless",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    str(workdir),
+                    str(src),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=120,
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            return False
+        # soffice names the output <docx-stem>.pdf inside --outdir (the temp
+        # dir). Move just the finished PDF back to the requested destination;
+        # shutil.move handles the cross-filesystem case (temp → mount).
+        produced = workdir / (docx.stem + ".pdf")
+        if not produced.exists():
+            return False
+        shutil.move(str(produced), str(pdf))
+        return pdf.exists()
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 def _try_pandoc(docx: Path, pdf: Path) -> bool:
