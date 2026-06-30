@@ -307,14 +307,38 @@ def cv_cache_is_valid(cv_path: Path, prep_dir: Path = None) -> bool:
 
 
 def save_cv_fact_base(cv_path: Path, prep_dir: Path) -> None:
-    """Save cv_fact_base.json and .cv_hash next to the CV, and copy to prep_dir."""
+    """Save cv_fact_base.json and .cv_hash next to the CV, and copy to prep_dir.
+
+    Before writing ``.cv_hash``, run the metric-drift consistency check on the
+    prep fact base against the CV and **refuse** to cache if it is inconsistent.
+    Refreshing the hash on a stale fact base is exactly the operation that caused
+    the "40+ → 100+ applications" incident, so it must raise rather than silently
+    bless outdated facts. Re-extract the fact base instead.
+    """
     import shutil
+    # Importable as a bare module (scripts dir on sys.path) or as a package
+    # member (skill root on sys.path, e.g. under pytest / preflight).
+    try:
+        from factbase_consistency import check
+    except ImportError:  # pragma: no cover - exercised via the package-import path
+        from scripts.factbase_consistency import check
+
     resources_dir = cv_path.parent
+    src = prep_dir / "cv_fact_base.json"
+
+    if src.exists():
+        errors, _ = check(cv_path, src)  # metric-drift gate
+        if errors:
+            raise RuntimeError(
+                "Refusing to cache a fact base that is inconsistent with the CV:\n  "
+                + "\n  ".join(errors)
+                + "\nRe-extract the fact base instead of refreshing the hash."
+            )
+
     hash_file = resources_dir / ".cv_hash"
     ensure_dir(resources_dir)
     hash_file.write_text(file_hash(cv_path), encoding="utf-8")
     # Copy fact base from prep_dir to resources for future runs
-    src = prep_dir / "cv_fact_base.json"
     dst = resources_dir / "cv_fact_base.json"
     if src.exists() and src != dst:
         shutil.copy2(str(src), str(dst))

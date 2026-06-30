@@ -5,8 +5,11 @@ Catches contamination where job offer keywords leak into the fact base during ex
 - technologies and methodologies: STRICT — must appear literally in CV text. Failure = exit 1.
 - skills: WARNING only — these are often reasonable abstractions of role descriptions
   (e.g. "Gestion d'équipe" from a "Development Manager" role). Flagged but not blocking.
+- salient numeric metrics (carrying +, % or PB/TB/GB): STRICT — must still appear in the
+  CV text (via factbase_consistency.find_metric_drift). Catches stale/fabricated figures
+  like the "40+ → 100+ applications" drift that word-only checks missed. Failure = exit 1.
 
-Exit code 0 = clean, exit code 1 = technology/methodology fabrications found.
+Exit code 0 = clean, exit code 1 = technology/methodology fabrication or metric drift found.
 """
 from __future__ import annotations
 
@@ -17,6 +20,14 @@ import sys
 from pathlib import Path
 
 from docx import Document
+
+# Importable both as a bare script (preflight runs `python scripts/verify_fact_base.py`,
+# putting the scripts dir on sys.path[0]) and as a package member (pytest puts the
+# skill root on sys.path, so the module is `scripts.factbase_consistency`).
+try:
+    from factbase_consistency import find_metric_drift
+except ImportError:  # pragma: no cover - exercised via the package-import path
+    from scripts.factbase_consistency import find_metric_drift
 
 
 def extract_cv_text(docx_path: Path) -> str:
@@ -90,6 +101,14 @@ def verify(cv_path: Path, fact_base_path: Path) -> tuple[list[str], list[str]]:
         if not _term_present(item, cv_text):
             warnings.append(f"[skills] {item}")
 
+    # Strict: salient numeric metrics (carrying +, % or PB/TB/GB) must still
+    # appear in the CV. verify_fact_base only ever checked tech/skill words, so a
+    # changed figure (the "40+ → 100+ applications" incident) slipped through. A
+    # drifted metric is a stale/fabricated number and blocks the pipeline, which
+    # forces re-extraction on the cache-hit path (preflight calls this script).
+    for token in find_metric_drift(cv_text, fact_base):
+        errors.append(f"[metric] '{token}' in fact base but not in CV — stale/fabricated figure")
+
     return errors, warnings
 
 
@@ -110,13 +129,14 @@ def main() -> None:
         print()
 
     if errors:
-        print(f"FABRICATION DETECTED — {len(errors)} technology/methodology item(s) not found in CV:")
+        print(f"FABRICATION DETECTED — {len(errors)} fact-base item(s) not found in CV:")
         for item in errors:
             print(f"  - {item}")
-        print("\nRemove these items from cv_fact_base.json before proceeding.")
+        print("\nRemove or re-extract these items from cv_fact_base.json before proceeding.")
+        print("(A [metric] item means a number drifted from the CV — re-extract; do not refresh .cv_hash by hand.)")
         sys.exit(1)
     else:
-        print("Verification OK — all technologies and methodologies found in CV text.")
+        print("Verification OK — all technologies, methodologies, and metrics found in CV text.")
 
 
 if __name__ == "__main__":

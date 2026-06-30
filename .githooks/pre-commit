@@ -51,3 +51,16 @@ fi
 #    cli.py but doesn't stage the regenerated references/cli.md, or edits
 #    references/cli.md by hand).
 "$PY" "$GEN" --check
+
+# 4. Fact-base consistency: a stale cv_fact_base.json must never be committed.
+#    resources/ is git-ignored (personal CV data) and absent on a fresh clone,
+#    so only run when both files are present.
+FB_CHECK="$REPO_ROOT/tools/factbase_consistency.py"
+MASTER_CV="$REPO_ROOT/resources/MASTER_CV.docx"
+FACT_BASE="$REPO_ROOT/resources/cv_fact_base.json"
+if [ -f "$MASTER_CV" ] && [ -f "$FACT_BASE" ]; then
+  "$PY" "$FB_CHECK" "$MASTER_CV" "$FACT_BASE" --check-hash || {
+    echo "pre-commit: cv_fact_base.json is out of sync with MASTER_CV.docx — re-extract it (do not refresh .cv_hash by hand)." >&2
+    exit 1
+  }
+fi

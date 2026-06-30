@@ -233,12 +233,24 @@ def main(argv: list[str]) -> int:
         copy_cached_cv_fact_base(master_cv, prep_dir)
         fact_base_path = prep_dir / "cv_fact_base.json"
         ok, verify_msg = _verify_fact_base_cached(master_cv, fact_base_path)
+        # Defense-in-depth: verify_fact_base.py already blocks on metric drift,
+        # but run the consistency check in-process too so the cache-stale
+        # downgrade does not depend solely on the child's exit code.
+        try:
+            from factbase_consistency import check as _fb_check
+
+            drift_errs, _ = _fb_check(master_cv, fact_base_path)
+        except Exception:
+            drift_errs = []
+        if drift_errs:
+            ok = False
+            verify_msg = (verify_msg + "\n" + "\n".join(drift_errs)).strip()
         state["fact_base_path"] = str(fact_base_path)
         state["fact_base_verified"] = ok
         state["fact_base_verify_message"] = verify_msg
         if not ok:
-            # Verification flagged contamination — orchestrator must
-            # re-extract via LLM, same as cache_stale.
+            # Verification flagged contamination or metric drift — orchestrator
+            # must re-extract via LLM, same as cache_stale.
             state["status"] = "cache_stale"
     else:
         state["status"] = "cache_stale"
