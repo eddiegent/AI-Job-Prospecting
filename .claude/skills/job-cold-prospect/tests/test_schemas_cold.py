@@ -34,6 +34,8 @@ def _company_profile_min() -> dict:
     return {
         "company_name": "Acme SAS",
         "canonical_url": "https://acme.example",
+        "org_type": "end_employer",
+        "org_type_evidence": "Site sells its own product line; careers page advertises roles on Acme's own teams.",
         "size_band": "scaleup",
         "mission_statement": "Build useful robots.",
         "products_services": ["Robot arms", "Control software"],
@@ -102,6 +104,42 @@ def test_company_profile_source_requires_url_and_fetched_at(tmp_path, cold_schem
     data["sources"] = [{"url": "https://acme.example/about"}]  # missing fetched_at
     errors = _run(tmp_path, data, cold_schemas_dir / "company_profile.schema.json")
     assert any("fetched_at" in e for e in errors), errors
+
+
+def test_company_profile_requires_org_type(tmp_path, cold_schemas_dir):
+    """org_type drives the whole cold-flow reframe (employer vs ESN vs cabinet),
+    so it is required — a profile must always classify the organisation."""
+    data = _company_profile_min()
+    del data["org_type"]
+    errors = _run(tmp_path, data, cold_schemas_dir / "company_profile.schema.json")
+    assert any("org_type" in e for e in errors), errors
+
+
+def test_company_profile_requires_org_type_evidence(tmp_path, cold_schemas_dir):
+    """The classification must be traceable like every other fact."""
+    data = _company_profile_min()
+    del data["org_type_evidence"]
+    errors = _run(tmp_path, data, cold_schemas_dir / "company_profile.schema.json")
+    assert any("org_type_evidence" in e for e in errors), errors
+
+
+def test_company_profile_rejects_unknown_org_type(tmp_path, cold_schemas_dir):
+    data = _company_profile_min()
+    data["org_type"] = "headhunter"  # not in the enum (the value is recruitment_agency)
+    errors = _run(tmp_path, data, cold_schemas_dir / "company_profile.schema.json")
+    assert any("org_type" in e for e in errors), errors
+
+
+@pytest.mark.parametrize(
+    "org_type",
+    ["end_employer", "esn", "staffing_agency", "recruitment_agency", "unknown"],
+)
+def test_company_profile_accepts_each_org_type(tmp_path, cold_schemas_dir, org_type):
+    data = _company_profile_min()
+    data["org_type"] = org_type
+    data["org_type_inferred"] = org_type != "end_employer"
+    errors = _run(tmp_path, data, cold_schemas_dir / "company_profile.schema.json")
+    assert errors == [], errors
 
 
 def test_company_profile_leadership_requires_source_url(tmp_path, cold_schemas_dir):

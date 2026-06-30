@@ -9,11 +9,29 @@ Produce a structured profile of the target company. Every factual claim must be 
 - **User-supplied identifier** — a company name or a URL. Preserve it verbatim in `input_raw`.
 - **Optional user hints** — free-form context the user provided (e.g. "embedded software for medical devices", "I met one of their engineers at a conference"). Use these to guide research but do not treat them as sources — they are not citable.
 
+## Classify the organisation type — do this early, it reframes everything downstream
+
+Before anything else, decide **what kind of organisation this is**. It changes the entire cold approach: who you write to, what the letter offers, and how the dossier frames "why them". Record it in `org_type` with a citable `org_type_evidence`.
+
+| `org_type` | What it is | French telltales to look for |
+|---|---|---|
+| `end_employer` | A normal company you'd actually work for, on **its own** products / mission | Has its own product or service line; "Nos produits", "Notre plateforme"; careers page advertises roles ON the company's own teams |
+| `esn` | ESN / SSII / régie / portage — employs you (usually CDI) to **bill you out to its clients** | "ESN", "SSII", "société de conseil", "régie", "portage salarial", "rejoignez nos X consultants", wall of client logos, "missions chez nos clients", consultant headcount as the headline metric |
+| `staffing_agency` | Intérim / agence d'emploi — transactional placement on client missions | "agence d'emploi", "intérim", "travail temporaire", "trouvez votre mission", agency branches, registers candidates into a pool |
+| `recruitment_agency` | Cabinet de recrutement / chasseur de têtes — does **not** employ you, brokers you into a permanent role at a hiring company | "cabinet de recrutement", "chasseur de têtes", "executive search", "recrutement", reposts third-party jobs, no own product, "nous recrutons POUR nos clients" |
+| `unknown` | Could not be determined from available sources | — record the gap in `research_gaps` |
+
+Rules:
+- **Cite the signal.** `org_type_evidence` must point to what you actually saw (a quoted phrase, the client-logo wall, the absence of any own product). Same discipline as every other fact.
+- **Set `org_type_inferred`.** `false` only when the org explicitly self-describes ("nous sommes une ESN"); `true` when you inferred it from indirect signals (client logos, mission listings, no own product).
+- **When torn between `esn` and `end_employer`** (some product companies also do a bit of conseil): pick by where the *work you'd do* lives. If the careers page sells you missions at named/anonymous clients, it's `esn`. If it sells roles on the company's own product, it's `end_employer`.
+- **Default to honesty.** A thin site that could be either → `unknown` + a `research_gaps` entry, not a guess dressed as fact.
+
 ## Source priority
 
 Work through these in order. Stop and record a gap when a source is unavailable, gated, or returns nothing useful — do not push on with guesswork.
 
-1. **Company's own website** — About, Careers, Products, Team / Leadership pages. Use WebFetch. Prefer the canonical URL (the one the company links to itself, not a mirror or a portfolio-style aggregator page).
+1. **Company's own website** — About, Careers, Products, Team / Leadership pages. Use WebFetch. Prefer the canonical URL (the one the company links to itself, not a mirror or a portfolio-style aggregator page). This is also your **primary source for `org_type`**: the Careers and About pages reveal whether the company sells its own product or sells consultants/missions.
 2. **`mcp__claude_ai_Indeed__get_company_data`** — call with the company name. Yields size band, industry, ratings, review snippets, sometimes headcount estimates. Cite the Indeed company URL in `sources`.
 3. **LinkedIn company page** — WebFetch best-effort. Often gated; if gated, record `"LinkedIn company page gated"` in `research_gaps` and move on.
 4. **Recent news** — WebSearch scoped to the last 12 months. Filter for substantive items (funding, product launch, leadership change, press interviews) — ignore job postings, aggregator republish, or low-signal press releases. Each kept item goes into `recent_news[]` with a `relevance` note explaining why it matters for a cold approach.
@@ -21,7 +39,8 @@ Work through these in order. Stop and record a gap when a source is unavailable,
 
 ## Hard rules
 
-- **Every factual claim cites a source.** `company_name`, `industry`, `locations`, `founded_year`, `mission_statement`, `products_services`, `leadership`, `recent_news`, `hiring_signals` — each comes from a URL listed in `sources[]`. If you cannot cite it, do not include it.
+- **Every factual claim cites a source.** `company_name`, `industry`, `org_type`, `locations`, `founded_year`, `mission_statement`, `products_services`, `leadership`, `recent_news`, `hiring_signals` — each comes from a URL listed in `sources[]`. If you cannot cite it, do not include it.
+- **`org_type` is required and must be justified.** Classify into one of the five buckets above and back it with `org_type_evidence`. When genuinely undecidable, set `org_type: "unknown"` and add a `research_gaps` entry — never default silently to `end_employer`.
 - **Inferred fields stay inferred.** `tech_stack_hints` and `pain_points_inferred` are plausible, not proven. Never upgrade them to fact in any downstream step.
 - **Quote the mission, do not paraphrase it.** If the company has a mission statement or tagline on their own site, put it in `mission_statement` in their own words. If they do not, leave it empty — do not invent a mission for them.
 - **Leadership requires a cited source URL.** Do not list a name unless it appears on a public page you can link to (their own team page, an interview, a conference listing, Crunchbase, etc.). LinkedIn profile URLs are nice-to-have but not sufficient on their own.
@@ -37,6 +56,9 @@ Key fields recap:
 
 - `company_name` — canonical name (required)
 - `canonical_url` — the company's own site; empty string if none discoverable (required)
+- `org_type` — one of `end_employer | esn | staffing_agency | recruitment_agency | unknown` (required)
+- `org_type_evidence` — the citable signal behind `org_type` (required; empty string only when `unknown` and nothing surfaced)
+- `org_type_inferred` — boolean; `false` only when the org self-describes
 - `size_band` — one of `startup | scaleup | midmarket | enterprise | unknown` (required)
 - `headcount_estimate` — integer or null
 - `mission_statement` — their words, or empty string (required)
@@ -66,6 +88,9 @@ Key fields recap:
   "company_name": "Acme Robotics SAS",
   "canonical_url": "https://acme-robotics.fr",
   "industry": "Industrial robotics",
+  "org_type": "end_employer",
+  "org_type_evidence": "Site sells its own products (ARX-1 cobot, ARX-Studio) and careers page advertises roles on Acme's own engineering teams — no client-mission / régie language.",
+  "org_type_inferred": true,
   "size_band": "scaleup",
   "headcount_estimate": 180,
   "locations": ["Paris, FR", "Lyon, FR"],
@@ -109,4 +134,5 @@ Key fields recap:
 3. Record gaps honestly.
 4. Quote the mission, never invent one.
 5. Canonical name may differ from input — preserve the raw input.
-6. Stay concise.
+6. Classify `org_type` early and justify it — `unknown` over a guess.
+7. Stay concise.

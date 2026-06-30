@@ -14,13 +14,27 @@ You will receive:
 
 Produce 2–4 short messages aimed at **senior technical or hiring contacts**, not HR. Each message must feel like it was written after reading about this specific company, not like a template.
 
-## Target recipients — cold-flow rules
+## Target recipients — depends on `company_profile.org_type`
 
-The schema's `target` enum is shared with the offer-based flow (`recruiter` / `hiring_manager` / `internal_contact`). For cold outreach:
+The schema's `target` enum is shared with the offer-based flow (`recruiter` / `hiring_manager` / `internal_contact`). **Who you should write to flips depending on the organisation type** — read `company_profile.org_type` before choosing.
+
+### `end_employer` (and `unknown`) — write to the people who own the work
 
 - **Primary target is `hiring_manager`.** CTO, VP Engineering, Head of Platform, Engineering Director, or a senior engineer whose name appears in `leadership[]` with a credible `role` (anything decision-making or technically adjacent to `selected_role.title`). Use the actual `name` and `linkedin_url` from `leadership[]`.
 - **Secondary target is `internal_contact`** only if `leadership[]` or `company_profile` surfaces a named engineer / team lead who is NOT in a hiring-decision role but is close to the work (e.g. a tech lead on the product line referenced in `selected_role.emphasis_areas`). Useful as a warm-up path.
-- **Do not target `recruiter`** for the cold flow unless `company_profile.leadership[]` explicitly names a Talent / People lead — cold applications land better with the people who own the work. If `company_profile` has no named contacts at all, produce `hiring_manager` variants with `[Prénom]` / `[First name]` placeholders and flag the missing name in `contact_name` as empty.
+- **Do not target `recruiter`** unless `company_profile.leadership[]` explicitly names a Talent / People lead — for a real employer, cold applications land better with the people who own the work.
+
+### `esn` / `staffing_agency` / `recruitment_agency` — write to the people who own placement
+
+Here the recruiter/business manager IS the decision-maker — the technical work happens at a client, not at this organisation. The default inverts:
+
+- **Primary target is `recruiter`.** A **business manager / responsable recrutement / talent acquisition / chargé de recrutement** named in `leadership[]`. These are the people who staff consultants onto missions (ESN/intérim) or represent candidates to client companies (cabinet). Use their real `name` and `linkedin_url`.
+- **Secondary target is `hiring_manager`** only if a named **directeur de practice / delivery manager** appears who owns a specific competency the candidate fits — useful as a second angle, not the primary one.
+- **Do not write CTO-style "I admire your engineering" messages** — at an intermediary that reads as misdirected. Lead with the profile you offer and the missions/roles you fit.
+
+### Fallback (any org_type)
+
+If `company_profile.leadership[]` has no named contacts at all, produce variants for the org-appropriate primary target (`hiring_manager` for employers, `recruiter` for intermediaries) with `[Prénom]` / `[First name]` placeholders, and flag the missing name in `contact_name` as empty.
 
 ## Variants to produce
 
@@ -54,7 +68,7 @@ One sentence each:
 1. Greeting by first name (or `[Prénom]` if no name).
 2. The specific hook — one clause tying a company fact to a reason the candidate is reaching out.
 3. Who the candidate is in one line — seniority + primary track from the fact base (e.g. ".NET / Desktop & Services, ~25 ans, côté Oodrive dernièrement").
-4. One-line ask — "15 minutes pour échanger ?" / "open to a short chat?" Avoid "would love to discuss opportunities" — that reads as vacancy-hunting.
+4. One-line ask — "15 minutes pour échanger ?" / "open to a short chat?" For `end_employer`, avoid "would love to discuss opportunities" — it reads as vacancy-hunting. For an intermediary (`esn` / `staffing_agency` / `recruitment_agency`), referencing missions / opportunities is appropriate and expected — "échanger sur vos missions [domaine] ?" / "open to talk about [domain] missions?".
 
 ## Structure — direct message (post-acceptance)
 

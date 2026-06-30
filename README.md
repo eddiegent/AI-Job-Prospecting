@@ -16,6 +16,8 @@ Nothing is invented. If a claim isn't in your master CV (or your `cv_addendum.md
 
 `/job-cold-prospect` does the same for companies with **no advertised vacancy**. Give it a company name or URL and it researches a company profile, helps you pick a target role, and produces a full speculative pack — tailored CV, motivation letter, short letter, LinkedIn outreach, and a company dossier with interview prep. Instead of a fit score (there's no job description to score against), the dossier gives you a narrative "angle of approach", and every factual claim about the company cites a source URL.
 
+It also tells apart **real employers from intermediaries** — an ESN/SSII, an intérim agency, or a cabinet de recrutement — and reframes the whole pack accordingly. For an intermediary you don't get a "your mission moves me" letter aimed at the CTO; you get a profile offer aimed at the business manager or recruiter who actually owns placement.
+
 ### Satellite skills
 
 | Skill | Description |

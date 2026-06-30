@@ -14,6 +14,19 @@
       "description": "The company's own primary website URL (not a LinkedIn or Indeed page). Empty string if the company has no discoverable website."
     },
     "industry": {"type": "string"},
+    "org_type": {
+      "type": "string",
+      "enum": ["end_employer", "esn", "staffing_agency", "recruitment_agency", "unknown"],
+      "description": "What kind of organisation this is — decides the whole framing of the cold approach. end_employer = a normal company you would actually work for, on its own products/mission. esn = ESN/SSII/régie/portage — employs you (usually CDI) to bill you out to ITS clients. staffing_agency = intérim / agence d'emploi — transactional placement on client missions. recruitment_agency = cabinet de recrutement / chasseur de têtes — does NOT employ you, brokers you into a permanent role at a hiring company. unknown = could not be determined (record why in research_gaps)."
+    },
+    "org_type_evidence": {
+      "type": "string",
+      "description": "The citable signal that justifies org_type, traceable like every other fact — e.g. 'site states \"ESN de 400 consultants\"', 'careers page lists client missions / régie', 'cabinet de recrutement self-description', or 'no own product + reposts third-party jobs'. For org_type=unknown, note what was missing. Empty string only when org_type=unknown and nothing was found."
+    },
+    "org_type_inferred": {
+      "type": "boolean",
+      "description": "False only when the organisation explicitly self-describes (e.g. 'nous sommes une ESN'); true when the type is a judgment call from indirect signals (client logos, mission listings, no own product). Defaults to inferred."
+    },
     "size_band": {
       "type": "string",
       "enum": ["startup", "scaleup", "midmarket", "enterprise", "unknown"],
@@ -115,6 +128,8 @@
   "required": [
     "company_name",
     "canonical_url",
+    "org_type",
+    "org_type_evidence",
     "size_band",
     "mission_statement",
     "products_services",

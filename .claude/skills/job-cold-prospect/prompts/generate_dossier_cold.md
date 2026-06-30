@@ -13,6 +13,22 @@ You will receive:
 
 One document that makes the candidate walk into a cold-opened conversation confident, informed, and honest about what they do and do not know. Every factual claim about the company cites a source URL. Every talking point about the candidate maps to the fact base or the tailored CV.
 
+## Organisation type drives the whole dossier — read `company_profile.org_type` first
+
+What this organisation IS changes who the candidate contacts, what "why them" means, and which objections come up. Adapt throughout:
+
+- **`end_employer`** (and `unknown`) — a normal company the candidate would work for. Use every section as written below.
+- **`esn` / `staffing_agency`** — the candidate would be employed by this organisation and **placed on its clients' missions**. Reframe:
+  - § 3 "Why you, why them" becomes **"the profile I offer + the kinds of missions I fit"**, not "why your mission moves me". The asset is the candidate's placeable profile and adaptability.
+  - § 4 "Who to contact" prioritises **business managers / responsables recrutement / talent acquisition** — the people who staff consultants — over CTOs.
+  - § 5 objections shift to the intermediary's real questions: availability/start date, geographic mobility, daily/annual rate expectations (TJM / prétentions), CDI vs. freelance, the breadth of missions the candidate accepts. The "why us without a posting" question becomes "what kind of missions are you looking for".
+- **`recruitment_agency`** — a cabinet de recrutement / chasseur de têtes that would **represent the candidate to a hiring company**, not employ them. Reframe:
+  - § 3 becomes **"the profile to represent + the roles I want you to put me forward for"**.
+  - § 4 prioritises the **consultant / recruiter who covers the candidate's domain** at the cabinet.
+  - § 5 objections shift to: target role/seniority, salary expectations, notice period, mobility, what makes the candidate placeable — and explicitly that the candidate wants the cabinet as an intermediary.
+
+Keep all the hard rules (sourcing, no fabrication, no posting reference, alignment across artefacts). The bullets above only re-point *what each section is about*, not the sourcing discipline.
+
 ## Structure — sections, in this order
 
 Use the section headings below verbatim (in the target language) — the layout matters because the candidate will skim, not read.
@@ -24,6 +40,7 @@ Opening block, before the first prose section. Same spirit as the offer-based fl
 ```
 ## Quick Reference
 - **Entreprise** : [company_name] — [canonical_url]
+- **Type d'organisation** : [org_type localised — e.g. "Employeur final" / "ESN (placement en mission)" / "Agence d'intérim" / "Cabinet de recrutement" / "Indéterminé"][ — note "(inféré)" if org_type_inferred]
 - **Secteur** : [industry]
 - **Taille** : [size_band] ([headcount_estimate or "estimation indisponible"])
 - **Localisation principale** : [locations[0]]
@@ -64,7 +81,16 @@ If `leadership[]` is empty, this section becomes one paragraph explaining that n
 
 ### 5. Likely objections and prepared answers
 
-The cold flow's distinctive interview prep. The recipient will ask — explicitly or mentally — "why are you reaching out to us without a posting?" The candidate needs quick, honest answers. Cover at least:
+The cold flow's distinctive interview prep. The recipient will ask — explicitly or mentally — "why are you reaching out to us without a posting?" The candidate needs quick, honest answers.
+
+**If `org_type` is `esn` / `staffing_agency` / `recruitment_agency`, swap the employer-style questions below for the intermediary's real ones** and answer each in the same Q-then-A, under-120-words format:
+- **"Quel type de missions / postes recherchez-vous ?"** — concrete: the role band + 2–3 mission/domain types the candidate fits, grounded in `selected_role.emphasis_areas`.
+- **"Quelles sont vos prétentions / votre TJM ?"** — the candidate should expect this; flag it as a number to prepare (do not invent one — note it as a gap for the candidate to fill).
+- **"Quelle est votre disponibilité / votre préavis ?"** and **"Êtes-vous mobile géographiquement ?"** — honest one-liners; mark as candidate-to-fill if the fact base doesn't say.
+- **"CDI chez nous / régie, ou freelance ?"** (ESN/staffing) or **"Quel poste cible, à quel niveau ?"** (cabinet) — frame openness consistent with the selected angle.
+- **"Pourquoi nous comme intermédiaire plutôt qu'en direct ?"** — a short honest reason (reach into client networks, sector specialisation named in the profile).
+
+**Otherwise (`end_employer` / `unknown`), cover at least:**
 
 - **"Why us, without a posting?"** — 2–3 sentence answer grounded in `recent_news` / `mission_statement` / `products_services`. Same spine as the letter opening.
 - **"We're not hiring right now for [selected_role.title] — what would you propose?"** — candidate should acknowledge, redirect to adjacent scope (referencing `emphasis_areas`), and be explicit about openness ("I'm happy to explore what you actually need").

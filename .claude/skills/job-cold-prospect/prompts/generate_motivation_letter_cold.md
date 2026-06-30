@@ -13,6 +13,25 @@ You will receive:
 
 Open a door. The letter is not responding to a vacancy — it is proposing a conversation. The reader should feel that the candidate specifically chose *this* company for *this* reason, not that they are mass-mailing.
 
+## Who you're actually writing to — read `company_profile.org_type` first
+
+The framing of the entire letter depends on what kind of organisation this is. Do not write "your mission moves me" to a body that won't be your employer.
+
+- **`end_employer`** — the default. You'd work on *their* product/mission. Use the structure below as written: hook off their news/mission/product, offer to join *their* team.
+- **`esn` / `staffing_agency`** — they employ you to place you on **their clients'** missions. The letter is a bid to **join their consultant pool**, not admiration for their roadmap.
+  - Hook off something real about *them as a staffer*: their sector focus, a notable client domain, growth/recruitment news, their positioning ("ESN à taille humaine", a named expertise practice). Do **not** gush about a "mission" they don't have.
+  - "Why you" = the **profile you offer** for their missions — your stack, seniority, adaptability, and the kinds of missions you slot into. 
+  - "What you're proposing" = "j'aimerais rejoindre vos équipes / être positionné sur des missions autour de [selected_role]". Make availability/mobility natural if the fact base supports it.
+  - Subject: `"Candidature spontanée — Consultant [profil]"` style.
+- **`recruitment_agency`** — a cabinet de recrutement / chasseur de têtes. They **don't** employ you; they'd represent you to a hiring company. The letter asks them to **keep you in mind / represent you** for roles matching your profile.
+  - Hook off their **recruiting specialisation** (the sector/seniority they place), not a product.
+  - "Why you" = a crisp profile summary they could forward to a client.
+  - "What you're proposing" = "j'aimerais que vous me gardiez à l'esprit pour des postes de [selected_role]" — you want them as an intermediary, you're not applying to *them*.
+  - Never imply you'd be working *at* the cabinet.
+- **`unknown`** — keep it neutral: a professional reach-out that offers your profile without assuming you'd be their direct employee.
+
+The hook-priority list and structure below still apply — these bullets only change *what you're offering and to whom*.
+
 ## The opening hook is the whole letter
 
 Recruiters and hiring managers ignore letters that start with "Fort de X années d'expérience". In the cold flow, the opening line decides whether anyone reads paragraph two. It must be:
@@ -70,7 +89,7 @@ Apply `user_prefs.tone_directives` verbatim. They override these defaults on con
 ## Letter metadata
 
 - `sender_name` and `sender_address` — from the CV fact base.
-- `recipient_name` — from `company_profile.leadership[0].name` if present and senior (CTO / VP Eng / hiring lead). Otherwise omit (empty string) — do not invent a name.
+- `recipient_name` — from `company_profile.leadership[]`. For `end_employer`, prefer a senior technical/hiring contact (CTO / VP Eng / hiring lead). For `esn` / `staffing_agency` / `recruitment_agency`, prefer a **business manager / responsable recrutement / talent acquisition** contact if one is named — that's who owns placement at an intermediary. Otherwise omit (empty string) — do not invent a name.
 - `recipient_address` — company address if derivable from `company_profile.locations[0]`. Otherwise empty array.
 - `date_line` — current date in local format.
 - `subject_line` — short, specific, cold-flow-appropriate. Example (fr): `"Candidature spontanée — [selected_role.title]"`. Example (en): `"Reaching out — [selected_role.title]"`. Do not use "Candidature au poste de X" — that implies a posting.

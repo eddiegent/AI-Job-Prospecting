@@ -23,6 +23,21 @@ Produce 1–3 candidate roles, each with enough substance that the user can pick
 - **At least one substantially different angle.** When proposing 2–3 candidates, make them genuinely distinct (e.g. IC lead vs. manager, or core product vs. tooling) — not three variations of the same title. If only one angle is credible, return just one candidate.
 - **Seniority band matches evidence.** Derive `seniority_band` from the candidate's years of experience and team-size signals in the fact base, not from wishful thinking.
 
+## Organisation type — what "a role" even means here
+
+Read `company_profile.org_type` first. It changes what a candidate angle *is*:
+
+- **`end_employer`** — the default. A role is a job on the company's own teams, solving the company's own problems. Use the whole process below as written.
+- **`esn`, `staffing_agency`** — the candidate would be **employed by the intermediary and placed on client missions**. A "candidate angle" is therefore the **consultant profile** they would be sold as, not a job solving the ESN's own pain points. So:
+  - Title the angle as a placeable profile, e.g. `"Consultant .NET Senior — Desktop & Services"` or `"Ingénieur logiciel C++/.NET en régie"`, not `"Tech Lead at <ESN>"`.
+  - `rationale` ties to the **breadth and demand of missions the candidate fits** (the kinds of clients/projects the ESN staffs), to the candidate's mobility/adaptability, and to the ESN's positioning/sector — NOT to inferred pain points of the ESN itself (an ESN's driver is client demand, not its own roadmap).
+  - Lean `allow_generalist: true` — intermediaries place broad, adaptable profiles.
+  - A useful `risk_notes` here is often about scope of missions, mobility, or rate expectations, not domain gaps.
+- **`recruitment_agency`** — the cabinet does **not** employ the candidate; it brokers them into a permanent role **elsewhere**. The angle is the **kind of permanent role the candidate wants the cabinet to represent them for**, framed by the cabinet's specialisation (sector / seniority they recruit for). Title it as the target role the candidate seeks (e.g. `"Lead .NET — Desktop & Services (poste en CDI via cabinet)"`), and have `rationale` explain the fit between the candidate's profile and the cabinet's recruiting niche.
+- **`unknown`** — treat as `end_employer` but keep angles broad, and let a `risk_notes` entry flag that the organisation type wasn't confirmed.
+
+Everything below still applies; the bullets above only re-point what the title and rationale should anchor on.
+
 ## Process
 
 1. **Scan the fact base** for the candidate's strongest load-bearing themes: tech specialities, domains, team roles, methodologies, international signals. Note the seniority implied by role lengths and team sizes.

@@ -11,6 +11,17 @@ You will receive:
 
 A 4-line, email-ready version of the full cold letter. Same hook, same ask, cut ruthlessly. Think of it as the opener the recipient actually reads before deciding whether to click through to the attached CV.
 
+## Inherit the organisation-type framing
+
+The full cold letter was already written for this company's `company_profile.org_type`. **Carry that framing through unchanged** — just shorter:
+
+- `end_employer` → you offer to join *their* team.
+- `esn` / `staffing_agency` → you offer your **profile for their client missions** ("être positionné sur des missions autour de [profil]"); do not gush about a mission they don't have.
+- `recruitment_agency` → you ask them to **keep you in mind / represent you** for roles matching your profile; you're not applying to work *at* the cabinet.
+- `unknown` → neutral profile offer.
+
+Never let brevity flip the framing back to a generic "I'd love to work for you".
+
 ## Rules
 
 - **Body length: 500–750 characters total.** Hard constraint.
