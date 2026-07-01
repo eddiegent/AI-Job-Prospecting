@@ -99,6 +99,20 @@ count [--since <since>]
 | --- | --- | --- |
 | `--since` | optional | Only count apps since date |
 
+### `doctor`
+
+Read-only DB health/fingerprint report; surfaces the temp mirror and any divergence
+
+**Signature:**
+
+```
+doctor [--json]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--json` | flag | Emit the report as JSON |
+
 ### `export-csv`
 
 Export applications to CSV

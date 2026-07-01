@@ -246,6 +246,37 @@ def release_db_lock(target: Path) -> None:
             pass
 
 
+def compute_content_fingerprint(conn: sqlite3.Connection) -> dict:
+    """Content fingerprint of the applications table — read-only.
+
+    Hashes the sorted ``(company_norm, job_title_norm, created_at, status)``
+    tuples, so the fingerprint tracks *content* and is stable across VACUUM /
+    rowid churn. Used by ``cli.py doctor`` to detect when the DB has been
+    silently replaced or restored across sessions, and to compare the canonical
+    target against the temp working mirror. Returns row_count, max_id,
+    schema_version, and a short fingerprint.
+    """
+    rows = conn.execute(
+        "SELECT company_norm, job_title_norm, created_at, status "
+        "FROM applications ORDER BY company_norm, job_title_norm, created_at, id"
+    ).fetchall()
+    h = hashlib.sha256()
+    for r in rows:
+        h.update(("|".join((r[0] or "", r[1] or "", r[2] or "", r[3] or "")) + "\n").encode("utf-8"))
+    max_id = conn.execute("SELECT MAX(id) FROM applications").fetchone()[0]
+    try:
+        ver_row = conn.execute("SELECT version FROM schema_version").fetchone()
+        schema_version = ver_row[0] if ver_row else None
+    except sqlite3.Error:
+        schema_version = None
+    return {
+        "row_count": len(rows),
+        "max_id": max_id,
+        "schema_version": schema_version,
+        "fingerprint": h.hexdigest()[:16],
+    }
+
+
 class JobHistoryDB:
     """Thin wrapper around the SQLite job history database."""
 

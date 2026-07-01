@@ -12,14 +12,18 @@ class of problems no single-file read would catch:
 - **The history DB diverged mid-session.** Status changes reverted, and a
   regenerated cold record (`#105 Talent-R`) was **replaced by a different
   company** (`Maten`) at the same id, while an earlier record (`#100 Codyssée`)
-  survived. SQLite reuses `max(id)+1` without `AUTOINCREMENT`, so this is the
-  fingerprint of a **restore to a mid-session snapshot** followed by fresh
-  inserts taking the freed ids. The live DB's mtime and the output-folder dates
-  were also inconsistent with wall-clock time.
-- **Latent hazard:** because `update-status` keys on the autoincrement `id`, and
-  ids get **reused for different companies** after a restore, "set 105 to
-  applied" can silently mutate the wrong company. That's data corruption, not
-  just annoyance.
+  survived. The schema uses `INTEGER PRIMARY KEY AUTOINCREMENT`, so ids are *not*
+  reused within one lineage — the swap therefore means a **different DB lineage
+  replaced the target**. Prime suspect (found while building Phase 1.1): the
+  DB layer operates on a **temp working mirror** (`%TEMP%/jobhist-mirror-<hash>.db`)
+  and refreshes it from the canonical target only when the target's mtime looks
+  *newer*. A stale mirror (or an external snapshot/restore that resets the
+  target's mtime) substitutes its whole lineage back onto the target on write.
+  The live DB's mtime and output-folder dates were also inconsistent with
+  wall-clock time, consistent with this.
+- **Latent hazard:** because `update-status` keys on `id`, and after a lineage
+  swap `id 105` names a *different company*, "set 105 to applied" can silently
+  mutate the wrong record. That's data corruption, not just annoyance.
 - **Ergonomic friction:** a descriptive role title produced a monster filename
   (`CV_Edward_Gent_Architecte_applicatif_-_Tech_Lead_NET_Desktop_Services_poste_en_CDI_a_representer_via_Talent-R.docx`);
   ~10 status updates had to be issued one at a time; regenerating a cold pack
@@ -43,7 +47,7 @@ one commit so any can be reverted independently. Check off as they land.
   - [x] 0.2 Fix the stale `job-stats` forward-reference
   - [x] 0.3 Flag job-boards / aggregators in the cold flow
 - [ ] **Phase 1 — Data integrity (A)** · diagnose + guardrails first, ~half a day
-  - [ ] 1.1 `db doctor` fingerprint (read-only)
+  - [x] 1.1 `db doctor` fingerprint (read-only) — done; surfaced the temp mirror
   - [ ] 1.2 Auto-backup before DB mutations
   - [ ] 1.3 Natural-key resolution + id-reuse warning in `job-status`
   - [ ] 1.4 *(design-only, deferred)* Portable export/import/merge + stable `JOB_TAILOR_HOME`
@@ -118,6 +122,14 @@ root cause is confirmed.
   silently replaced or restored across environments, and to confirm whether
   moving the DB to a stable `JOB_TAILOR_HOME` outside the repo stops the drift.
 - Read-only, no migration.
+- **Implemented (`cli.py doctor`, `--json`):** reports the canonical target AND
+  the temp working mirror side by side (path, mtime, size, schema version, row
+  count, max id, fingerprint) and **flags divergence** between them — the mirror
+  being the leading suspect for the incident above. Fingerprint =
+  `job_history_db.compute_content_fingerprint` over sorted natural-key+status
+  tuples (order-independent, so two lineages with the same content match).
+  First run on the live DB: target == mirror, fp `5c059a4f418f50df`, 105 rows,
+  max id 110, `JOB_TAILOR_HOME` unset. Tests in `tests/test_db_doctor.py`.
 
 **1.2 — Auto-backup before mutations.**
 - Wrap `update-status`, `update-company`, `update-output-folder`, and
