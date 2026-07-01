@@ -43,6 +43,33 @@ def test_slug_for_filename_is_ascii_and_folds_accents() -> None:
     assert "_-_" not in out
 
 
+def test_slug_for_filename_drops_parenthetical_and_caps_length() -> None:
+    """The real incident: a verbose posting title with a trailing
+    "(à représenter via Talent-R)" qualifier produced a monster CV filename.
+    The slug must drop the parenthetical entirely and stay within the cap."""
+    title = (
+        "Architecte applicatif - Tech Lead .NET Desktop & Services, "
+        "poste en CDI (à représenter via Talent-R)"
+    )
+    out = slug_for_filename(title)
+    assert len(out) <= 60
+    assert out.isascii()
+    # Parenthetical qualifier is gone, content and all.
+    assert "representer" not in out.lower()
+    assert "talent" not in out.lower()
+    assert "(" not in out and ")" not in out
+    # The meaningful head of the title survives and is well-formed — no
+    # dangling punctuation left by the word-boundary cut.
+    assert out.startswith("Architecte")
+    assert out[-1].isalnum()
+
+
+def test_slug_for_filename_short_title_is_unchanged_shape() -> None:
+    """The cap must not touch titles that are already short."""
+    out = slug_for_filename("Backend Engineer")
+    assert out == "Backend_Engineer"
+
+
 def test_auto_slug_is_ascii_and_folds_accents() -> None:
     out = auto_slug("Développeur IA Générative & Prototypage Rapide", "Davidson")
     assert out.isascii()

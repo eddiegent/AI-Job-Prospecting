@@ -124,16 +124,45 @@ def sanitize_component(text: str, replacement: str = "-", trim_chars: str = " .-
     return value or "untitled"
 
 
+# Cap the job-title portion of a filename so a verbose posting title can't
+# produce a monster path. The real incident was
+# "CV_Edward_Gent_Architecte_applicatif_-_Tech_Lead_NET_Desktop_Services_
+# poste_en_CDI_a_representer_via_Talent-R.docx". Only the filename SLUG is
+# trimmed — the document content keeps the full title.
+_MAX_FILENAME_SLUG_LEN = 60
+
+
+def _cap_slug_length(value: str, limit: int = _MAX_FILENAME_SLUG_LEN) -> str:
+    """Trim ``value`` to ``limit`` chars, preferring a word boundary so the
+    result reads as whole words rather than a mid-word cut. Falls back to a
+    hard cut when there's no separator in the back half."""
+    if len(value) <= limit:
+        return value
+    cut = value[:limit]
+    for sep in ("_", "-"):
+        idx = cut.rfind(sep)
+        if idx >= limit // 2:      # only honour a boundary that isn't near the start
+            cut = cut[:idx]
+            break
+    # A word-boundary cut can leave dangling punctuation (e.g. "Services,");
+    # trim any trailing non-alphanumeric run so the slug ends on a real word.
+    return re.sub(r"[^0-9A-Za-z]+$", "", cut.strip("._-"))
+
+
 def slug_for_filename(text: str) -> str:
+    # Drop trailing/inline parenthetical qualifiers entirely — content and all —
+    # e.g. "(F/H)", "(à représenter via Talent-R)". These bloat the filename
+    # without disambiguating it; the document *content* keeps the full title.
+    text = re.sub(r"\s*[(\[{][^)\]}]*[)\]}]", " ", text or "")
     value = sanitize_component(text, replacement="-")
     # Drop characters that are ATS-legal but look ugly / inconsistent in filenames
-    # (parentheses, brackets, dots). Dots inside titles like ".Net Core" survive in
-    # the CV body and other outputs — we only strip them from the filename slug.
+    # (leftover unmatched brackets, dots). Dots inside titles like ".Net Core"
+    # survive in the CV body and other outputs — we only strip them from the slug.
     value = re.sub(r"[()\[\]{}.]+", "", value)
     value = re.sub(r"\s+", "_", value)
     value = re.sub(r"_+", "_", value)
     value = re.sub(r"-+", "-", value)
-    return value.strip("._-")
+    return _cap_slug_length(value.strip("._-"))
 
 
 def current_date_ddmmyyyy() -> str:
