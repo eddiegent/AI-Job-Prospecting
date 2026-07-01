@@ -21,9 +21,11 @@ base and refreshing ``.cv_hash`` without re-extracting, which silently ships
 outdated facts (the real incident: CV updated "40+ → 100+ applications" while
 the fact base still said "40+").
 
-``verify_fact_base.py`` only checks technologies/methodologies appear in the CV;
-it never compared **numeric metrics**, so a changed number slipped through.
-This module closes that hole with two deterministic checks:
+``verify_fact_base.py`` historically only checked technologies/methodologies
+appear in the CV — it never compared **numeric metrics**, so a changed number
+slipped through. This module supplies the metric-drift check that closed that
+hole; it is now wired into ``verify_fact_base.py``, ``common.save_cv_fact_base()``,
+and ``preflight`` (see CLAUDE.md). Two deterministic checks:
 
 1. **Hash freshness** (``--check-hash``) — stored ``.cv_hash`` must match the CV.
 2. **Metric drift** — every *salient* numeric metric in the fact base (numbers

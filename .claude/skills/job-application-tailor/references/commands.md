@@ -148,14 +148,18 @@ for ti, t in enumerate(doc.tables):
 
 ## Verify Fact Base Against Raw CV
 
-### Catch contamination from job offer keywords
+### Catch contamination from job offer keywords and metric drift
 ```bash
 cd "$SKILL_BASE" && python scripts/verify_fact_base.py "$PROJECT_ROOT/resources/MASTER_CV.docx" "$PREP_DIR/cv_fact_base.json"
 ```
 
-If this fails (exit code 1), technologies or methodologies were fabricated.
-Remove the flagged items from `cv_fact_base.json` and re-run verification before proceeding.
-Warnings about skills are non-blocking — review them but they may be valid abstractions.
+If this fails (exit code 1), either a technology/methodology was fabricated
+(`[technologies]` / `[methodologies]`) or a salient numeric metric drifted from
+the CV (`[metric]`). Remove a fabricated tech/methodology; for a `[metric]`
+failure re-extract or correct the figure to match the CV — do not delete the
+number blindly and do not refresh `.cv_hash` by hand. Re-run verification before
+proceeding. Warnings about skills are non-blocking — review them but they may be
+valid abstractions.
 
 ## Recount Match Summary
 

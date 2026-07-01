@@ -95,7 +95,7 @@ Skip when `status == "ok"` (preflight already verified). When `cache_stale`, **t
 
 Run `scripts/verify_fact_base.py` with the master CV and the fact base. See `$SKILL_BASE_TAILOR/references/commands.md` § Verify Fact Base Against Raw CV.
 
-- **If verification fails** (exit code 1): technologies or methodologies were fabricated. Remove the flagged items from `cv_fact_base.json`, re-run verification, and only proceed once it passes. If the cache was just saved, re-save it after fixing.
+- **If verification fails** (exit code 1): either a technology/methodology was fabricated (`[technologies]` / `[methodologies]`) **or** a salient numeric metric drifted from the CV (`[metric]` — e.g. the fact base still says "40+" while the CV now says "100+"). For a fabricated tech/methodology, remove the flagged item. For a `[metric]` failure, **re-extract the affected figure from the current CV** (or correct it to match) — never just delete the number, and never refresh `.cv_hash` by hand to bless it. Re-run verification and only proceed once it passes. If the cache was just saved, re-save it after fixing (`save_cv_fact_base` refuses to write `.cv_hash` while the fact base is inconsistent).
 - **Warnings** about skills are non-blocking — review them but they are often valid abstractions of role descriptions.
 
 This step must complete **before** any external context (job offer or company research) enters the window, so the fact base is locked before keywords from those sources can contaminate it.
