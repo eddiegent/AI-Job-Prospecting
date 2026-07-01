@@ -54,3 +54,7 @@ backups/
 
 # Packaged plugin bundles (created by scripts/package.py)
 dist/
+
+# Personal application-tracker exports — embed real pipeline data (company
+# names + statuses); the repo is public, so keep these out like the DB.
+Job Application Tracker*.html
