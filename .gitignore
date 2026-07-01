@@ -52,6 +52,10 @@ resources/.claude/
 # Pre-plugin-migration backups (created by scripts/backup_user_data.py)
 backups/
 
+# Auto DB snapshots taken before mutating commands (cli.py; contain real
+# pipeline data, live next to the git-ignored job_history.db)
+db-backups/
+
 # Packaged plugin bundles (created by scripts/package.py)
 dist/
 

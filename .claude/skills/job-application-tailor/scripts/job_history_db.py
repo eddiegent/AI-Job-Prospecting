@@ -392,6 +392,35 @@ class JobHistoryDB:
         except Exception:
             pass
 
+    def snapshot_before_mutation(self, keep: int = 20) -> Path | None:
+        """Copy the canonical DB to a timestamped file under ``db-backups/``
+        before a mutating command runs, so a bad write — or a stale-mirror
+        clobber (see `cli.py doctor`) — is recoverable.
+
+        Best-effort: a backup failure must never block the actual mutation, so
+        every error is swallowed and returns None. Snapshots live next to the DB
+        (``<db_dir>/db-backups/``, git-ignored) and are pruned to the newest
+        ``keep``. Returns the snapshot path, or None if nothing was written.
+        """
+        try:
+            if not self.db_path.exists():
+                return None
+            backups_dir = self.db_path.parent / "db-backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            dst = backups_dir / f"{self.db_path.stem}-{stamp}.db"
+            if not dst.exists():
+                shutil.copy2(self.db_path, dst)
+            snaps = sorted(backups_dir.glob(f"{self.db_path.stem}-*.db"))
+            for old in snaps[:-keep] if keep > 0 else []:
+                try:
+                    old.unlink()
+                except OSError:
+                    pass
+            return dst
+        except Exception:
+            return None
+
     # -- lifecycle -----------------------------------------------------------
 
     def _init_schema(self) -> None:

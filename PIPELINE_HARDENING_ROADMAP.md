@@ -48,7 +48,7 @@ one commit so any can be reverted independently. Check off as they land.
   - [x] 0.3 Flag job-boards / aggregators in the cold flow
 - [ ] **Phase 1 — Data integrity (A)** · diagnose + guardrails first, ~half a day
   - [x] 1.1 `db doctor` fingerprint (read-only) — done; surfaced the temp mirror
-  - [ ] 1.2 Auto-backup before DB mutations
+  - [x] 1.2 Auto-backup before DB mutations — done (`snapshot_before_mutation`, git-ignored `db-backups/`)
   - [ ] 1.3 Natural-key resolution + id-reuse warning in `job-status`
   - [ ] 1.4 *(design-only, deferred)* Portable export/import/merge + stable `JOB_TAILOR_HOME`
 - [ ] **Phase 2 — Pipeline segmentation (B)** · ~2–3 h, shares a migration with Phase 1

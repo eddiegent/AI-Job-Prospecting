@@ -378,11 +378,18 @@ def cmd_doctor(db: JobHistoryDB, args: argparse.Namespace) -> None:
     target = _inspect_db_file(db.db_path)
     mirror = _inspect_db_file(db._mirror_path)
     diverged = bool(target and mirror and target["fingerprint"] != mirror["fingerprint"])
+    backups_dir = Path(db.db_path).parent / "db-backups"
+    snaps = sorted(backups_dir.glob(f"{Path(db.db_path).stem}-*.db")) if backups_dir.exists() else []
     report = {
         "job_tailor_home": os.environ.get("JOB_TAILOR_HOME"),
         "target": target,
         "mirror": mirror,
         "mirror_diverged": diverged,
+        "backups": {
+            "dir": str(backups_dir),
+            "count": len(snaps),
+            "latest": str(snaps[-1]) if snaps else None,
+        },
     }
 
     if getattr(args, "json", False):
@@ -410,6 +417,10 @@ def cmd_doctor(db: JobHistoryDB, args: argparse.Namespace) -> None:
             print(f"      rm \"{mirror['path']}\"")
     else:
         print("  target and mirror agree (or mirror absent) — no divergence detected.")
+    b = report["backups"]
+    print(f"  db-backups      : {b['count']} snapshot(s) in {b['dir']}")
+    if b["latest"]:
+        print(f"    latest        : {Path(b['latest']).name}")
 
 
 def _resolve_app_folder(db: JobHistoryDB, target: str) -> Path:
@@ -950,6 +961,18 @@ def main() -> None:
 
     db = JobHistoryDB(args.db)
     try:
+        # Auto-backup before any command that writes (roadmap 1.2). Best-effort:
+        # snapshot_before_mutation never raises, so a backup hiccup can't block
+        # the mutation. Gives a cheap undo if a write goes wrong or a stale
+        # mirror clobbers newer rows.
+        _MUTATING = {
+            "update-status", "update-company", "update-output-folder",
+            "record-application", "rename-application",
+            "company-add", "company-remove",
+        }
+        if args.command in _MUTATING:
+            db.snapshot_before_mutation()
+
         handlers = {
             "list": cmd_list,
             "get": cmd_get,

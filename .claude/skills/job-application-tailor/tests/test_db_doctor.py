@@ -83,3 +83,37 @@ def test_fingerprint_changes_on_status_change(tmp_path):
         assert _fp(db)["fingerprint"] != before
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# snapshot_before_mutation (roadmap 1.2)
+# ---------------------------------------------------------------------------
+
+
+def test_snapshot_creates_backup(tmp_path):
+    db = JobHistoryDB(str(tmp_path / "job_history.db"))
+    try:
+        _add(db, "Acme", "Dev", "2026-01-01T00:00:00")
+        snap = db.snapshot_before_mutation()
+        assert snap is not None and snap.exists()
+        assert snap.parent.name == "db-backups"
+        assert snap.name.startswith("job_history-") and snap.suffix == ".db"
+    finally:
+        db.close()
+
+
+def test_snapshot_prunes_to_keep(tmp_path):
+    db = JobHistoryDB(str(tmp_path / "job_history.db"))
+    try:
+        backups = tmp_path / "db-backups"
+        backups.mkdir()
+        # Five older snapshots with deterministic (earlier) timestamps.
+        for i in range(1, 6):
+            (backups / f"job_history-20260101-00000{i}.db").write_bytes(b"x")
+        db.snapshot_before_mutation(keep=3)  # today's stamp sorts newest
+        remaining = sorted(backups.glob("job_history-*.db"))
+        assert len(remaining) == 3, [p.name for p in remaining]
+        # The just-created snapshot (not a 20260101 seed) survives pruning.
+        assert any(not p.name.startswith("job_history-20260101") for p in remaining)
+    finally:
+        db.close()
