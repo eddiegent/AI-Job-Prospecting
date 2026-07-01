@@ -52,6 +52,13 @@ def normalise_company(name: str) -> str:
     return _WHITESPACE.sub(" ", n).strip()
 
 
+def normalise_title(title: str) -> str:
+    """Normalise a job title the same way ``add_application`` stores
+    ``job_title_norm`` — so callers can match the natural key without reaching
+    for the private ``_normalise``."""
+    return _normalise(title)
+
+
 def normalise_skill(skill: str) -> str:
     """Normalise a skill string for comparison.
 

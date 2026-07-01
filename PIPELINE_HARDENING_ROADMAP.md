@@ -56,10 +56,13 @@ one commit so any can be reverted independently. Check off as they land.
     migrated in place (105 rows, fingerprint unchanged `b1875f391258cfcd`)
   - [x] 2.2 `--source` and `--org-type` filters in `job-stats` / `job-status`
     (+ `stats --type org` breakdown)
-- [ ] **Phase 3 — Ergonomics (C)** · ~2–3 h
-  - [ ] 3.1 Filename length cap / parenthetical strip
-  - [ ] 3.2 Bulk `update-status`
-  - [ ] 3.3 Regenerate **supersede** mode (no duplicate folders + rows)
+- [x] **Phase 3 — Ergonomics (C)** · done
+  - [x] 3.1 Filename length cap (60, word boundary) + parenthetical strip in
+    `slug_for_filename`
+  - [x] 3.2 Bulk status via a `bulk-status <id>… --status` subcommand
+  - [x] 3.3 Regenerate **supersede** mode: `record-application --supersede`
+    retires prior same-company+role rows (natural-key match, not URL) before
+    inserting
 
 Suggested cadence: **Session A** = Phase 0 + Phase 1.1–1.3. **Session B** =
 Phase 2 (+ decide 1.4 from 1.1's findings). **Session C** = Phase 3.
@@ -239,7 +242,25 @@ Add DB tests alongside, like `test_job_history_db_v2.py`.
 
 ---
 
-## Phase 3 — Ergonomics (C)
+## Phase 3 — Ergonomics (C) — SHIPPED 2026-07-01
+
+**As shipped.** 3.1 lives in `common.slug_for_filename`: it strips inline/trailing
+parenthetical qualifiers entirely, then caps the slug at 60 chars on a word
+boundary and trims dangling punctuation (fixture: the Talent-R title). 3.2 is a
+non-breaking sibling `bulk-status <id>… --status` (the single-id
+`update-status <id> <status>` signature is referenced verbatim in several docs +
+the lint tool, so it was left intact); one backup covers the batch, missing ids
+exit non-zero. 3.3 is `record-application --supersede`, which retires prior
+**live same-company + same-role** rows before inserting — matched on the natural
+key (company + normalised title), deliberately NOT via `find_duplicates` (its
+URL/skill-overlap matching would clobber a different role at the same company,
+since a cold pack's canonical_url is shared across roles). Folder reuse stays a
+workflow choice (documented in cold SKILL.md); the CLI only dedups the DB rows.
+Tests: `test_folder_naming.py`, `test_bulk_status.py`, `test_record_supersede.py`.
+The pre-existing `test_db_concurrency.py` flake (parallel-process locking in the
+Windows sandbox) is unrelated and unchanged.
+
+Original plan (for reference):
 
 **3.1 — Filename length cap / parenthetical strip.**
 - `common.slug_for_filename` (and/or `safe_filename`): cap the job-title slug at

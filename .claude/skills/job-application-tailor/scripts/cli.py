@@ -22,7 +22,12 @@ from common import (
     delete_stale_slug_deliverables,
     matched_aggregator,
 )
-from job_history_db import JobHistoryDB, compute_content_fingerprint, normalise_company
+from job_history_db import (
+    JobHistoryDB,
+    compute_content_fingerprint,
+    normalise_company,
+    normalise_title,
+)
 from paths import load_settings
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
@@ -732,7 +737,29 @@ def cmd_record_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
         print(json.dumps(kwargs, ensure_ascii=False, indent=2, default=str))
         return
 
+    # Supersede mode (roadmap 3.3): when re-prospecting a company that already
+    # has a live pack for the SAME role, mark the prior row(s) `dropped` before
+    # inserting, so the pipeline shows one active application per role instead
+    # of the parallel #41-vs-#100 rows a second run used to leave behind.
+    #
+    # Match strictly on the natural key (company + title) — NOT on shared URL or
+    # skill overlap the way `find_duplicates` does: a cold pack's canonical_url
+    # is the company site, identical across every role, so a URL match would
+    # wrongly drop a different role at the same company. A distinct role is a
+    # distinct application and must survive.
+    superseded: list[dict] = []
+    if getattr(args, "supersede", False):
+        title_norm = normalise_title(kwargs["job_title"])
+        for prior in db.find_same_company(kwargs["company_name"]):
+            if prior["status"] == "dropped" or prior["job_title_norm"] != title_norm:
+                continue
+            db.update_status(prior["id"], "dropped")
+            superseded.append(prior)
+
     app_id = db.add_application(**kwargs)
+    for s in superseded:
+        print(f"Superseded #{s['id']} ({s['company_name']} — {s['job_title']}, "
+              f"was {s['status']}) -> dropped")
     print(f"Recorded application #{app_id}")
 
 
@@ -1048,6 +1075,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Print the kwargs that would be inserted, then exit (no DB write)",
+    )
+    p.add_argument(
+        "--supersede",
+        action="store_true",
+        help="Mark any prior live application to the same company+role as 'dropped' "
+        "before recording this one, so a re-prospect doesn't leave a parallel active row",
     )
 
     # rename-application

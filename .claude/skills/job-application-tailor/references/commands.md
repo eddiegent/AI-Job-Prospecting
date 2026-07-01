@@ -321,8 +321,9 @@ Accepts either a filesystem path or an integer application id (resolved via the 
 - `--source {offer,cold}` — override the auto-detected flow. The default is `cold` for `cold-` prefixed folders and `offer` otherwise; only pass this when the folder name disagrees with the actual flow.
 - `--language <code>` — cold-flow language code (default `fr`). Ignored for offer flow — that one reads `detected_language` from `job_offer_analysis.json`.
 - `--dry-run` — print the kwargs JSON that would be inserted, then exit (no DB write). Use this when verifying the wrapper is composing things correctly.
+- `--supersede` — before inserting, mark any prior **live** application to the same company + same role as `dropped`, so a re-prospect on a later date leaves one active row per role instead of a parallel duplicate (`#41` vs `#100`). Matches strictly on the natural key (company + normalised title) — a different role at the same company is left untouched. A single pre-mutation backup covers the whole operation.
 
-On success the command prints `Recorded application #<id>` on stdout. Exit codes: `0` = inserted (or dry-run completed), `1` = unknown id, `2` = missing/invalid `_prep/` artefacts.
+On success the command prints `Recorded application #<id>` on stdout, preceded by one `Superseded #<id> … -> dropped` line per row it retired. Exit codes: `0` = inserted (or dry-run completed), `1` = unknown id, `2` = missing/invalid `_prep/` artefacts.
 
 ## Generate Final Output Files
 

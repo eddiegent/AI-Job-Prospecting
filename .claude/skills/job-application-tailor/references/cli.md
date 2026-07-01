@@ -186,7 +186,7 @@ Step 10 — read _prep/ artefacts and insert the history row
 **Signature:**
 
 ```
-record-application <target> [--url <url>] [--source <source>] [--language <language>] [--dry-run]
+record-application <target> [--url <url>] [--source <source>] [--language <language>] [--dry-run] [--supersede]
 ```
 
 | Arg | Kind | Description |
@@ -196,6 +196,7 @@ record-application <target> [--url <url>] [--source <source>] [--language <langu
 | `--source` | optional | Override the auto-detected flow (default: 'cold' for cold-* folders, 'offer' otherwise) — choices: `offer`, `cold` |
 | `--language` | optional | Detected language for cold flow (default: 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json. |
 | `--dry-run` | flag | Print the kwargs that would be inserted, then exit (no DB write) |
+| `--supersede` | flag | Mark any prior live application to the same company+role as 'dropped' before recording this one, so a re-prospect doesn't leave a parallel active row |
 
 ### `regenerate-outputs`
 
