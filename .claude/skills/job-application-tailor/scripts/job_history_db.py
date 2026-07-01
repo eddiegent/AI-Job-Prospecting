@@ -85,7 +85,12 @@ def skill_overlap(skills_a: list[str], skills_b: list[str]) -> float:
 # Database class
 # ---------------------------------------------------------------------------
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
+
+# Organisation types recorded on cold-flow rows. Offer-flow rows leave org_type
+# NULL (there is no employer-vs-intermediary distinction to make from a JD). The
+# set mirrors company_profile.schema.json's `org_type` enum.
+_VALID_ORG_TYPES = ("end_employer", "esn", "staffing_agency", "recruitment_agency", "unknown")
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -111,6 +116,7 @@ CREATE TABLE IF NOT EXISTS applications (
     detected_language TEXT,
     status          TEXT NOT NULL DEFAULT 'generated',
     source          TEXT NOT NULL DEFAULT 'offer',
+    org_type        TEXT,
     company_profile_snapshot TEXT,
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL
@@ -275,6 +281,35 @@ def compute_content_fingerprint(conn: sqlite3.Connection) -> dict:
         "schema_version": schema_version,
         "fingerprint": h.hexdigest()[:16],
     }
+
+
+def _segment_filters(
+    *,
+    prefix: str = "",
+    since: str | None = None,
+    source: str | None = None,
+    org_type: str | None = None,
+) -> tuple[list[str], list[Any]]:
+    """Build the shared segmentation predicates (created_at / source / org_type).
+
+    Returns ``(conditions, params)`` — a list of SQL condition strings and the
+    matching parameter list — so callers can splice them into a WHERE clause
+    alongside their own predicates. ``prefix`` qualifies the columns for joined
+    queries (e.g. ``"a."``). Reused by every reporting/list method so the
+    ``--source`` / ``--org-type`` filters behave identically everywhere.
+    """
+    conds: list[str] = []
+    params: list[Any] = []
+    if since:
+        conds.append(f"{prefix}created_at >= ?")
+        params.append(since)
+    if source:
+        conds.append(f"{prefix}source = ?")
+        params.append(source)
+    if org_type:
+        conds.append(f"{prefix}org_type = ?")
+        params.append(org_type)
+    return conds, params
 
 
 class JobHistoryDB:
@@ -450,6 +485,12 @@ class JobHistoryDB:
                 cur.execute(
                     "ALTER TABLE applications ADD COLUMN company_profile_snapshot TEXT"
                 )
+        if from_version < 3:
+            # v2 -> v3: add org_type for pipeline segmentation (employer vs
+            # ESN vs agency). Legacy + offer-flow rows stay NULL; only the
+            # cold flow populates it from the researched company profile.
+            if "org_type" not in existing_cols:
+                cur.execute("ALTER TABLE applications ADD COLUMN org_type TEXT")
 
     def close(self) -> None:
         if getattr(self, "_closed", False):
@@ -483,6 +524,7 @@ class JobHistoryDB:
         detected_language: str | None = None,
         status: str = "generated",
         source: str = "offer",
+        org_type: str | None = None,
         company_profile_snapshot: str | None = None,
         created_at: str | None = None,
         required_skills: list[str] | None = None,
@@ -490,6 +532,10 @@ class JobHistoryDB:
     ) -> int:
         if source not in ("offer", "cold"):
             raise ValueError(f"source must be 'offer' or 'cold', got {source!r}")
+        if org_type is not None and org_type not in _VALID_ORG_TYPES:
+            raise ValueError(
+                f"org_type must be one of {_VALID_ORG_TYPES} or None, got {org_type!r}"
+            )
         now = created_at or datetime.now().isoformat()
         cur = self._conn.cursor()
         cur.execute(
@@ -498,16 +544,16 @@ class JobHistoryDB:
                 location, source_url, domain, seniority,
                 fit_level, fit_pct, direct_count, transferable_count, gap_count,
                 output_folder, detected_language, status,
-                source, company_profile_snapshot,
+                source, org_type, company_profile_snapshot,
                 created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 company_name, normalise_company(company_name),
                 job_title, _normalise(job_title),
                 location, source_url, domain, seniority,
                 fit_level, fit_pct, direct_count, transferable_count, gap_count,
                 output_folder, detected_language, status,
-                source, company_profile_snapshot,
+                source, org_type, company_profile_snapshot,
                 now, now,
             ),
         )
@@ -662,19 +708,18 @@ class JobHistoryDB:
         company: str | None = None,
         limit: int = 50,
         since: str | None = None,
+        source: str | None = None,
+        org_type: str | None = None,
     ) -> list[dict[str, Any]]:
-        query = "SELECT * FROM applications WHERE 1=1"
-        params: list[Any] = []
+        conds, params = _segment_filters(since=since, source=source, org_type=org_type)
         if status:
-            query += " AND status = ?"
+            conds.append("status = ?")
             params.append(status)
         if company:
-            query += " AND company_norm = ?"
+            conds.append("company_norm = ?")
             params.append(normalise_company(company))
-        if since:
-            query += " AND created_at >= ?"
-            params.append(since)
-        query += " ORDER BY created_at DESC LIMIT ?"
+        where = (" WHERE " + " AND ".join(conds)) if conds else ""
+        query = f"SELECT * FROM applications{where} ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         return [dict(r) for r in self._conn.execute(query, params).fetchall()]
 
@@ -687,44 +732,68 @@ class JobHistoryDB:
 
     # -- reporting -----------------------------------------------------------
 
-    def stats_by_fit_level(self, since: str | None = None) -> list[dict[str, Any]]:
-        where = "WHERE created_at >= ?" if since else ""
-        params = (since,) if since else ()
+    def _grouped_counts(
+        self,
+        *,
+        group_col: str,
+        select_col: str | None = None,
+        base_conds: list[str] | None = None,
+        since: str | None = None,
+        source: str | None = None,
+        org_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Shared ``SELECT <col>, COUNT(*) ... GROUP BY`` with segmentation
+        filters applied. ``select_col`` defaults to ``group_col``."""
+        conds, params = _segment_filters(since=since, source=source, org_type=org_type)
+        conds = (base_conds or []) + conds
+        where = (" WHERE " + " AND ".join(conds)) if conds else ""
         rows = self._conn.execute(
-            f"SELECT fit_level, COUNT(*) as count FROM applications {where} GROUP BY fit_level ORDER BY count DESC",
+            f"SELECT {select_col or group_col}, COUNT(*) as count "
+            f"FROM applications{where} GROUP BY {group_col} ORDER BY count DESC",
             params,
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def stats_by_status(self, since: str | None = None) -> list[dict[str, Any]]:
-        where = "WHERE created_at >= ?" if since else ""
-        params = (since,) if since else ()
-        rows = self._conn.execute(
-            f"SELECT status, COUNT(*) as count FROM applications {where} GROUP BY status ORDER BY count DESC",
-            params,
-        ).fetchall()
-        return [dict(r) for r in rows]
+    def stats_by_fit_level(
+        self, since: str | None = None, *, source: str | None = None, org_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        return self._grouped_counts(
+            group_col="fit_level", since=since, source=source, org_type=org_type
+        )
 
-    def stats_by_domain(self, since: str | None = None) -> list[dict[str, Any]]:
-        base_where = "WHERE domain IS NOT NULL"
-        params: tuple = ()
-        if since:
-            base_where += " AND created_at >= ?"
-            params = (since,)
-        rows = self._conn.execute(
-            f"SELECT domain, COUNT(*) as count FROM applications {base_where} GROUP BY domain ORDER BY count DESC",
-            params,
-        ).fetchall()
-        return [dict(r) for r in rows]
+    def stats_by_status(
+        self, since: str | None = None, *, source: str | None = None, org_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        return self._grouped_counts(
+            group_col="status", since=since, source=source, org_type=org_type
+        )
 
-    def stats_by_company(self, since: str | None = None) -> list[dict[str, Any]]:
-        where = "WHERE created_at >= ?" if since else ""
-        params = (since,) if since else ()
-        rows = self._conn.execute(
-            f"SELECT company_name, COUNT(*) as count FROM applications {where} GROUP BY company_norm ORDER BY count DESC",
-            params,
-        ).fetchall()
-        return [dict(r) for r in rows]
+    def stats_by_domain(
+        self, since: str | None = None, *, source: str | None = None, org_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        return self._grouped_counts(
+            group_col="domain", base_conds=["domain IS NOT NULL"],
+            since=since, source=source, org_type=org_type,
+        )
+
+    def stats_by_company(
+        self, since: str | None = None, *, source: str | None = None, org_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        return self._grouped_counts(
+            group_col="company_norm", select_col="company_name",
+            since=since, source=source, org_type=org_type,
+        )
+
+    def stats_by_org_type(
+        self, since: str | None = None, *, source: str | None = None, org_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Employer-vs-intermediary breakdown. Rows with NULL org_type (offer
+        flow + legacy) collapse into a single ``(unset)`` bucket."""
+        return self._grouped_counts(
+            group_col="org_type",
+            select_col="COALESCE(org_type, '(unset)') as org_type",
+            since=since, source=source, org_type=org_type,
+        )
 
     def top_skill_gaps(self, limit: int = 15) -> list[dict[str, Any]]:
         """Find skills that most frequently appear as required but are gaps."""
@@ -741,20 +810,32 @@ class JobHistoryDB:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def skill_gap_trends(self, limit: int = 10, since: str | None = None) -> list[dict[str, Any]]:
+    def skill_gap_trends(
+        self,
+        limit: int = 10,
+        since: str | None = None,
+        *,
+        source: str | None = None,
+        org_type: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Find required skills from gap matches across all applications.
 
         Looks at match_analysis data via the job_skills table combined with
-        application fit data to identify recurring gaps.
+        application fit data to identify recurring gaps. ``avg_fit_pct`` is a
+        plain SQL AVG, which ignores NULLs — so cold-flow rows (NULL fit by
+        design) never dilute it even when they are included in the counts.
         """
-        since_clause = "AND a.created_at >= ?" if since else ""
-        params: tuple = (limit,) if not since else (since, limit)
+        conds, seg_params = _segment_filters(
+            prefix="a.", since=since, source=source, org_type=org_type
+        )
+        extra = (" AND " + " AND ".join(conds)) if conds else ""
+        params = [*seg_params, limit]
         rows = self._conn.execute(
             f"""SELECT js.skill, COUNT(DISTINCT js.application_id) as appearances,
                       ROUND(AVG(a.fit_pct), 1) as avg_fit_pct
                FROM job_skills js
                JOIN applications a ON a.id = js.application_id
-               WHERE js.skill_type = 'required' {since_clause}
+               WHERE js.skill_type = 'required'{extra}
                GROUP BY js.skill_norm
                ORDER BY appearances DESC
                LIMIT ?""",
@@ -822,9 +903,12 @@ class JobHistoryDB:
             Path(output_path).write_text(content, encoding="utf-8")
         return content
 
-    def total_count(self, since: str | None = None) -> int:
-        if since:
-            row = self._conn.execute("SELECT COUNT(*) as c FROM applications WHERE created_at >= ?", (since,)).fetchone()
-        else:
-            row = self._conn.execute("SELECT COUNT(*) as c FROM applications").fetchone()
+    def total_count(
+        self, since: str | None = None, *, source: str | None = None, org_type: str | None = None
+    ) -> int:
+        conds, params = _segment_filters(since=since, source=source, org_type=org_type)
+        where = (" WHERE " + " AND ".join(conds)) if conds else ""
+        row = self._conn.execute(
+            f"SELECT COUNT(*) as c FROM applications{where}", params
+        ).fetchone()
         return row["c"]

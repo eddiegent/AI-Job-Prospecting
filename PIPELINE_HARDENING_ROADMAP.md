@@ -51,9 +51,11 @@ one commit so any can be reverted independently. Check off as they land.
   - [x] 1.2 Auto-backup before DB mutations — done (`snapshot_before_mutation`, git-ignored `db-backups/`)
   - [x] 1.3 Natural-key resolution + id-reuse warning — done (`--expect-company` guard + job-status workflow)
   - [ ] 1.4 *(design-only, deferred)* Portable export/import/merge + stable `JOB_TAILOR_HOME`
-- [ ] **Phase 2 — Pipeline segmentation (B)** · ~2–3 h, shares a migration with Phase 1
-  - [ ] 2.1 DB migration v2→v3: `org_type` column + snapshot field
-  - [ ] 2.2 `--source` and `--org-type` filters in `job-stats` / `job-status`
+- [x] **Phase 2 — Pipeline segmentation (B)** · done
+  - [x] 2.1 DB migration v2→v3: `org_type` column + snapshot field — live DB
+    migrated in place (105 rows, fingerprint unchanged `b1875f391258cfcd`)
+  - [x] 2.2 `--source` and `--org-type` filters in `job-stats` / `job-status`
+    (+ `stats --type org` breakdown)
 - [ ] **Phase 3 — Ergonomics (C)** · ~2–3 h
   - [ ] 3.1 Filename length cap / parenthetical strip
   - [ ] 3.2 Bulk `update-status`
@@ -195,9 +197,24 @@ writes in between, the DB was replaced/restored externally.
 
 ---
 
-## Phase 2 — Pipeline segmentation (B)
+## Phase 2 — Pipeline segmentation (B) — SHIPPED 2026-07-01
 
 **Goal:** make the pipeline visible by employer-type and by cold-vs-offer.
+
+**As shipped.** `_SCHEMA_VERSION` is now 3; the v2→v3 clause adds a nullable
+`org_type` column (no backfill — offer/legacy rows read NULL). `add_application`
+validates `org_type` against the five-value enum (mirrors
+`company_profile.schema.json`) and the cold `record-application` path writes it
+into both the row and the `company_profile_snapshot` subset. A shared
+`_segment_filters(...)` helper drives `--source` / `--org-type` on `stats`,
+`skills`, `count`, and `list`, plus a `stats --type org` breakdown (NULL rows
+bucket as `(unset)`). Fit-% averages stay offer-only for free — SQL `AVG`
+ignores the cold rows' NULL fit. Tests: `tests/test_job_history_db_v3.py`
+(migration, round-trip, validation, filters); the v2/doctor tests now assert
+`_SCHEMA_VERSION` rather than a hardcoded `2`. The pre-existing
+`test_db_concurrency` flake (documented below) is unchanged by this work.
+
+Original plan (for reference):
 
 **2.1 — Migration v2→v3.**
 - `job_history_db.py`: bump schema version, `ALTER TABLE applications ADD COLUMN

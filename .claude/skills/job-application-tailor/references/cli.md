@@ -92,12 +92,14 @@ Show total application count
 **Signature:**
 
 ```
-count [--since <since>]
+count [--since <since>] [--source <source>] [--org-type <org_type>]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `--since` | optional | Only count apps since date |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 
 ### `doctor`
 
@@ -149,7 +151,7 @@ List applications
 **Signature:**
 
 ```
-list [--status <status>] [--company <company>] [--limit <limit>] [--since <since>] [--json]
+list [--status <status>] [--company <company>] [--limit <limit>] [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
 ```
 
 | Arg | Kind | Description |
@@ -158,6 +160,8 @@ list [--status <status>] [--company <company>] [--limit <limit>] [--since <since
 | `--company` | optional | Filter by company name |
 | `--limit` | optional | Max results (default: 50) (default: `50`) |
 | `--since` | optional | Only include apps since date (7d/30d/this-week/this-month/ISO) |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 | `--json` | flag | Output as JSON |
 
 ### `record-application`
@@ -218,13 +222,15 @@ Show skill gap trends
 **Signature:**
 
 ```
-skills [--limit <limit>] [--since <since>] [--json]
+skills [--limit <limit>] [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `--limit` | optional | Max skills to show (default: `20`) |
 | `--since` | optional | Only include apps since date |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 | `--json` | flag | Output as JSON |
 
 ### `stats`
@@ -234,13 +240,15 @@ Show statistics
 **Signature:**
 
 ```
-stats [--type <type>] [--since <since>] [--json]
+stats [--type <type>] [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
-| `--type` | optional |  — choices: `all`, `status`, `fit`, `company`, `domain`, `skills` (default: `all`) |
+| `--type` | optional |  — choices: `all`, `status`, `fit`, `company`, `domain`, `org`, `skills` (default: `all`) |
 | `--since` | optional | Only include apps since date |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 | `--json` | flag | Output as JSON |
 
 ### `update-company`

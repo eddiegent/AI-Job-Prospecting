@@ -27,7 +27,11 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from cli import cmd_update_status  # noqa: E402
-from job_history_db import JobHistoryDB, compute_content_fingerprint  # noqa: E402
+from job_history_db import (  # noqa: E402
+    _SCHEMA_VERSION,
+    JobHistoryDB,
+    compute_content_fingerprint,
+)
 
 
 def _fp(db: JobHistoryDB) -> dict:
@@ -44,7 +48,7 @@ def test_empty_db_fingerprint(tmp_path):
         info = _fp(db)
         assert info["row_count"] == 0
         assert info["max_id"] is None
-        assert info["schema_version"] == 2
+        assert info["schema_version"] == _SCHEMA_VERSION
         assert isinstance(info["fingerprint"], str) and len(info["fingerprint"]) == 16
     finally:
         db.close()

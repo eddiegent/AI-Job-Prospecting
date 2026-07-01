@@ -72,6 +72,8 @@ def cmd_list(db: JobHistoryDB, args: argparse.Namespace) -> None:
         company=args.company,
         limit=args.limit,
         since=since,
+        source=getattr(args, "source", None),
+        org_type=getattr(args, "org_type", None),
     )
     if args.json:
         print(json.dumps(apps, ensure_ascii=False, indent=2))
@@ -167,56 +169,72 @@ def cmd_update_output_folder(db: JobHistoryDB, args: argparse.Namespace) -> None
 def cmd_stats(db: JobHistoryDB, args: argparse.Namespace) -> None:
     since = resolve_since(args.since) if args.since else None
     report_type = args.type
+    seg = {"source": getattr(args, "source", None), "org_type": getattr(args, "org_type", None)}
 
     if args.json:
         result = {}
         if report_type in ("all", "status"):
-            result["by_status"] = db.stats_by_status(since=since)
+            result["by_status"] = db.stats_by_status(since=since, **seg)
         if report_type in ("all", "fit"):
-            result["by_fit_level"] = db.stats_by_fit_level(since=since)
+            result["by_fit_level"] = db.stats_by_fit_level(since=since, **seg)
         if report_type in ("all", "company"):
-            result["by_company"] = db.stats_by_company(since=since)
+            result["by_company"] = db.stats_by_company(since=since, **seg)
         if report_type in ("all", "domain"):
-            result["by_domain"] = db.stats_by_domain(since=since)
+            result["by_domain"] = db.stats_by_domain(since=since, **seg)
+        if report_type in ("all", "org"):
+            result["by_org_type"] = db.stats_by_org_type(since=since, **seg)
         if report_type in ("all", "skills"):
-            result["skill_trends"] = db.skill_gap_trends(limit=15, since=since)
-        result["total"] = db.total_count(since=since)
+            result["skill_trends"] = db.skill_gap_trends(limit=15, since=since, **seg)
+        result["total"] = db.total_count(since=since, **seg)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
     period = f" (since {since})" if since else ""
-    print(f"Total applications: {db.total_count(since=since)}{period}")
+    seg_note = "".join(
+        f" [{k.replace('org_type', 'org-type')}={v}]" for k, v in seg.items() if v
+    )
+    print(f"Total applications: {db.total_count(since=since, **seg)}{period}{seg_note}")
 
     if report_type in ("all", "status"):
         print("\n--- By Status ---")
-        for r in db.stats_by_status(since=since):
+        for r in db.stats_by_status(since=since, **seg):
             print(f"  {r['status']:12s} {r['count']}")
 
     if report_type in ("all", "fit"):
         print("\n--- By Fit Level ---")
-        for r in db.stats_by_fit_level(since=since):
+        for r in db.stats_by_fit_level(since=since, **seg):
             lvl = r["fit_level"] or "n/a"
             print(f"  {lvl:12s} {r['count']}")
 
     if report_type in ("all", "company"):
         print("\n--- By Company ---")
-        for r in db.stats_by_company(since=since):
+        for r in db.stats_by_company(since=since, **seg):
             print(f"  {r['company_name']:30s} {r['count']}")
 
     if report_type in ("all", "domain"):
         print("\n--- By Domain ---")
-        for r in db.stats_by_domain(since=since):
+        for r in db.stats_by_domain(since=since, **seg):
             print(f"  {r['domain']:40s} {r['count']}")
+
+    if report_type in ("all", "org"):
+        print("\n--- By Org Type (cold flow; offer/legacy rows are '(unset)') ---")
+        for r in db.stats_by_org_type(since=since, **seg):
+            print(f"  {r['org_type']:20s} {r['count']}")
 
     if report_type in ("all", "skills"):
         print("\n--- Most Requested Skills ---")
-        for r in db.skill_gap_trends(limit=15, since=since):
+        for r in db.skill_gap_trends(limit=15, since=since, **seg):
             print(f"  {r['skill']:40s} {r['appearances']} apps (avg fit: {r['avg_fit_pct']}%)")
 
 
 def cmd_skills(db: JobHistoryDB, args: argparse.Namespace) -> None:
     since = resolve_since(args.since) if args.since else None
-    trends = db.skill_gap_trends(limit=args.limit, since=since)
+    trends = db.skill_gap_trends(
+        limit=args.limit,
+        since=since,
+        source=getattr(args, "source", None),
+        org_type=getattr(args, "org_type", None),
+    )
     if args.json:
         print(json.dumps(trends, ensure_ascii=False, indent=2))
         return
@@ -371,7 +389,11 @@ def cmd_export_csv(db: JobHistoryDB, args: argparse.Namespace) -> None:
 
 def cmd_count(db: JobHistoryDB, args: argparse.Namespace) -> None:
     since = resolve_since(args.since) if args.since else None
-    print(db.total_count(since=since))
+    print(db.total_count(
+        since=since,
+        source=getattr(args, "source", None),
+        org_type=getattr(args, "org_type", None),
+    ))
 
 
 def _inspect_db_file(path) -> dict | None:
@@ -621,6 +643,7 @@ def _build_cold_kwargs(
         "company_name": profile.get("company_name", ""),
         "canonical_url": profile.get("canonical_url", ""),
         "industry": profile.get("industry", ""),
+        "org_type": profile.get("org_type", ""),
         "size_band": profile.get("size_band", "unknown"),
         "headcount_estimate": profile.get("headcount_estimate"),
         "locations": profile.get("locations", []),
@@ -649,6 +672,8 @@ def _build_cold_kwargs(
         "required_skills": [],
         "preferred_skills": [],
         "source": "cold",
+        # NULL for a profile that couldn't classify — never coerce to a value.
+        "org_type": profile.get("org_type") or None,
         "company_profile_snapshot": json.dumps(snapshot, ensure_ascii=False),
     }
 
@@ -831,6 +856,24 @@ def cmd_rename_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
 # Argument parser
 # ---------------------------------------------------------------------------
 
+_ORG_TYPE_CHOICES = ["end_employer", "esn", "staffing_agency", "recruitment_agency", "unknown"]
+
+
+def _add_segment_filters(p: argparse.ArgumentParser) -> None:
+    """Attach the shared pipeline-segmentation filters (roadmap Phase 2.2)."""
+    p.add_argument(
+        "--source",
+        choices=["offer", "cold"],
+        help="Only include applications from this flow (offer vs cold/speculative)",
+    )
+    p.add_argument(
+        "--org-type",
+        dest="org_type",
+        choices=_ORG_TYPE_CHOICES,
+        help="Only include cold-flow rows with this organisation type",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py", description="Job history database CLI")
     parser.add_argument("--db", required=True, help="Path to SQLite database")
@@ -843,6 +886,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--company", help="Filter by company name")
     p.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
     p.add_argument("--since", help="Only include apps since date (7d/30d/this-week/this-month/ISO)")
+    _add_segment_filters(p)
     p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # get
@@ -876,14 +920,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     # stats
     p = sub.add_parser("stats", help="Show statistics")
-    p.add_argument("--type", default="all", choices=["all", "status", "fit", "company", "domain", "skills"])
+    p.add_argument("--type", default="all", choices=["all", "status", "fit", "company", "domain", "org", "skills"])
     p.add_argument("--since", help="Only include apps since date")
+    _add_segment_filters(p)
     p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # skills
     p = sub.add_parser("skills", help="Show skill gap trends")
     p.add_argument("--limit", type=int, default=20, help="Max skills to show")
     p.add_argument("--since", help="Only include apps since date")
+    _add_segment_filters(p)
     p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # company-list
@@ -929,6 +975,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("count", help="Show total application count")
     p.add_argument("--since", help="Only count apps since date")
+    _add_segment_filters(p)
 
     # regenerate-outputs
     p = sub.add_parser(

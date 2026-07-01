@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.job_history_db import JobHistoryDB
+from scripts.job_history_db import _SCHEMA_VERSION, JobHistoryDB
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ def test_v1_db_upgrades_on_first_open(tmp_path: Path) -> None:
 
     db = JobHistoryDB(str(db_path))
     try:
-        assert _schema_version(db_path) == 2
+        assert _schema_version(db_path) == _SCHEMA_VERSION
         cols = _column_names(db_path, "applications")
         assert "source" in cols
         assert "company_profile_snapshot" in cols
@@ -171,12 +171,12 @@ def test_reopen_of_v2_db_is_noop(tmp_path: Path) -> None:
 
     # First open triggers the upgrade.
     JobHistoryDB(str(db_path)).close()
-    assert _schema_version(db_path) == 2
+    assert _schema_version(db_path) == _SCHEMA_VERSION
 
     # Second open must silently succeed.
     db = JobHistoryDB(str(db_path))
     try:
-        assert _schema_version(db_path) == 2
+        assert _schema_version(db_path) == _SCHEMA_VERSION
     finally:
         db.close()
 
@@ -190,7 +190,7 @@ def test_fresh_db_is_created_at_v2(tmp_path: Path) -> None:
     db_path = tmp_path / "fresh.db"
     db = JobHistoryDB(str(db_path))
     try:
-        assert _schema_version(db_path) == 2
+        assert _schema_version(db_path) == _SCHEMA_VERSION
         cols = _column_names(db_path, "applications")
         assert "source" in cols
         assert "company_profile_snapshot" in cols
@@ -298,6 +298,6 @@ def test_upgrade_schema_is_idempotent_on_partial_state(tmp_path: Path) -> None:
         cols = _column_names(db_path, "applications")
         assert "source" in cols
         assert "company_profile_snapshot" in cols
-        assert _schema_version(db_path) == 2
+        assert _schema_version(db_path) == _SCHEMA_VERSION
     finally:
         db.close()

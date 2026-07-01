@@ -372,7 +372,7 @@ cd "$SKILL_BASE_TAILOR" && python scripts/cli.py --db "$PROJECT_ROOT/resources/j
 
 Pass the language explicitly — there is no JD to auto-detect from. Defaults to `fr` if omitted, matching the cold-flow default. The wrapper reads `company_profile.canonical_url` for `source_url`; pass `--url` if you want a different URL recorded (e.g. the leadership page used to anchor the outreach). See `$SKILL_BASE_TAILOR/references/commands.md` § Record Application for the full flag reference.
 
-**Note on `job-stats`.** Cold rows currently show up in counts alongside offer rows — `job-stats` has no `source` filter yet, so speculative and offer applications blend in reports. Adding `--source` / `--org-type` filters is Phase 2 of `PIPELINE_HARDENING_ROADMAP.md`.
+**Note on `job-stats`.** Cold rows record their `source` (`cold`) and, when the profile classified it, their `org_type`. Segment any report with `--source cold` (or `offer`) and narrow to an organisation type with `--org-type esn|end_employer|staffing_agency|recruitment_agency|unknown` — available on `stats`, `skills`, `count`, and `list`, plus a `stats --type org` breakdown. See `job-stats`.
 
 After Step 10 completes, summarise back to the user: output folder path, selected role, source URLs referenced, any `research_gaps` the dossier flagged, and the application id for later status updates via `/job-status`.
 

@@ -64,6 +64,14 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --since 30d
 
 Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO date (`2026-03-01`).
 
+To list only one flow, add `--source offer` or `--source cold`; to list only a
+cold-flow organisation type, add `--org-type` (`end_employer` / `esn` /
+`staffing_agency` / `recruitment_agency` / `unknown`):
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --source cold
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --org-type esn
+```
+
 ### If the user wants to update a status
 
 **Resolve by company, not by a remembered id.** Application ids are *not* stable

@@ -59,6 +59,12 @@ By domain:
 cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type domain
 ```
 
+By organisation type (cold-flow employer vs ESN vs agency; offer-flow and
+legacy rows collapse into a single `(unset)` bucket):
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type org
+```
+
 ### Skill gap trends
 
 Shows which required skills appear most often across applications, helping identify what to learn next:
@@ -83,6 +89,25 @@ Map natural-language time expressions to `--since` values:
 - "since March" -> `2026-03-01` (first of the referenced month)
 
 The `--since` flag works on all commands: `stats`, `skills`, and `count`.
+
+### Segmenting cold vs offer applications
+
+Speculative (cold) applications and offer-based applications share the DB.
+`--source offer|cold` narrows any report to one flow, and `--org-type` narrows
+to a cold-flow organisation type (`end_employer` / `esn` / `staffing_agency` /
+`recruitment_agency` / `unknown`). Both work on `stats`, `skills`, and `count`.
+
+```bash
+# How many speculative applications have I sent?
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count --source cold
+# Skills most requested by ESNs specifically
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" skills --org-type esn
+# Full offer-flow report for the last month
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --source offer --since 30d
+```
+
+Fit-% averages are computed from offer rows only — cold rows carry no fit score
+by design, and the SQL average ignores them automatically.
 
 ### JSON output
 
