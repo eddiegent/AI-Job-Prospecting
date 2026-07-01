@@ -158,6 +158,39 @@ root cause is confirmed.
 - Decide scope once we know whether the drift is environment snapshotting, cloud
   sync, or genuine multi-machine use.
 
+**Blocking findings surfaced 2026-07-01 (before any 1.4 code) — read these first:**
+
+1. **The DB path is resolved two inconsistent ways.** `preflight.py` uses
+   `paths.resolve_user_data_dir()` (honors `JOB_TAILOR_HOME` → legacy
+   `<repo>/resources/` if `MASTER_CV.docx` present → `%APPDATA%/job-application-tailor`).
+   But `job-status`, `job-stats`, and cold-flow **Step 10 hardcode**
+   `$PROJECT_ROOT/resources/job_history.db`. So any relocation MUST first route
+   those through the resolver, or the satellites silently read the old empty DB.
+   This is the real first sub-task of 1.4, not the file move.
+2. **Env-var persistence + location choice is environment-dependent.** `setx`
+   only affects future processes, not a running session; `%APPDATA%` is Roaming
+   (may sync across machines and re-introduce divergence); relocation only helps
+   if the new home is *outside* whatever checkpoints/restores the repo — unknown
+   without the user's environment.
+3. **Deeper root cause = the temp-mirror mtime-gate.** `JobHistoryDB` refreshes
+   `%TEMP%/jobhist-mirror-<hash>.db` from the target only when
+   `target.mtime >= mirror.mtime`; a restore that resets the target's mtime
+   *older* lets a stale mirror win and clobber newer rows on write-back. A
+   content-based refresh (or unconditional target→mirror copy on open) would fix
+   the drift *in place* with no move/env-var — but it's delicate code that exists
+   to survive networked mounts, so the correct change depends on whether the DB
+   is ever on a network/mounted FS. **This may be a better fix than relocation.**
+
+**Two open decisions for next session:** (a) the environment (remote/Cowork/cloud
+vs. local-only vs. cloud-synced); (b) approach — fix the mirror (surgical, no
+move), full relocation, or both.
+
+**Stabilization done 2026-07-01 (data-level, independent of 1.4):** Inetum #85 &
+Framatome #92 corrected `applied`→`rejected` (guard-validated + auto-backed-up);
+target mtime refreshed to now; baseline fingerprint **`b1875f391258cfcd`**, 105
+rows. Run `doctor` at next session start — if the fingerprint changed with no
+writes in between, the DB was replaced/restored externally.
+
 **Effort:** ~half a day for 1.1–1.3. **Risk:** low (additive; backups are safety).
 
 ---
