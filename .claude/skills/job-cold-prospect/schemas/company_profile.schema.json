@@ -27,6 +27,14 @@
       "type": "boolean",
       "description": "False only when the organisation explicitly self-describes (e.g. 'nous sommes une ESN'); true when the type is a judgment call from indirect signals (client logos, mission listings, no own product). Defaults to inferred."
     },
+    "company_is_aggregator": {
+      "type": "boolean",
+      "description": "True when the resolved company is fundamentally a job board / recruitment portal / aggregator (e.g. Free-Work, Indeed, or a niche board like Aerocontact) rather than a direct employer you'd prospect. Orthogonal to org_type: a job board is usually an end_employer for its own product, but it is also a CHANNEL — a posting found via it may belong to a different real employer. Step 3 uses this to ask the user whether they meant the board itself or a specific client company."
+    },
+    "source_platform": {
+      "type": "string",
+      "description": "When the user arrived via a job board but the real target is a different employer, the board's name (e.g. 'Aerocontact') is stashed here after company_name is rewritten to the real client — audit trail, mirrors the offer flow."
+    },
     "size_band": {
       "type": "string",
       "enum": ["startup", "scaleup", "midmarket", "enterprise", "unknown"],

@@ -123,6 +123,16 @@ def test_company_profile_requires_org_type_evidence(tmp_path, cold_schemas_dir):
     assert any("org_type_evidence" in e for e in errors), errors
 
 
+def test_company_profile_accepts_aggregator_fields(tmp_path, cold_schemas_dir):
+    """company_is_aggregator + source_platform are optional; when present they
+    must validate (the job-board / channel case, e.g. Aerocontact)."""
+    data = _company_profile_min()
+    data["company_is_aggregator"] = True
+    data["source_platform"] = "Aerocontact"
+    errors = _run(tmp_path, data, cold_schemas_dir / "company_profile.schema.json")
+    assert errors == [], errors
+
+
 def test_company_profile_rejects_unknown_org_type(tmp_path, cold_schemas_dir):
     data = _company_profile_min()
     data["org_type"] = "headhunter"  # not in the enum (the value is recruitment_agency)

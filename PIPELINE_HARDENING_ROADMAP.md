@@ -38,10 +38,10 @@ class of problems no single-file read would catch:
 Sequenced cheap-and-safe first, then the DB core, then ergonomics. Each item is
 one commit so any can be reverted independently. Check off as they land.
 
-- [ ] **Phase 0 — Skill hygiene (D)** · ~1 h, zero risk
-  - [ ] 0.1 Move the cold SKILL.md phase-log to a new `CHANGELOG.md`
-  - [ ] 0.2 Fix the stale `job-stats` forward-reference
-  - [ ] 0.3 Flag job-boards / aggregators in the cold flow
+- [x] **Phase 0 — Skill hygiene (D)** · ~1 h, zero risk
+  - [x] 0.1 Move the cold SKILL.md phase-log to a new `CHANGELOG.md`
+  - [x] 0.2 Fix the stale `job-stats` forward-reference
+  - [x] 0.3 Flag job-boards / aggregators in the cold flow
 - [ ] **Phase 1 — Data integrity (A)** · diagnose + guardrails first, ~half a day
   - [ ] 1.1 `db doctor` fingerprint (read-only)
   - [ ] 1.2 Auto-backup before DB mutations

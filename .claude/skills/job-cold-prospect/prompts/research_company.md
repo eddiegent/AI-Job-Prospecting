@@ -27,6 +27,14 @@ Rules:
 - **When torn between `esn` and `end_employer`** (some product companies also do a bit of conseil): pick by where the *work you'd do* lives. If the careers page sells you missions at named/anonymous clients, it's `esn`. If it sells roles on the company's own product, it's `end_employer`.
 - **Default to honesty.** A thin site that could be either → `unknown` + a `research_gaps` entry, not a guess dressed as fact.
 
+### Is this a job board / channel rather than an employer? — set `company_is_aggregator`
+
+Separately from `org_type`, watch for the case where the resolved company is fundamentally a **job board, recruitment portal, or aggregator** — a place people *find* jobs, not necessarily the employer of the role that brought the user here. Tells: the site's own product is a CVthèque / offres d'emploi listing / "déposez votre CV" portal, aggregated third-party listings, or the name matches a known platform (Free-Work, Indeed, LinkedIn, APEC, Hellowork, Welcome to the Jungle, Monster, and niche boards like Aerocontact).
+
+- Set `company_is_aggregator: true` when this is the case. It is **orthogonal to `org_type`** — a job board is usually an `end_employer` for its own product, but it is also a channel, so a posting seen there may belong to a *different* real employer.
+- Leave `source_platform` empty here — Step 3 fills it if the user says they actually meant a specific client company they found via this board.
+- If the company clearly sells its own non-recruitment product, set `company_is_aggregator: false` (or omit it).
+
 ## Source priority
 
 Work through these in order. Stop and record a gap when a source is unavailable, gated, or returns nothing useful — do not push on with guesswork.
@@ -59,6 +67,8 @@ Key fields recap:
 - `org_type` — one of `end_employer | esn | staffing_agency | recruitment_agency | unknown` (required)
 - `org_type_evidence` — the citable signal behind `org_type` (required; empty string only when `unknown` and nothing surfaced)
 - `org_type_inferred` — boolean; `false` only when the org self-describes
+- `company_is_aggregator` — boolean; `true` when the company is a job board / recruitment portal / channel rather than a direct employer
+- `source_platform` — the board's name, filled in Step 3 only if the user redirects to a real client found via the board
 - `size_band` — one of `startup | scaleup | midmarket | enterprise | unknown` (required)
 - `headcount_estimate` — integer or null
 - `mission_statement` — their words, or empty string (required)

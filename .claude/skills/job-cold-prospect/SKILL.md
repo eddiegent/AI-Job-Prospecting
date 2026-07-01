@@ -115,6 +115,15 @@ db.close()
 
 If the canonical name is blacklisted, stop and surface the reason. If the whitelist hits, flag it to the user as a positive signal but continue.
 
+**Job-board / aggregator check.** If research set `company_profile.company_is_aggregator: true`, the resolved company is a job board / recruitment portal (e.g. Aerocontact, Free-Work), not necessarily the employer of the role that brought the user here. **Stop and ask** before generating a pack for the board itself:
+
+> "[Company] looks like a job board / channel, not usually the employer. Did you arrive here via a posting for a specific company? Name the real client to prospect them instead, or say 'the board itself' to continue prospecting [Company] (e.g. to build their platform)."
+
+- **User names a real client** → this is the actual target. Set `source_platform` to the board's name in `company_profile.json`, then **re-run Step 3 research on the real client** — the current profile describes the board, not the client, so it must be rebuilt. The client's name becomes `company_name`.
+- **User says "the board itself"** → continue as-is; the board is a legitimate `end_employer` for its own product.
+
+This mirrors the offer flow's aggregator handling (`config/settings.default.yaml` → `aggregators.known_platforms`; `common.matched_aggregator`), catching the "Aerocontact posted a Safran role" case before a pack is wasted on the channel.
+
 **Canonicalise the folder slug.** Preflight built the output folder slug from the raw `$INPUT_SEED` — usually a URL, often unreadable (e.g. `cold-14052026-https-wwwlinkedincom-company-francebillet/`). Now that research has resolved `company_profile.company_name`, rebuild the slug in one shot. Idempotent — when the slug already matches, this prints the same path back and stops.
 
 ```bash
@@ -363,20 +372,10 @@ cd "$SKILL_BASE_TAILOR" && python scripts/cli.py --db "$PROJECT_ROOT/resources/j
 
 Pass the language explicitly — there is no JD to auto-detect from. Defaults to `fr` if omitted, matching the cold-flow default. The wrapper reads `company_profile.canonical_url` for `source_url`; pass `--url` if you want a different URL recorded (e.g. the leadership page used to anchor the outreach). See `$SKILL_BASE_TAILOR/references/commands.md` § Record Application for the full flag reference.
 
-**Do not touch `job-stats` yet.** Its existing queries keep working because `source` defaults to `'offer'` for legacy rows; cold rows simply show up in counts alongside offer rows until the stats skill gains a `source` filter (tracked as follow-up in `COLD_PROSPECT_ROADMAP.md` Phase F second pass).
+**Note on `job-stats`.** Cold rows currently show up in counts alongside offer rows — `job-stats` has no `source` filter yet, so speculative and offer applications blend in reports. Adding `--source` / `--org-type` filters is Phase 2 of `PIPELINE_HARDENING_ROADMAP.md`.
 
 After Step 10 completes, summarise back to the user: output folder path, selected role, source URLs referenced, any `research_gaps` the dossier flagged, and the application id for later status updates via `/job-status`.
 
 ## Build status
 
-- **Phase A (scaffold)** — done.
-- **Phase B (research pipeline)** — done. Steps 0–3 produce `_prep/company_profile.json` + `_prep/raw_research.md`.
-- **Phase C (role inference loop)** — done. Step 4 produces `_prep/role_candidates.json`, prompts the user, writes `_prep/selected_role.json`.
-- **Phase D (CV + letters)** — done. Steps 5, 6, and a Phase-D variant of Step 9 produce the tailored CV DOCX, motivation-letter DOCX, and short-letter TXT. `letter_type: "speculative"` is recorded.
-- **Phase E (LinkedIn + dossier)** — done. Step 7 produces cold-flow LinkedIn messages (2 variants per leadership contact, hiring-manager-targeted, `outreach_type: "cold"` recorded). Step 8 produces `company_dossier.md` — a 9-section deliverable replacing the fit-score document with a narrative angle of approach. `linkedin.schema.json` extended with optional `outreach_type` and `target_role` fields (backwards-compatible).
-- **Phase F (history DB)** — done. Shared DB schema bumped to v2: `applications.source` (`'offer'` / `'cold'`) + `applications.company_profile_snapshot`. Existing DBs migrate in place on first open via `ALTER TABLE ADD COLUMN`; legacy rows default to `source='offer'`. Step 10 writes a cold row with a compact snapshot subset of the company profile. `add_application()` rejects unknown `source` values.
-- **Phase G (tests + docs)** — done. Cold-prospect skill has a `tests/` directory with 17 schema-validation tests (including backwards-compat checks on the shared LinkedIn schema). Tailor skill has 8 new DB tests covering v1→v2 migration, legacy-row preservation, cold-insert round-trip, bad-source rejection, fresh-DB-at-v2, reopen idempotency, and half-migrated-state recovery. README walkthrough, CHANGELOG, and roadmap all updated. Full suites: **tailor 112 pass / 2 skip**, **cold-prospect 17 pass**.
-- **Organisation-type awareness (2026-06-22)** — done. Step 3 now classifies `company_profile.org_type` (`end_employer` / `esn` / `staffing_agency` / `recruitment_agency` / `unknown`) with a citable `org_type_evidence` + `org_type_inferred` flag. Both fields are required in `company_profile.schema.json`. Every downstream prompt (role inference, motivation letter, short letter, LinkedIn, dossier) branches on it: for an intermediary the pack pivots from "join your team/mission" to "the profile I offer for your missions / for you to represent", the LinkedIn target flips from CTO/hiring-manager to business-manager/recruiter, and the dossier's objection-prep swaps in the intermediary's real questions (mission types, TJM, mobility, availability). Cold-prospect suite: **36 pass** (was 17 schema → 25 with 4 new org_type tests, + 11 role-grounding).
-- **Post-launch refactor (2026-05-04)** — done. Steps 0–2.5 (pre-flight, master-CV read, fact-base extract, fact-base verify) extracted to a shared `job-prep-cv` sub-skill at `.claude/skills/job-prep-cv/SKILL.md` (`disable-model-invocation: true`). Both `job-application-tailor` and `job-cold-prospect` now delegate to it via a single ~10-line block, eliminating the verbatim "follow tailor SKILL.md § Step X" stubs that previously linked across skills. Folder naming is the only flow-aware branch inside the sub-skill (`[date]-[slug]/` for offer, `cold-[date]-[slug]/` for cold). No Python touched. Test suites unchanged: **tailor 112/2 skip**, **cold-prospect 17 pass**.
-
-**Skill is launch-ready.** `/job-cold-prospect <name>` runs fully end-to-end: research → role pick → tailored CV → motivation letter + short letter → LinkedIn messages → company dossier → history insert.
+**Launch-ready.** `/job-cold-prospect <name>` runs fully end-to-end: research → role pick → tailored CV → motivation letter + short letter → LinkedIn messages → company dossier → history insert. Change history (phases A–G + later work) lives in the repo-root `CHANGELOG.md`.
