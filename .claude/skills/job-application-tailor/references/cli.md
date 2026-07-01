@@ -250,13 +250,14 @@ Rename the company on an application
 **Signature:**
 
 ```
-update-company <id> <name>
+update-company <id> <name> [--expect-company <expect_company>]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `id` | positional | Application ID |
 | `name` | positional | New company name |
+| `--expect-company` | optional | Safety guard: refuse if application <id> is not currently this company |
 
 ### `update-output-folder`
 
@@ -280,10 +281,11 @@ Update application status
 **Signature:**
 
 ```
-update-status <id> <status>
+update-status <id> <status> [--expect-company <expect_company>]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `id` | positional | Application ID |
 | `status` | positional |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` |
+| `--expect-company` | optional | Safety guard: refuse if application <id> is not this company (ids can point elsewhere after a DB restore — see `doctor`) |

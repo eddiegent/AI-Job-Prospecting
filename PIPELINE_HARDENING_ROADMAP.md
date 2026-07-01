@@ -46,10 +46,10 @@ one commit so any can be reverted independently. Check off as they land.
   - [x] 0.1 Move the cold SKILL.md phase-log to a new `CHANGELOG.md`
   - [x] 0.2 Fix the stale `job-stats` forward-reference
   - [x] 0.3 Flag job-boards / aggregators in the cold flow
-- [ ] **Phase 1 — Data integrity (A)** · diagnose + guardrails first, ~half a day
+- [~] **Phase 1 — Data integrity (A)** · guardrails 1.1–1.3 done; 1.4 deferred
   - [x] 1.1 `db doctor` fingerprint (read-only) — done; surfaced the temp mirror
   - [x] 1.2 Auto-backup before DB mutations — done (`snapshot_before_mutation`, git-ignored `db-backups/`)
-  - [ ] 1.3 Natural-key resolution + id-reuse warning in `job-status`
+  - [x] 1.3 Natural-key resolution + id-reuse warning — done (`--expect-company` guard + job-status workflow)
   - [ ] 1.4 *(design-only, deferred)* Portable export/import/merge + stable `JOB_TAILOR_HOME`
 - [ ] **Phase 2 — Pipeline segmentation (B)** · ~2–3 h, shares a migration with Phase 1
   - [ ] 2.1 DB migration v2→v3: `org_type` column + snapshot field

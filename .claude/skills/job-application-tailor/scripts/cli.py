@@ -22,7 +22,7 @@ from common import (
     delete_stale_slug_deliverables,
     matched_aggregator,
 )
-from job_history_db import JobHistoryDB, compute_content_fingerprint
+from job_history_db import JobHistoryDB, compute_content_fingerprint, normalise_company
 from paths import load_settings
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
@@ -99,11 +99,36 @@ def cmd_get(db: JobHistoryDB, args: argparse.Namespace) -> None:
             print(f"  [{s['skill_type']}] {s['skill']}")
 
 
+def _guard_expected_company(app: dict, expected: str | None) -> None:
+    """Refuse an id-based mutation when the row's company doesn't match the
+    caller's expectation.
+
+    Application ids are NOT stable across a DB restore/divergence (a lineage
+    swap can leave id 105 pointing at a different company — see `doctor`). So a
+    remembered id like "set 105 to applied" can silently hit the wrong record.
+    When the caller passes --expect-company, this makes that class of mistake a
+    hard error instead of a silent corruption.
+    """
+    if not expected:
+        return
+    actual = app.get("company_norm") or normalise_company(app.get("company_name", ""))
+    if actual != normalise_company(expected):
+        print(
+            f"Refusing: application #{app['id']} is '{app['company_name']}' — "
+            f"'{app['job_title']}', not '{expected}'. Ids can point at a different "
+            "company after a DB restore (see `doctor`). Re-resolve with "
+            "`list --company \"<name>\"` and retry.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
 def cmd_update_status(db: JobHistoryDB, args: argparse.Namespace) -> None:
     app = db.get_application(args.id)
     if not app:
         print(f"Application #{args.id} not found.", file=sys.stderr)
         sys.exit(1)
+    _guard_expected_company(app, getattr(args, "expect_company", None))
     ok = db.update_status(args.id, args.status)
     if ok:
         print(f"#{args.id} {app['company_name']} — {app['job_title']}: {app['status']} -> {args.status}")
@@ -117,6 +142,7 @@ def cmd_update_company(db: JobHistoryDB, args: argparse.Namespace) -> None:
     if not app:
         print(f"Application #{args.id} not found.", file=sys.stderr)
         sys.exit(1)
+    _guard_expected_company(app, getattr(args, "expect_company", None))
     ok = db.update_company(args.id, args.name)
     if ok:
         print(f"#{args.id}: company '{app['company_name']}' -> '{args.name}'")
@@ -828,11 +854,20 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("update-status", help="Update application status")
     p.add_argument("id", type=int, help="Application ID")
     p.add_argument("status", choices=["generated", "applied", "rejected", "interview", "offer", "dropped"])
+    p.add_argument(
+        "--expect-company",
+        help="Safety guard: refuse if application <id> is not this company "
+        "(ids can point elsewhere after a DB restore — see `doctor`)",
+    )
 
     # update-company
     p = sub.add_parser("update-company", help="Rename the company on an application")
     p.add_argument("id", type=int, help="Application ID")
     p.add_argument("name", help="New company name")
+    p.add_argument(
+        "--expect-company",
+        help="Safety guard: refuse if application <id> is not currently this company",
+    )
 
     # update-output-folder
     p = sub.add_parser("update-output-folder", help="Update the output_folder path on an application")

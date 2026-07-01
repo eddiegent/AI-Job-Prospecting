@@ -12,7 +12,22 @@ from the canonical target). For that to work it must be:
 """
 from __future__ import annotations
 
-from scripts.job_history_db import JobHistoryDB, compute_content_fingerprint
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+# cli.py uses flat imports (`from common import ...`), so it — and the siblings
+# it pulls in — must be importable as top-level modules. Put scripts/ on the
+# path and import from there (not `scripts.cli`) so the JobHistoryDB the test
+# builds is the same class cli.py operates on.
+_SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+from cli import cmd_update_status  # noqa: E402
+from job_history_db import JobHistoryDB, compute_content_fingerprint  # noqa: E402
 
 
 def _fp(db: JobHistoryDB) -> dict:
@@ -115,5 +130,37 @@ def test_snapshot_prunes_to_keep(tmp_path):
         assert len(remaining) == 3, [p.name for p in remaining]
         # The just-created snapshot (not a 20260101 seed) survives pruning.
         assert any(not p.name.startswith("job_history-20260101") for p in remaining)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# --expect-company id-reuse guard (roadmap 1.3)
+# ---------------------------------------------------------------------------
+
+
+def test_expect_company_mismatch_refuses(tmp_path):
+    """A remembered id that now names a different company must fail loudly
+    (exit 2) and leave the row unchanged — the post-divergence hazard."""
+    db = JobHistoryDB(str(tmp_path / "job_history.db"))
+    try:
+        aid = _add(db, "Acme SAS", "Dev .NET", "2026-01-01T00:00:00")
+        args = SimpleNamespace(id=aid, status="applied", expect_company="Globex")
+        with pytest.raises(SystemExit) as exc:
+            cmd_update_status(db, args)
+        assert exc.value.code == 2
+        assert db.get_application(aid)["status"] == "generated"  # untouched
+    finally:
+        db.close()
+
+
+def test_expect_company_match_proceeds(tmp_path):
+    """Matching company (case/whitespace-insensitive via normalise) proceeds."""
+    db = JobHistoryDB(str(tmp_path / "job_history.db"))
+    try:
+        aid = _add(db, "Acme SAS", "Dev .NET", "2026-01-01T00:00:00")
+        args = SimpleNamespace(id=aid, status="applied", expect_company="acme sas")
+        cmd_update_status(db, args)
+        assert db.get_application(aid)["status"] == "applied"
     finally:
         db.close()

@@ -66,22 +66,37 @@ Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO da
 
 ### If the user wants to update a status
 
+**Resolve by company, not by a remembered id.** Application ids are *not* stable
+across a DB restore/divergence — id `105` can point at a different company in a
+later session (see `doctor` and `PIPELINE_HARDENING_ROADMAP.md`). So never trust
+an id the user (or you) recalls from earlier; always re-resolve it against the
+DB right now, and pass `--expect-company` as a safety net so a stale id fails
+loudly instead of silently mutating the wrong record.
+
 1. Parse `$ARGUMENTS` for a company name, job title, or application ID, plus the new status.
-2. If ambiguous, list matching applications and ask the user to pick one.
-3. **Before executing the update**, show the user the current application details and the proposed change:
+2. **Re-resolve to a current id by company name** (even if the user gave an id):
+   ```bash
+   cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --company "<name>"
+   ```
+   If ambiguous (several matches), show them and ask the user to pick one.
+3. **Before executing the update**, show the current application details and the proposed change:
    > Application #<id>: <company> — <title> (currently: <old_status>)
    > Change status to: <new_status>?
    Ask for confirmation before proceeding.
-4. Once confirmed, update:
+4. Once confirmed, update — pass `--expect-company` so the write refuses if that
+   id isn't the company you resolved (exit 2, nothing changed):
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-status <app_id> <new_status>
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-status <app_id> <new_status> --expect-company "<company>"
 ```
 
 To look up an application's current details first:
 ```bash
 cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" get <app_id>
 ```
+
+`update-company` takes the same `--expect-company` guard. A mutation also
+auto-snapshots the DB to `db-backups/` first, so a wrong write is recoverable.
 
 ### If the user wants to correct the company name or output folder on an existing application
 
