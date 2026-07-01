@@ -106,6 +106,22 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" get <app_id>
 `update-company` takes the same `--expect-company` guard. A mutation also
 auto-snapshots the DB to `db-backups/` first, so a wrong write is recoverable.
 
+#### Updating several applications at once
+
+When the user wants to move several applications to the **same** status in one
+go (e.g. "mark 104, 102 and 98 as applied"), use `bulk-status` instead of
+issuing `update-status` one id at a time. A single backup covers the whole
+batch. It prints each row's company/title as it changes so you can eyeball that
+the ids resolved to what the user meant (there is no `--expect-company` guard —
+bulk is inherently multi-company). Any missing id is reported and skipped, and
+the command exits non-zero so a typo doesn't pass silently.
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" bulk-status 104 102 98 --status applied
+```
+
+Still confirm the list of ids and the target status with the user before running.
+
 ### If the user wants to correct the company name or output folder on an existing application
 
 Use when the real hiring company wasn't known at generation time (e.g. the offer was posted via a platform like Free-Work) and has since been identified, or when the output folder was renamed on disk.

@@ -139,6 +139,36 @@ def cmd_update_status(db: JobHistoryDB, args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_bulk_status(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    """Set the same status on several applications in one call (roadmap 3.2).
+
+    The single-id `update-status` carries an `--expect-company` guard; bulk is
+    inherently multi-company, so instead of a guard it prints each row's
+    company/title as it changes, letting the caller eyeball that the ids resolved
+    to what they meant. A single pre-mutation backup (roadmap 1.2) covers the
+    whole batch. Missing ids are reported and skipped; the command exits non-zero
+    if any id was missing, so a typo in a batch doesn't pass silently."""
+    seen: set[int] = set()
+    missing: list[int] = []
+    for app_id in args.ids:
+        if app_id in seen:
+            continue
+        seen.add(app_id)
+        app = db.get_application(app_id)
+        if not app:
+            missing.append(app_id)
+            print(f"#{app_id}: not found — skipped.", file=sys.stderr)
+            continue
+        if db.update_status(app_id, args.status):
+            print(f"#{app_id} {app['company_name']} — {app['job_title']}: "
+                  f"{app['status']} -> {args.status}")
+        else:
+            missing.append(app_id)
+            print(f"#{app_id}: update failed.", file=sys.stderr)
+    if missing:
+        sys.exit(1)
+
+
 def cmd_update_company(db: JobHistoryDB, args: argparse.Namespace) -> None:
     app = db.get_application(args.id)
     if not app:
@@ -904,6 +934,18 @@ def build_parser() -> argparse.ArgumentParser:
         "(ids can point elsewhere after a DB restore — see `doctor`)",
     )
 
+    # bulk-status
+    p = sub.add_parser(
+        "bulk-status",
+        help="Set the same status on several applications at once (one backup covers the batch)",
+    )
+    p.add_argument("ids", type=int, nargs="+", help="One or more application IDs")
+    p.add_argument(
+        "--status",
+        required=True,
+        choices=["generated", "applied", "rejected", "interview", "offer", "dropped"],
+    )
+
     # update-company
     p = sub.add_parser("update-company", help="Rename the company on an application")
     p.add_argument("id", type=int, help="Application ID")
@@ -1048,7 +1090,7 @@ def main() -> None:
         # the mutation. Gives a cheap undo if a write goes wrong or a stale
         # mirror clobbers newer rows.
         _MUTATING = {
-            "update-status", "update-company", "update-output-folder",
+            "update-status", "bulk-status", "update-company", "update-output-folder",
             "record-application", "rename-application",
             "company-add", "company-remove",
         }
@@ -1059,6 +1101,7 @@ def main() -> None:
             "list": cmd_list,
             "get": cmd_get,
             "update-status": cmd_update_status,
+            "bulk-status": cmd_bulk_status,
             "update-company": cmd_update_company,
             "update-output-folder": cmd_update_output_folder,
             "stats": cmd_stats,

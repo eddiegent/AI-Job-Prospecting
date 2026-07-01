@@ -11,6 +11,21 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" <subcommand> [args...]
 
 ## Subcommands
 
+### `bulk-status`
+
+Set the same status on several applications at once (one backup covers the batch)
+
+**Signature:**
+
+```
+bulk-status <ids> --status <status>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `ids` | positional | One or more application IDs |
+| `--status` | required |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` |
+
 ### `check-duplicate`
 
 Step 3.5 — check duplicate / same-company / blacklist against a job_offer_analysis.json
