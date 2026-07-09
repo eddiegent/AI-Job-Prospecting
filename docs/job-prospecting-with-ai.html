@@ -1,0 +1,829 @@
+<title>Job Prospecting with AI</title>
+
+<style>
+  /* ---------- Tokens ---------- */
+  :root{
+    --ground:#e9ecf0;
+    --surface:#f6f7f9;
+    --surface-2:#dfe3e9;
+    --ink:#161c26;
+    --ink-soft:#49515e;
+    --ink-faint:#79828f;
+    --line:#cfd5dd;
+    --line-soft:#dde1e8;
+    --accent:#b06e14;
+    --accent-2:#9a5d0e;
+    --accent-quiet:rgba(176,110,20,.12);
+    --accent-line:rgba(176,110,20,.35);
+
+    --st-generated:#7d8798;
+    --st-applied:#3a72bd;
+    --st-interview:#6a56cf;
+    --st-offer:#1f8f60;
+    --st-rejected:#bb4a3a;
+    --st-dropped:#9aa2ad;
+
+    --shadow:0 1px 2px rgba(20,28,40,.05), 0 12px 34px -18px rgba(20,28,40,.28);
+    --radius:14px;
+    --radius-s:9px;
+
+    --font-display:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"Cascadia Code","SFMono-Regular","Segoe UI Mono",Consolas,monospace;
+
+    --maxw:1080px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ground:#0f141c;
+      --surface:#161d27;
+      --surface-2:#1e2732;
+      --ink:#eef1f5;
+      --ink-soft:#a7b1bd;
+      --ink-faint:#6e7885;
+      --line:#29323d;
+      --line-soft:#222b35;
+      --accent:#e2a54c;
+      --accent-2:#eab86f;
+      --accent-quiet:rgba(226,165,76,.14);
+      --accent-line:rgba(226,165,76,.42);
+
+      --st-generated:#8b95a4;
+      --st-applied:#5c92dd;
+      --st-interview:#8b7be6;
+      --st-offer:#3bb47e;
+      --st-rejected:#d9695a;
+      --st-dropped:#7f8896;
+
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#e9ecf0;--surface:#f6f7f9;--surface-2:#dfe3e9;--ink:#161c26;--ink-soft:#49515e;
+    --ink-faint:#79828f;--line:#cfd5dd;--line-soft:#dde1e8;--accent:#b06e14;--accent-2:#9a5d0e;
+    --accent-quiet:rgba(176,110,20,.12);--accent-line:rgba(176,110,20,.35);
+    --st-generated:#7d8798;--st-applied:#3a72bd;--st-interview:#6a56cf;--st-offer:#1f8f60;
+    --st-rejected:#bb4a3a;--st-dropped:#9aa2ad;
+    --shadow:0 1px 2px rgba(20,28,40,.05), 0 12px 34px -18px rgba(20,28,40,.28);
+  }
+  :root[data-theme="dark"]{
+    --ground:#0f141c;--surface:#161d27;--surface-2:#1e2732;--ink:#eef1f5;--ink-soft:#a7b1bd;
+    --ink-faint:#6e7885;--line:#29323d;--line-soft:#222b35;--accent:#e2a54c;--accent-2:#eab86f;
+    --accent-quiet:rgba(226,165,76,.14);--accent-line:rgba(226,165,76,.42);
+    --st-generated:#8b95a4;--st-applied:#5c92dd;--st-interview:#8b7be6;--st-offer:#3bb47e;
+    --st-rejected:#d9695a;--st-dropped:#7f8896;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:17px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Deck / scroller ---------- */
+  .deck{
+    height:100vh;
+    overflow-y:auto;
+    scroll-snap-type:y proximity;
+    scroll-behavior:smooth;
+    position:relative;
+  }
+  @media (prefers-reduced-motion:reduce){
+    .deck{scroll-behavior:auto;}
+  }
+
+  .slide{
+    scroll-snap-align:start;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:84px 32px 72px;
+    position:relative;
+  }
+  .slide__inner{
+    width:100%;
+    max-width:var(--maxw);
+    margin:0 auto;
+  }
+
+  /* eyebrow / section rail */
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:0 0 22px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:26px;height:1px;background:var(--accent);
+    display:inline-block;flex:none;
+  }
+  .eyebrow b{color:var(--accent-2);font-weight:600;}
+
+  h1,h2,h3{font-family:var(--font-display);font-weight:600;line-height:1.08;text-wrap:balance;margin:0;}
+  h1{font-size:clamp(2.6rem,6vw,4.4rem);letter-spacing:-.01em;}
+  h2{font-size:clamp(1.9rem,4vw,2.9rem);letter-spacing:-.005em;}
+  h3{font-size:1.18rem;line-height:1.2;}
+  p{margin:0;}
+  .lead{font-size:clamp(1.05rem,2vw,1.28rem);color:var(--ink-soft);max-width:62ch;line-height:1.55;}
+  .kicker-note{color:var(--ink-soft);max-width:60ch;}
+
+  strong{color:var(--ink);font-weight:600;}
+  .amber{color:var(--accent-2);font-weight:600;}
+  .mono{font-family:var(--font-mono);}
+
+  /* reveal */
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.in{opacity:1;transform:none;}
+  .reveal.d1{transition-delay:.08s;}
+  .reveal.d2{transition-delay:.16s;}
+  .reveal.d3{transition-delay:.24s;}
+  .reveal.d4{transition-delay:.32s;}
+  @media (prefers-reduced-motion:reduce){
+    .reveal{opacity:1;transform:none;transition:none;}
+  }
+
+  /* ---------- Fixed chrome ---------- */
+  .progress{
+    position:fixed;top:0;left:0;height:3px;width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    z-index:40;transition:width .12s linear;
+  }
+  .brandmark{
+    position:fixed;top:22px;left:30px;z-index:30;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-faint);display:flex;align-items:center;gap:9px;
+  }
+  .brandmark .seal{
+    width:16px;height:16px;border:1.5px solid var(--accent);border-radius:50%;
+    display:grid;place-items:center;flex:none;
+  }
+  .brandmark .seal::after{content:"";width:5px;height:5px;background:var(--accent);border-radius:50%;}
+
+  .dots{
+    position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:30;
+    display:flex;flex-direction:column;gap:13px;
+  }
+  .dots button{
+    width:9px;height:9px;padding:0;border:0;border-radius:50%;
+    background:var(--line);cursor:pointer;transition:transform .2s,background .2s;
+  }
+  .dots button:hover{background:var(--ink-faint);}
+  .dots button[aria-current="true"]{background:var(--accent);transform:scale(1.5);}
+  .dots button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+
+  .hint{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);display:flex;align-items:center;gap:8px;
+    opacity:1;transition:opacity .4s;
+  }
+  .hint.gone{opacity:0;pointer-events:none;}
+  .hint .key{border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink-soft);}
+
+  /* ---------- Generic surfaces ---------- */
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .grid{display:grid;gap:16px;}
+
+  /* ---------- Slide 1 : hero ---------- */
+  .hero__title{margin:0 0 20px;}
+  .hero__title .sub{
+    display:block;font-family:var(--font-mono);font-size:clamp(.8rem,1.6vw,1rem);
+    font-weight:400;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);
+    margin-bottom:18px;
+  }
+  .hero__flow{
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px 6px;margin-top:40px;
+    font-family:var(--font-mono);font-size:13px;color:var(--ink-soft);
+  }
+  .hero__flow .node{
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:7px 15px;white-space:nowrap;
+  }
+  .hero__flow .node.accent{border-color:var(--accent-line);color:var(--accent-2);background:var(--accent-quiet);}
+  .hero__flow .arr{color:var(--accent);font-size:16px;}
+  .flowdot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);
+    margin-right:2px;animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.35;}50%{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.flowdot{animation:none;opacity:.8;}}
+
+  /* ---------- Two-column promise ---------- */
+  .split{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center;}
+  @media (max-width:820px){.split{grid-template-columns:1fr;gap:30px;}}
+  .promise-card{
+    padding:26px 26px 24px;border-radius:var(--radius);
+    background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+  }
+  .promise-card::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);
+  }
+  .promise-card .stamp{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent-2);margin-bottom:10px;
+  }
+  .promise-card blockquote{
+    margin:0;font-family:var(--font-display);font-size:1.35rem;line-height:1.35;color:var(--ink);
+  }
+  .promise-card .src{margin-top:16px;font-size:.85rem;color:var(--ink-faint);}
+
+  .beats{list-style:none;padding:0;margin:24px 0 0;display:flex;flex-direction:column;gap:14px;}
+  .beats li{display:flex;gap:13px;align-items:flex-start;}
+  .beats .n{
+    flex:none;font-family:var(--font-mono);font-size:12px;color:var(--accent-2);
+    border:1px solid var(--accent-line);border-radius:6px;padding:2px 7px;margin-top:3px;
+  }
+  .beats b{display:block;}
+  .beats span{color:var(--ink-soft);font-size:.96rem;}
+
+  /* ---------- Fan-out diagram ---------- */
+  .fan{
+    display:grid;grid-template-columns:auto 1fr auto;gap:0;align-items:center;margin-top:8px;
+  }
+  @media (max-width:760px){.fan{grid-template-columns:1fr;gap:22px;justify-items:center;}}
+  .fan__cv{
+    background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
+    width:150px;padding:16px 15px;position:relative;
+  }
+  .fan__cv .doc-h{height:9px;width:60%;background:var(--accent);border-radius:3px;margin-bottom:9px;}
+  .fan__cv .doc-l{height:6px;background:var(--line);border-radius:3px;margin-bottom:6px;}
+  .fan__cv .doc-l.s{width:80%;}
+  .fan__cv .doc-l.m{width:95%;}
+  .fan__cv .tag{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);margin-top:12px;
+  }
+  .fan__engine{justify-self:center;text-align:center;padding:0 6px;}
+  .fan__engine .ring{
+    width:104px;height:104px;border-radius:50%;margin:0 auto 12px;
+    border:1.5px solid var(--accent-line);display:grid;place-items:center;
+    background:radial-gradient(circle at 50% 40%,var(--accent-quiet),transparent 70%);
+  }
+  .fan__engine .ring b{font-family:var(--font-display);font-size:1.5rem;color:var(--accent-2);}
+  .fan__engine .cap{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);}
+  .fan__conn{position:relative;height:150px;}
+  @media (max-width:760px){.fan__conn{display:none;}}
+  .fan__packs{display:flex;flex-direction:column;gap:10px;}
+  .packpill{
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    padding:9px 13px;font-size:.86rem;color:var(--ink-soft);box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:9px;
+  }
+  .packpill .dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--accent);}
+  .packpill b{color:var(--ink);font-weight:600;}
+
+  /* ---------- Pipeline phases ---------- */
+  .phases{display:flex;flex-direction:column;gap:0;margin-top:6px;}
+  .phase{
+    display:grid;grid-template-columns:64px 1fr;gap:20px;
+    padding:20px 0;border-top:1px solid var(--line-soft);
+  }
+  .phase:first-child{border-top:0;}
+  .phase__no{
+    font-family:var(--font-display);font-size:1.5rem;color:var(--accent-2);
+    display:flex;align-items:flex-start;gap:0;
+  }
+  .phase__no .ph-tag{
+    writing-mode:initial;
+  }
+  .phase__body h3{margin-bottom:5px;}
+  .phase__body p{color:var(--ink-soft);font-size:.97rem;max-width:66ch;}
+  .phase__steps{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;}
+  .stepchip{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.02em;
+    background:var(--surface-2);color:var(--ink-soft);border-radius:20px;padding:4px 11px;
+    border:1px solid var(--line-soft);
+  }
+  .phase.gate .phase__no{color:var(--st-rejected);}
+  .phase.gate .stepchip{border-color:var(--accent-line);background:var(--accent-quiet);color:var(--accent-2);}
+
+  /* ---------- Fit gate ---------- */
+  .gate-wrap{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center;}
+  @media (max-width:820px){.gate-wrap{grid-template-columns:1fr;gap:26px;}}
+  .matrix{display:flex;flex-direction:column;gap:12px;}
+  .mrow{display:flex;align-items:center;gap:14px;}
+  .mrow .swatch{width:14px;height:14px;border-radius:4px;flex:none;}
+  .mrow b{min-width:118px;display:inline-block;}
+  .mrow span{color:var(--ink-soft);font-size:.93rem;}
+  .meter{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 22px 20px;box-shadow:var(--shadow);
+  }
+  .meter__label{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;}
+  .bar{
+    position:relative;height:30px;border-radius:16px;overflow:hidden;
+    background:linear-gradient(90deg,var(--st-rejected) 0%,var(--st-rejected) 49.5%,var(--st-offer) 50.5%,var(--st-offer) 100%);
+    opacity:.9;
+  }
+  .bar__mark{
+    position:absolute;left:50%;top:-6px;bottom:-6px;width:2px;background:var(--ink);
+    transform:translateX(-50%);
+  }
+  .bar__flag{
+    position:absolute;left:50%;top:-30px;transform:translateX(-50%);
+    font-family:var(--font-mono);font-size:11px;color:var(--ink);white-space:nowrap;
+    background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 7px;
+  }
+  .zones{display:flex;justify-content:space-between;margin-top:12px;font-size:.82rem;font-family:var(--font-mono);}
+  .zones .stop{color:var(--st-rejected);}
+  .zones .go{color:var(--st-offer);}
+
+  /* ---------- Two ways in ---------- */
+  .ways{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:760px){.ways{grid-template-columns:1fr;}}
+  .way{padding:24px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);}
+  .way .tag{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);margin-bottom:10px;}
+  .way h3{margin-bottom:8px;}
+  .way p{color:var(--ink-soft);font-size:.95rem;}
+  .orgstrip{margin-top:26px;padding:20px 22px;border-radius:var(--radius);background:var(--surface-2);border:1px solid var(--line-soft);}
+  .orgstrip h3{font-family:var(--font-body);font-size:.95rem;font-weight:600;margin-bottom:12px;}
+  .orgtags{display:flex;flex-wrap:wrap;gap:9px;}
+  .orgtags span{font-family:var(--font-mono);font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--ink-soft);}
+  .orgtags span b{color:var(--ink);}
+
+  /* ---------- Deliverables ---------- */
+  .deliverables{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:820px){.deliverables{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:520px){.deliverables{grid-template-columns:1fr;}}
+  .deliv{padding:20px;border-radius:var(--radius-s);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);}
+  .deliv .fmt{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;color:var(--accent-2);text-transform:uppercase;margin-bottom:9px;}
+  .deliv h3{font-size:1.02rem;margin-bottom:6px;}
+  .deliv p{font-size:.87rem;color:var(--ink-soft);line-height:1.45;}
+
+  /* ---------- Funnel ---------- */
+  .funnel{display:flex;flex-direction:column;gap:9px;max-width:640px;}
+  .fstage{display:flex;align-items:center;gap:16px;}
+  .fstage .fbar{
+    height:42px;border-radius:9px;display:flex;align-items:center;padding:0 16px;
+    color:#fff;font-weight:600;font-size:.95rem;box-shadow:var(--shadow);
+    font-family:var(--font-body);
+  }
+  .fstage .flabel{font-size:.85rem;color:var(--ink-soft);}
+  .fstage .flabel b{color:var(--ink);}
+  .exits{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;}
+  .exit{display:flex;align-items:center;gap:9px;font-size:.88rem;color:var(--ink-soft);
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 14px;}
+  .exit .chip{width:11px;height:11px;border-radius:3px;flex:none;}
+
+  /* ---------- Truthfulness ---------- */
+  .truth{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center;}
+  @media (max-width:820px){.truth{grid-template-columns:1fr;gap:26px;}}
+  .trace{display:flex;flex-direction:column;gap:12px;}
+  .trace .line{
+    display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);
+    border-radius:9px;padding:12px 15px;box-shadow:var(--shadow);
+  }
+  .trace .out{flex:1;font-size:.9rem;color:var(--ink);}
+  .trace .arr{color:var(--accent);font-family:var(--font-mono);font-size:13px;flex:none;}
+  .trace .fact{
+    font-family:var(--font-mono);font-size:11px;color:var(--st-offer);border:1px solid var(--line);
+    background:var(--surface-2);border-radius:6px;padding:3px 8px;flex:none;
+  }
+  .trace .line.bad .fact{color:var(--st-rejected);}
+  .trace .line.bad{border-color:var(--st-rejected);opacity:.65;}
+  .trace .line.bad .out{text-decoration:line-through;color:var(--ink-faint);}
+  .incident{
+    padding:24px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--line);
+    box-shadow:var(--shadow);position:relative;
+  }
+  .incident .tag{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--st-rejected);margin-bottom:12px;}
+  .incident p{color:var(--ink-soft);font-size:.95rem;margin-bottom:14px;}
+  .incident .fix{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--ink);}
+  .incident .fix .ok{color:var(--st-offer);font-weight:700;flex:none;}
+  .drift{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.9rem;margin:2px 0 4px;}
+  .drift .old{color:var(--ink-faint);text-decoration:line-through;}
+  .drift .new{color:var(--st-offer);}
+
+  /* addendum note on the promise card */
+  .addnote{
+    margin-top:16px;padding-top:14px;border-top:1px dashed var(--accent-line);
+    font-size:.86rem;color:var(--ink-soft);line-height:1.45;
+  }
+  .addnote b{color:var(--accent-2);}
+
+  /* CV + addendum → working fact base merge band */
+  .mergeflow{
+    display:grid;grid-template-columns:auto auto 1fr;gap:20px;align-items:center;
+    background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--radius);
+    padding:20px 22px;
+  }
+  @media (max-width:760px){.mergeflow{grid-template-columns:1fr;gap:14px;}}
+  .mf-src{display:flex;flex-direction:column;gap:8px;}
+  .mf-doc{
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 14px;
+    min-width:196px;box-shadow:var(--shadow);
+  }
+  .mf-doc b{display:block;font-family:var(--font-body);font-size:.92rem;color:var(--ink);}
+  .mf-doc span{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.02em;}
+  .mf-doc.primary{border-left:3px solid var(--accent);}
+  .mf-doc.add{border-left:3px dashed var(--accent-line);}
+  .mf-plus{font-family:var(--font-mono);color:var(--accent-2);text-align:center;font-size:14px;line-height:1;}
+  .mf-arrow{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent-2);text-align:center;white-space:nowrap;text-transform:uppercase;}
+  @media (max-width:760px){.mf-arrow{transform:rotate(90deg);}}
+  .mf-out{
+    background:var(--surface);border:1px solid var(--accent-line);border-radius:9px;padding:13px 16px;box-shadow:var(--shadow);
+  }
+  .mf-out b{display:block;font-family:var(--font-display);font-size:1.1rem;color:var(--ink);margin-bottom:3px;}
+  .mf-out span{font-size:.83rem;color:var(--ink-soft);line-height:1.45;}
+
+  /* ---------- Numbers ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  @media (max-width:820px){.stats{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:460px){.stats{grid-template-columns:1fr 1fr;}}
+  .stat{padding:20px 18px;border-radius:var(--radius-s);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);}
+  .stat .num{font-family:var(--font-display);font-size:2.1rem;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums;}
+  .stat .num .u{font-size:1rem;color:var(--accent-2);margin-left:2px;}
+  .stat .lbl{margin-top:9px;font-size:.82rem;color:var(--ink-soft);line-height:1.35;}
+
+  /* ---------- Closing ---------- */
+  .close__inner{text-align:center;}
+  .close h2{margin-bottom:20px;}
+  .takeaway{
+    display:inline-block;font-family:var(--font-display);font-size:clamp(1.3rem,3vw,1.9rem);
+    color:var(--ink);border-top:1px solid var(--accent-line);border-bottom:1px solid var(--accent-line);
+    padding:18px 4px;max-width:24ch;margin:0 auto;line-height:1.3;
+  }
+  .close .foot{margin-top:26px;font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;color:var(--ink-faint);text-transform:uppercase;}
+
+  a{color:var(--accent-2);}
+  ::selection{background:var(--accent-quiet);}
+</style>
+
+<div class="progress" id="progress"></div>
+<div class="brandmark"><span class="seal"></span> Job Prospecting with AI</div>
+
+<nav class="dots" id="dots" aria-label="Slides"></nav>
+<div class="hint" id="hint"><span class="key">↓</span> scroll or use arrow keys</div>
+
+<main class="deck" id="deck">
+
+  <!-- 1 · HERO -->
+  <section class="slide" id="s1" data-title="Overview">
+    <div class="slide__inner">
+      <h1 class="hero__title reveal in">
+        <span class="sub">Job Prospecting with AI · a field guide for non-technical readers</span>
+        Your whole job search,<br>run by an AI workshop.
+      </h1>
+      <p class="lead reveal in d1">
+        A set of assistants that turns one master CV and a job posting into a complete,
+        personalised application pack — a tailored CV, letters, outreach messages and interview prep —
+        in minutes instead of an evening. And it <strong>never invents anything about you</strong>.
+      </p>
+      <div class="hero__flow reveal in d2" aria-hidden="true">
+        <span class="node">A job you like</span>
+        <span class="arr">→</span>
+        <span class="node accent"><span class="flowdot"></span>The toolkit</span>
+        <span class="arr">→</span>
+        <span class="node">A ready-to-send pack</span>
+        <span class="arr">→</span>
+        <span class="node">Tracked automatically</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · THE PROMISE -->
+  <section class="slide" id="s2" data-title="The promise">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>01</b> The idea</p>
+      <div class="split">
+        <div>
+          <h2 class="reveal">Tailoring every application by hand is slow. Faking it is fatal.</h2>
+          <ul class="beats">
+            <li class="reveal d1"><span class="n">A</span><div><b>The slow part is the boring part.</b><span>Re-reading the job, reshaping your CV, drafting a letter, finding the right person on LinkedIn — an hour a role, every time.</span></div></li>
+            <li class="reveal d2"><span class="n">B</span><div><b>So the toolkit does it for you.</b><span>It reads the posting, reshapes your CV to fit, writes the letters, and gets you interview-ready.</span></div></li>
+            <li class="reveal d3"><span class="n">C</span><div><b>But with one hard rule.</b><span>Recruiters spot invented skills instantly. So every single claim must trace back to your real CV.</span></div></li>
+          </ul>
+        </div>
+        <aside class="promise-card reveal d2">
+          <div class="stamp">The founding rule</div>
+          <blockquote>“If a claim isn't in your master CV — or your addendum — it doesn't appear in the output.”</blockquote>
+          <div class="src">— the principle every part of the toolkit is built to protect</div>
+          <div class="addnote">The <b>addendum</b> is an optional file for things that are true but aren't on your CV — a long-ago project, a skill you left off. It's the one sanctioned way to add anything.</div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · BIG PICTURE / FAN-OUT -->
+  <section class="slide" id="s3" data-title="Big picture">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>02</b> The big picture</p>
+      <h2 class="reveal" style="margin-bottom:10px;">One CV in. Many perfectly-fitted applications out.</h2>
+      <p class="kicker-note reveal d1" style="margin-bottom:34px;">
+        You maintain a single “master CV.” For each job, the toolkit produces a version re-emphasised for
+        <em>that</em> role — same true facts, arranged to speak to what the employer is actually asking for.
+      </p>
+      <div class="fan reveal d2">
+        <div class="fan__cv">
+          <div class="doc-h"></div>
+          <div class="doc-l m"></div><div class="doc-l m"></div><div class="doc-l s"></div>
+          <div class="doc-l m"></div><div class="doc-l s"></div>
+          <div class="tag">Master CV · one source of truth</div>
+        </div>
+        <div class="fan__engine">
+          <div class="ring"><b>◆</b></div>
+          <div class="cap">The toolkit</div>
+        </div>
+        <div class="fan__packs">
+          <div class="packpill"><span class="dot"></span><b>.NET role</b>&nbsp;— emphasises your C#/backend work</div>
+          <div class="packpill"><span class="dot"></span><b>AI role</b>&nbsp;— foregrounds your automation projects</div>
+          <div class="packpill"><span class="dot"></span><b>Consultant role</b>&nbsp;— leads with breadth &amp; delivery</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · PIPELINE -->
+  <section class="slide" id="s4" data-title="The pipeline">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>03</b> What happens on a run</p>
+      <h2 class="reveal" style="margin-bottom:26px;">Five stages, roughly ten steps — all automatic.</h2>
+      <div class="phases">
+        <div class="phase reveal d1">
+          <div class="phase__no">I</div>
+          <div class="phase__body">
+            <h3>Prepare</h3>
+            <p>Read your master CV and pull out a clean list of everything true about you — skills, projects, real numbers — then fold in your optional addendum of off-CV facts. Cached, so it's only re-done when your CV changes.</p>
+            <div class="phase__steps"><span class="stepchip">read CV</span><span class="stepchip">extract the facts</span><span class="stepchip">+ optional addendum</span><span class="stepchip">double-check nothing crept in</span></div>
+          </div>
+        </div>
+        <div class="phase reveal d1">
+          <div class="phase__no">II</div>
+          <div class="phase__body">
+            <h3>Understand</h3>
+            <p>Read the job posting (spotting the real employer behind sites like LinkedIn or Indeed), research the company and its people, and make sure you haven't already applied.</p>
+            <div class="phase__steps"><span class="stepchip">analyse the offer</span><span class="stepchip">research the company</span><span class="stepchip">check for duplicates</span></div>
+          </div>
+        </div>
+        <div class="phase gate reveal d2">
+          <div class="phase__no">III</div>
+          <div class="phase__body">
+            <h3>Decide — the fit gate</h3>
+            <p>Score how well you match, requirement by requirement. <strong>If the fit is below 50%, it stops here</strong> and builds nothing — so your effort only goes where it counts.</p>
+            <div class="phase__steps"><span class="stepchip">match &amp; gap analysis</span><span class="stepchip">fit score</span><span class="stepchip">stop if &lt; 50%</span></div>
+          </div>
+        </div>
+        <div class="phase reveal d2">
+          <div class="phase__no">IV</div>
+          <div class="phase__body">
+            <h3>Create</h3>
+            <p>Reshape the CV for the role, write the motivation letter and a short version for online forms, draft LinkedIn messages to real contacts, and prepare you for the interview.</p>
+            <div class="phase__steps"><span class="stepchip">tailor CV</span><span class="stepchip">letters</span><span class="stepchip">LinkedIn</span><span class="stepchip">interview prep</span></div>
+          </div>
+        </div>
+        <div class="phase reveal d3">
+          <div class="phase__no">V</div>
+          <div class="phase__body">
+            <h3>Deliver &amp; record</h3>
+            <p>Turn everything into polished Word / PDF files, and log the application in your personal tracker for stats and duplicate-checking later.</p>
+            <div class="phase__steps"><span class="stepchip">build the files</span><span class="stepchip">record it</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · FIT GATE -->
+  <section class="slide" id="s5" data-title="The fit gate">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>04</b> The honesty check on effort</p>
+      <h2 class="reveal" style="margin-bottom:28px;">It won't dress up a bad match.</h2>
+      <div class="gate-wrap">
+        <div>
+          <p class="kicker-note reveal d1" style="margin-bottom:22px;">Every requirement in the posting is sorted into one of three buckets. That's what makes the fit score honest — and what stops the letter from claiming a skill you don't have.</p>
+          <div class="matrix">
+            <div class="mrow reveal d1"><span class="swatch" style="background:var(--st-offer)"></span><b>Direct</b><span>You've genuinely done this — and it's in your CV.</span></div>
+            <div class="mrow reveal d2"><span class="swatch" style="background:var(--st-applied)"></span><b>Transferable</b><span>Close enough that your experience clearly carries over.</span></div>
+            <div class="mrow reveal d3"><span class="swatch" style="background:var(--st-dropped)"></span><b>Gap</b><span>You don't have it — named plainly, never hidden.</span></div>
+          </div>
+        </div>
+        <div class="meter reveal d2">
+          <div class="meter__label">Overall fit → go / no-go</div>
+          <div class="bar" aria-hidden="true">
+            <span class="bar__mark"></span>
+            <span class="bar__flag">50% — the line</span>
+          </div>
+          <div class="zones"><span class="stop">◄ below · builds nothing</span><span class="go">above · full pack ►</span></div>
+          <p style="margin-top:16px;font-size:.9rem;color:var(--ink-soft);">There's also a quick “score-only” mode to triage lots of postings without generating anything.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · TWO WAYS IN -->
+  <section class="slide" id="s6" data-title="Two ways in">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>05</b> Two ways to reach out</p>
+      <h2 class="reveal" style="margin-bottom:26px;">Answering an ad — or knocking on a door.</h2>
+      <div class="ways">
+        <div class="way reveal d1">
+          <div class="tag">Flow A · the offer</div>
+          <h3>There's a job posting</h3>
+          <p>You give it the link. It scores your fit and, if you're a match, builds the full pack aimed squarely at that advertised role.</p>
+        </div>
+        <div class="way reveal d2">
+          <div class="tag">Flow B · the cold approach</div>
+          <h3>There's no posting — just a company you like</h3>
+          <p>You give it a company name. It researches them, helps you pick a role to pitch, and writes a “here's what I could bring you” speculative application.</p>
+        </div>
+      </div>
+      <div class="orgstrip reveal d3">
+        <h3>A subtle but important detail: <span class="amber">who are you actually writing to?</span></h3>
+        <p style="color:var(--ink-soft);font-size:.92rem;margin-bottom:14px;">Writing to a consultancy or a recruiter as if they were the end employer is a dead giveaway. So the toolkit classifies the organisation and reframes the whole letter to match:</p>
+        <div class="orgtags">
+          <span><b>End employer</b> — you'd work here</span>
+          <span><b>ESN / consultancy</b> — placed on their clients</span>
+          <span><b>Staffing agency</b> — temporary missions</span>
+          <span><b>Recruitment agency</b> — represents you to employers</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · DELIVERABLES -->
+  <section class="slide" id="s7" data-title="What you get">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>06</b> What lands in your folder</p>
+      <h2 class="reveal" style="margin-bottom:26px;">Everything you need to actually apply.</h2>
+      <div class="deliverables">
+        <div class="deliv reveal d1"><div class="fmt">Word · PDF</div><h3>Tailored CV</h3><p>Your CV, re-emphasised for this specific role — same facts, better aimed.</p></div>
+        <div class="deliv reveal d1"><div class="fmt">Word · PDF</div><h3>Motivation letter</h3><p>A natural, conversational cover letter — never stiff or formulaic.</p></div>
+        <div class="deliv reveal d2"><div class="fmt">Text</div><h3>Short letter</h3><p>A tight 500–750-character version for online application forms.</p></div>
+        <div class="deliv reveal d2"><div class="fmt">Text</div><h3>LinkedIn messages</h3><p>Ready-to-send notes addressed to the real recruiter or manager, by name.</p></div>
+        <div class="deliv reveal d3"><div class="fmt">Web page</div><h3>Interview prep</h3><p>Likely questions, your talking points, company context — on your phone.</p></div>
+        <div class="deliv reveal d3"><div class="fmt">Summary</div><h3>Run summary</h3><p>Your fit score and everything produced, filed in one place.</p></div>
+      </div>
+      <p class="kicker-note reveal d4" style="margin-top:22px;font-size:.9rem;">Files are named and written in the posting's language — <span class="mono">French or English</span> — automatically.</p>
+    </div>
+  </section>
+
+  <!-- 8 · TRACKER / FUNNEL -->
+  <section class="slide" id="s8" data-title="The tracker">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>07</b> Never lose track</p>
+      <h2 class="reveal" style="margin-bottom:12px;">Every application, tracked from draft to offer.</h2>
+      <p class="kicker-note reveal d1" style="margin-bottom:30px;">Each pack is logged in a personal history. You move it along as things happen, and ask for reports any time — “how many did I send this month?”, “which skills keep coming up that I should learn?”</p>
+      <div class="funnel">
+        <div class="fstage reveal d1"><div class="fbar" style="background:var(--st-generated);width:100%;">Generated</div><div class="flabel"><b>Built</b>, not yet sent</div></div>
+        <div class="fstage reveal d1"><div class="fbar" style="background:var(--st-applied);width:82%;">Applied</div><div class="flabel">Sent to the employer</div></div>
+        <div class="fstage reveal d2"><div class="fbar" style="background:var(--st-interview);width:60%;">Interview</div><div class="flabel">You're talking</div></div>
+        <div class="fstage reveal d2"><div class="fbar" style="background:var(--st-offer);width:40%;">Offer</div><div class="flabel">The goal</div></div>
+      </div>
+      <div class="exits reveal d3">
+        <div class="exit"><span class="chip" style="background:var(--st-rejected)"></span> <b>Rejected</b>&nbsp;— a “no” came back</div>
+        <div class="exit"><span class="chip" style="background:var(--st-dropped)"></span> <b>Dropped</b>&nbsp;— you chose not to pursue</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · TRUTHFULNESS -->
+  <section class="slide" id="s9" data-title="The guardrail">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>08</b> The guardrail that makes it trustworthy</p>
+      <h2 class="reveal" style="margin-bottom:16px;">Every sentence traces back to a fact.</h2>
+      <p class="kicker-note reveal d1" style="margin-bottom:22px;">Those facts come from your CV — plus an optional <span class="amber">addendum</span> for true things it doesn't mention. They're combined fresh on every run, and the verified CV extract is never overwritten.</p>
+      <div class="mergeflow reveal d1" style="margin-bottom:30px;">
+        <div class="mf-src">
+          <div class="mf-doc primary"><b>Master CV</b><span>.docx · verified source</span></div>
+          <div class="mf-plus">+</div>
+          <div class="mf-doc add"><b>cv_addendum.md</b><span>optional · true off-CV facts</span></div>
+        </div>
+        <div class="mf-arrow">merge<br>in memory ►</div>
+        <div class="mf-out"><b>Working fact base</b><span>built fresh for this run — everything you send is grounded here, and the CV extract is never overwritten</span></div>
+      </div>
+      <div class="truth">
+        <div class="trace">
+          <div class="line reveal d1"><span class="out">“Built C# services handling millions of records”</span><span class="arr">←</span><span class="fact">in your CV ✓</span></div>
+          <div class="line reveal d2"><span class="out">“Led automation projects end-to-end”</span><span class="arr">←</span><span class="fact">in your CV ✓</span></div>
+          <div class="line bad reveal d3"><span class="out">“Expert in Kubernetes”</span><span class="arr">←</span><span class="fact">not found ✕</span></div>
+        </div>
+        <div class="incident reveal d2">
+          <div class="tag">A real bug this prevents</div>
+          <p>Once, the CV was updated to say “100+ applications” but the fact list still held the old figure. The stale number nearly shipped.</p>
+          <div class="drift"><span class="old">40+ applications</span> → <span class="new">100+ applications</span></div>
+          <div class="fix"><span class="ok">✓</span><span>Now a built-in check catches any number that doesn't match your CV and refuses to continue — so out-of-date facts can't slip through.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · NUMBERS -->
+  <section class="slide" id="s10" data-title="By the numbers">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>09</b> At a glance</p>
+      <h2 class="reveal" style="margin-bottom:28px;">The toolkit, by the numbers.</h2>
+      <div class="stats">
+        <div class="stat reveal d1"><div class="num">5</div><div class="lbl">assistants — 4 you use, 1 working behind the scenes</div></div>
+        <div class="stat reveal d1"><div class="num">2</div><div class="lbl">ways in — reply to an ad, or reach out cold</div></div>
+        <div class="stat reveal d1"><div class="num">~10</div><div class="lbl">steps per run, start to finish, automatic</div></div>
+        <div class="stat reveal d1"><div class="num">50<span class="u">%</span></div><div class="lbl">minimum fit — below it, nothing is built</div></div>
+        <div class="stat reveal d2"><div class="num">108<span class="u">+</span></div><div class="lbl">application packs generated so far</div></div>
+        <div class="stat reveal d2"><div class="num">6</div><div class="lbl">statuses tracked, from draft to offer</div></div>
+        <div class="stat reveal d2"><div class="num">2</div><div class="lbl">languages — French &amp; English, chosen automatically</div></div>
+        <div class="stat reveal d2"><div class="num">0</div><div class="lbl">invented facts — the whole point</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · CLOSE -->
+  <section class="slide close" id="s11" data-title="In one line">
+    <div class="slide__inner close__inner">
+      <p class="eyebrow reveal" style="justify-content:center;">The takeaway</p>
+      <h2 class="reveal d1">So, in one sentence.</h2>
+      <p class="takeaway reveal d2">It applies to jobs the way you would on your best day — faster, and without ever bending the truth.</p>
+      <p class="foot reveal d3">Job Prospecting with AI · a set of Claude Code skills</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var progress = document.getElementById('progress');
+  var dotsNav = document.getElementById('dots');
+  var hint = document.getElementById('hint');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // build dot nav
+  slides.forEach(function(s, i){
+    var b = document.createElement('button');
+    b.setAttribute('aria-label', s.getAttribute('data-title') || ('Slide ' + (i+1)));
+    b.addEventListener('click', function(){
+      s.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
+    });
+    dotsNav.appendChild(b);
+  });
+  var dots = Array.prototype.slice.call(dotsNav.children);
+
+  // progress bar
+  function onScroll(){
+    var max = deck.scrollHeight - deck.clientHeight;
+    var pct = max > 0 ? (deck.scrollTop / max) * 100 : 0;
+    progress.style.width = pct + '%';
+    if(deck.scrollTop > 40){ hint.classList.add('gone'); }
+  }
+  deck.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  // active dot + reveal via IntersectionObserver
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      var idx = slides.indexOf(e.target);
+      if(e.isIntersecting){
+        // reveal children
+        e.target.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+        if(e.intersectionRatio > 0.5){
+          dots.forEach(function(d){ d.removeAttribute('aria-current'); });
+          if(dots[idx]) dots[idx].setAttribute('aria-current','true');
+        }
+      }
+    });
+  }, {root: deck, threshold:[0.15, 0.55]});
+  slides.forEach(function(s){ io.observe(s); });
+
+  // keyboard nav
+  function current(){
+    var best = 0, bestDist = Infinity;
+    slides.forEach(function(s, i){
+      var d = Math.abs(s.getBoundingClientRect().top);
+      if(d < bestDist){ bestDist = d; best = i; }
+    });
+    return best;
+  }
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if(k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'ArrowRight'){
+      ev.preventDefault();
+      var n = Math.min(current()+1, slides.length-1);
+      slides[n].scrollIntoView({behavior: reduce ? 'auto':'smooth'});
+    } else if(k === 'ArrowUp' || k === 'PageUp' || k === 'ArrowLeft'){
+      ev.preventDefault();
+      var p = Math.max(current()-1, 0);
+      slides[p].scrollIntoView({behavior: reduce ? 'auto':'smooth'});
+    } else if(k === 'Home'){
+      ev.preventDefault(); slides[0].scrollIntoView({behavior:reduce?'auto':'smooth'});
+    } else if(k === 'End'){
+      ev.preventDefault(); slides[slides.length-1].scrollIntoView({behavior:reduce?'auto':'smooth'});
+    }
+  });
+})();
+</script>
