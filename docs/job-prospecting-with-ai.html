@@ -452,6 +452,34 @@
   .stat .num .u{font-size:1rem;color:var(--accent-2);margin-left:2px;}
   .stat .lbl{margin-top:9px;font-size:.82rem;color:var(--ink-soft);line-height:1.35;}
 
+  /* ---------- Getting started ---------- */
+  .install-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:820px){.install-grid{grid-template-columns:1fr;}}
+  .install-card{padding:20px;border-radius:var(--radius-s);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;}
+  .install-card .badge{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);margin-bottom:9px;}
+  .install-card h3{font-size:1.05rem;margin-bottom:7px;}
+  .install-card p{font-size:.85rem;color:var(--ink-soft);margin-bottom:12px;line-height:1.45;}
+  .cmdblock{
+    font-family:var(--font-mono);font-size:12px;line-height:1.65;
+    background:var(--surface-2);border:1px solid var(--line-soft);border-radius:8px;
+    padding:11px 13px;color:var(--ink);overflow-x:auto;white-space:pre;margin-top:auto;
+  }
+  .cmdblock .p{color:var(--accent-2);user-select:none;}
+  .cmd{font-family:var(--font-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--accent-2);white-space:nowrap;}
+
+  .run-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+  @media (max-width:820px){.run-grid{grid-template-columns:1fr;gap:26px;}}
+  .run-h{display:flex;align-items:center;gap:11px;font-family:var(--font-body);font-weight:600;font-size:1.05rem;margin-bottom:16px;}
+  .run-n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent-quiet);border:1px solid var(--accent-line);color:var(--accent-2);display:grid;place-items:center;font-family:var(--font-mono);font-size:14px;}
+  .setup-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;}
+  .setup-list li{position:relative;padding-left:20px;font-size:.93rem;color:var(--ink-soft);line-height:1.5;}
+  .setup-list li::before{content:"";position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:2px;background:var(--accent);}
+  .setup-list strong{color:var(--ink);}
+  .cmd-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:11px;}
+  .cmd-list li{display:flex;flex-direction:column;gap:3px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:var(--shadow);}
+  .cmd-list .slash{font-family:var(--font-mono);font-size:.9rem;color:var(--accent-2);}
+  .cmd-list .desc{font-size:.85rem;color:var(--ink-soft);}
+
   /* ---------- Closing ---------- */
   .close__inner{text-align:center;}
   .close h2{margin-bottom:20px;}
@@ -742,7 +770,67 @@
     </div>
   </section>
 
-  <!-- 11 · CLOSE -->
+  <!-- 11 · GETTING STARTED · INSTALL -->
+  <section class="slide" id="s-install" data-title="Install">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>10</b> Getting started · install</p>
+      <h2 class="reveal" style="margin-bottom:14px;">Getting it running.</h2>
+      <p class="kicker-note reveal d1" style="margin-bottom:26px;">It's a plug-in for <strong>Claude Code</strong>, plus <strong>Python 3.10+</strong> for the document engine. Pick whichever install suits you:</p>
+      <div class="install-grid reveal d2">
+        <div class="install-card">
+          <div class="badge">Option A · simplest</div>
+          <h3>From a marketplace</h3>
+          <p>Once it's published, two commands inside Claude Code:</p>
+          <div class="cmdblock"><span class="c">/plugin marketplace add &lt;owner&gt;/&lt;repo&gt;
+/plugin install job-prospecting@&lt;marketplace&gt;</span></div>
+        </div>
+        <div class="install-card">
+          <div class="badge">Option B · try it now</div>
+          <h3>From a local folder</h3>
+          <p>Point Claude Code at a copy of the project:</p>
+          <div class="cmdblock"><span class="p">$ </span><span class="c">claude --plugin-dir  ./job-prospecting</span></div>
+        </div>
+        <div class="install-card">
+          <div class="badge">Option C · for sharing</div>
+          <h3>As a built bundle</h3>
+          <p>Package a self-contained bundle (tests run first):</p>
+          <div class="cmdblock"><span class="p">$ </span><span class="c">python -m scripts.package &lt;project&gt; dist/</span></div>
+        </div>
+      </div>
+      <p class="kicker-note reveal d3" style="margin-top:22px;font-size:.88rem;">One-time: install the Python packages with <span class="cmd">pip install -r requirements.txt</span>. Word files always work; PDFs work if Word, LibreOffice, or pandoc is installed.</p>
+    </div>
+  </section>
+
+  <!-- 12 · GETTING STARTED · SET UP & RUN -->
+  <section class="slide" id="s-run" data-title="Set up & run">
+    <div class="slide__inner">
+      <p class="eyebrow reveal"><b>11</b> Getting started · set up &amp; run</p>
+      <h2 class="reveal" style="margin-bottom:26px;">Add your CV, then just ask.</h2>
+      <div class="run-grid">
+        <div class="run-col reveal d1">
+          <div class="run-h"><span class="run-n">1</span> Set up your data — once</div>
+          <ul class="setup-list">
+            <li>On first run it makes a <strong>private data folder</strong> just for you — your CV never touches the project.</li>
+            <li>Drop in your <span class="cmd">MASTER_CV.docx</span> — the one required file.</li>
+            <li>Optionally add <span class="cmd">cv_addendum.md</span> (off-CV facts) and <span class="cmd">user_prefs.yaml</span> (tone &amp; title rules).</li>
+            <li>Run <span class="cmd">python -m scripts.init</span> to drop in ready-to-edit templates.</li>
+          </ul>
+        </div>
+        <div class="run-col reveal d2">
+          <div class="run-h"><span class="run-n">2</span> Run it — any time</div>
+          <ul class="cmd-list">
+            <li><span class="slash">/job-application-tailor</span><span class="desc">paste a job link → a full application pack</span></li>
+            <li><span class="slash">/job-cold-prospect</span><span class="desc">name a company → a speculative pack</span></li>
+            <li><span class="slash">/job-status</span><span class="desc">mark applied · interview · offer · rejected</span></li>
+            <li><span class="slash">/job-stats</span><span class="desc">reports, trends, skill gaps, CSV export</span></li>
+          </ul>
+        </div>
+      </div>
+      <p class="kicker-note reveal d3" style="margin-top:24px;font-size:.9rem;">You talk to it in plain language — everything lands in a dated folder, ready to send. <br><span style="font-size:.92em;">Installed as a plugin, the commands are namespaced — e.g. <span class="cmd">/job-prospecting:job-stats</span>.</span></p>
+    </div>
+  </section>
+
+  <!-- 13 · CLOSE -->
   <section class="slide close" id="s11" data-title="In one line">
     <div class="slide__inner close__inner">
       <p class="eyebrow reveal" style="justify-content:center;">The takeaway</p>

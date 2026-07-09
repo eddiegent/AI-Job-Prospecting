@@ -36,6 +36,8 @@ The plugin is distributed as a Claude Code plugin bundle. You have three install
 /plugin install job-prospecting@<marketplace-name>
 ```
 
+The `@<marketplace-name>` suffix is **required** — it disambiguates plugins that share a name across marketplaces; there is no bare-name install. Publishing this path yourself also needs a [`.claude-plugin/marketplace.json`](https://code.claude.com/docs/en/plugin-marketplaces) catalog at the repo root — it isn't in the repo yet, which is why this path is marked *once published*. Until then, use option B or C below.
+
 ### B. From a local directory (dev / trial)
 
 Clone this repo and point Claude Code at it:
