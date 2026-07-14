@@ -5,11 +5,14 @@ Build history for the job-prospecting toolkit. Kept out of the individual
 trigger; historical notes don't need to ride along). Newest entries first
 within each section.
 
-## v1.0.0 (unreleased)
+## v1.0.0 — 2026-07-15
 
-The version declared in `.claude-plugin/plugin.json`. Tagging is held until
-the packaged bundle passes a fresh-machine smoke test (see
-`PLUGIN_ROADMAP.md` § Phase 5). Everything below is part of this release.
+First tagged release (git tags `v1.0.0` and `job-prospecting--v1.0.0`, the
+latter being the marketplace version convention). The packaged bundle passed
+the Windows fresh-environment smoke test (onboarding → preflight → CLI →
+schema validation → full DOCX/PDF pack); Mac/Linux smoke and the live
+`/plugin install` flow remain open items in `PLUGIN_ROADMAP.md` § Phase 5.
+Everything below is part of this release.
 
 ## Repo & infrastructure
 
