@@ -281,7 +281,7 @@
       <section class="section" id="skills">
         <p class="sec-kick">02 · Composition</p>
         <h2>The five skills</h2>
-        <p>Each skill is a <code>SKILL.md</code> with YAML frontmatter under <code>.claude/skills/&lt;name&gt;/</code>. Roles split cleanly into orchestrators, one internal sub-skill, and two DB satellites.</p>
+        <p>Each skill is a <code>SKILL.md</code> with YAML frontmatter under <code>.claude/skills/&lt;name&gt;/</code> (or <code>skills/&lt;name&gt;/</code> when installed as a plugin — the setup blocks resolve both layouts via <code>$CLAUDE_PLUGIN_ROOT</code>). Roles split cleanly into orchestrators, one internal sub-skill, and two DB satellites.</p>
         <div class="tbl-wrap">
           <table class="tbl">
             <thead><tr><th>Skill</th><th>Role</th><th>DB</th><th>allowed-tools</th><th>Notes</th></tr></thead>

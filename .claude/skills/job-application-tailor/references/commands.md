@@ -15,8 +15,14 @@ All commands assume these variables are set:
 ### Resolve paths
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"
+SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"   # dev/repo layout
+if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
+  SKILL_BASE="$CLAUDE_PLUGIN_ROOT/skills/job-application-tailor"   # installed plugin
+fi
 ```
+
+If neither directory exists, stop and tell the user the toolkit is not
+installed correctly.
 
 ### Check dependencies
 ```bash

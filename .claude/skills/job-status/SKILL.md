@@ -15,7 +15,10 @@ Update application statuses and manage company lists in the job history database
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"
+SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"   # dev/repo layout
+if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
+  SKILL_BASE="$CLAUDE_PLUGIN_ROOT/skills/job-application-tailor"   # installed plugin
+fi
 DB_PATH="$PROJECT_ROOT/resources/job_history.db"
 ```
 

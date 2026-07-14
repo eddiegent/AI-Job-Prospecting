@@ -41,12 +41,21 @@ The fact base lives at `$PREP_DIR/cv_fact_base.json` and has been verified again
 The shared infrastructure (`scripts/`, `schemas/`, `config/`, `references/commands.md`) lives in the `job-application-tailor` skill. The new `scripts/preflight.py` collapses what used to be four to five separate one-liners — deps check, master CV check, DB init, customization load, output folder creation — plus the cache-hot path of Steps 1/2/2.5 (read CV, copy cached fact base, verify) into a single Python invocation that prints a JSON state blob.
 
 ```bash
-SKILL_BASE_TAILOR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/skills/job-application-tailor"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+SKILL_BASE_TAILOR="$PROJECT_ROOT/.claude/skills/job-application-tailor"   # dev/repo layout
+if [ ! -d "$SKILL_BASE_TAILOR" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
+  SKILL_BASE_TAILOR="$CLAUDE_PLUGIN_ROOT/skills/job-application-tailor"   # installed plugin
+fi
 cd "$SKILL_BASE_TAILOR" && python -m scripts.preflight \
   --flow "<offer|cold>" \
   --input "<INPUT_SEED>" \
   ${EARLY_BLACKLIST_NAME:+--early-blacklist-name "$EARLY_BLACKLIST_NAME"}
 ```
+
+If neither directory exists, stop and tell the user the job-application-tailor
+skill could not be located — the toolkit is not installed correctly. After
+preflight runs, prefer the `skill_base_tailor` field from its JSON output —
+it is computed from the script's own location, so it is correct in any layout.
 
 Parse the printed JSON. Top-level fields:
 

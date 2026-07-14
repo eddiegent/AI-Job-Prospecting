@@ -58,7 +58,10 @@ Read `.claude/skills/job-prep-cv/SKILL.md` and follow its instructions. Pass:
 Resolve `$SKILL_BASE` for this skill on top of what `job-prep-cv` already set:
 
 ```bash
-SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-cold-prospect"
+SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-cold-prospect"   # dev/repo layout
+if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
+  SKILL_BASE="$CLAUDE_PLUGIN_ROOT/skills/job-cold-prospect"   # installed plugin
+fi
 ```
 
 `job-prep-cv` returns with `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR`, `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION` set, and `$PREP_DIR/cv_fact_base.json` verified.
