@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pre-commit hook: keep references/cli.md in sync with cli.py and lint markdown
-# for stale CLI invocations.
+# Pre-commit hook: keep references/cli.md in sync with cli.py, lint markdown
+# for stale CLI invocations, guard the fact base, and block commits that change
+# doc-relevant source without updating the docs/ pages (documentation drift).
 #
 # Install (one-time):
 #   git config core.hooksPath .githooks
@@ -63,4 +64,35 @@ if [ -f "$MASTER_CV" ] && [ -f "$FACT_BASE" ]; then
     echo "pre-commit: cv_fact_base.json is out of sync with MASTER_CV.docx — re-extract it (do not refresh .cv_hash by hand)." >&2
     exit 1
   }
+fi
+
+# 5. Documentation drift gate. The docs/ pages (overview deck + technical
+#    reference, EN + FR) are hand-authored prose and diagrams — a hook cannot
+#    regenerate them. So instead of auto-fixing, block the commit when
+#    doc-relevant SOURCE is staged but nothing under docs/ is, as a reminder to
+#    keep the pages accurate. Bypass when a change genuinely doesn't touch the
+#    docs:   DOCS_OK=1 git commit …
+if [ -z "$DOCS_OK" ]; then
+  doc_src=$(echo "$staged" | grep -E \
+    -e '\.claude/skills/job-application-tailor/scripts/(cli|job_history_db)\.py$' \
+    -e '\.claude/skills/[^/]+/SKILL\.md$' \
+    -e '\.claude/skills/[^/]+/schemas/.*\.json$' \
+    -e '\.claude/skills/job-application-tailor/config/settings\.default\.yaml$' \
+    || true)
+  docs_changed=$(echo "$staged" | grep -E '^docs/' || true)
+  if [ -n "$doc_src" ] && [ -z "$docs_changed" ]; then
+    echo "" >&2
+    echo "pre-commit: documentation drift — these staged files feed the docs:" >&2
+    echo "$doc_src" | sed 's/^/    /' >&2
+    echo "" >&2
+    echo "  …but nothing under docs/ is staged. Update the affected pages so they" >&2
+    echo "  stay accurate (keep the EN and FR versions in step), then stage them:" >&2
+    echo "    docs/job-prospecting-technical-reference.html   (+ .fr.html)" >&2
+    echo "    docs/job-prospecting-with-ai.html               (+ .fr.html)  [if the pipeline/skills changed]" >&2
+    echo "" >&2
+    echo "  If this change genuinely does not affect the docs, bypass with:" >&2
+    echo "    DOCS_OK=1 git commit …" >&2
+    echo "" >&2
+    exit 1
+  fi
 fi

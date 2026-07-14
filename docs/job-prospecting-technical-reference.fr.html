@@ -1,0 +1,687 @@
+<title>Job Prospecting — Référence technique</title>
+
+<style>
+  /* ---------- Tokens (shared identity with the overview deck) ---------- */
+  :root{
+    --ground:#e9ecf0; --surface:#f6f7f9; --surface-2:#dfe3e9;
+    --ink:#161c26; --ink-soft:#49515e; --ink-faint:#79828f;
+    --line:#cfd5dd; --line-soft:#dde1e8;
+    --accent:#b06e14; --accent-2:#9a5d0e;
+    --accent-quiet:rgba(176,110,20,.12); --accent-line:rgba(176,110,20,.35);
+    --st-generated:#7d8798; --st-applied:#3a72bd; --st-interview:#6a56cf;
+    --st-offer:#1f8f60; --st-rejected:#bb4a3a; --st-dropped:#9aa2ad;
+    --red-quiet:rgba(187,74,58,.10); --green-quiet:rgba(31,143,96,.10);
+    --shadow:0 1px 2px rgba(20,28,40,.05), 0 12px 34px -18px rgba(20,28,40,.28);
+    --radius:14px; --radius-s:10px;
+    --font-display:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"Cascadia Code","SFMono-Regular","Segoe UI Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ground:#0f141c; --surface:#161d27; --surface-2:#1e2732;
+      --ink:#eef1f5; --ink-soft:#a7b1bd; --ink-faint:#6e7885;
+      --line:#29323d; --line-soft:#222b35;
+      --accent:#e2a54c; --accent-2:#eab86f;
+      --accent-quiet:rgba(226,165,76,.14); --accent-line:rgba(226,165,76,.42);
+      --st-generated:#8b95a4; --st-applied:#5c92dd; --st-interview:#8b7be6;
+      --st-offer:#3bb47e; --st-rejected:#d9695a; --st-dropped:#7f8896;
+      --red-quiet:rgba(217,105,90,.14); --green-quiet:rgba(59,180,126,.13);
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#e9ecf0;--surface:#f6f7f9;--surface-2:#dfe3e9;--ink:#161c26;--ink-soft:#49515e;
+    --ink-faint:#79828f;--line:#cfd5dd;--line-soft:#dde1e8;--accent:#b06e14;--accent-2:#9a5d0e;
+    --accent-quiet:rgba(176,110,20,.12);--accent-line:rgba(176,110,20,.35);
+    --st-generated:#7d8798;--st-applied:#3a72bd;--st-interview:#6a56cf;--st-offer:#1f8f60;
+    --st-rejected:#bb4a3a;--st-dropped:#9aa2ad;--red-quiet:rgba(187,74,58,.10);--green-quiet:rgba(31,143,96,.10);
+    --shadow:0 1px 2px rgba(20,28,40,.05), 0 12px 34px -18px rgba(20,28,40,.28);
+  }
+  :root[data-theme="dark"]{
+    --ground:#0f141c;--surface:#161d27;--surface-2:#1e2732;--ink:#eef1f5;--ink-soft:#a7b1bd;
+    --ink-faint:#6e7885;--line:#29323d;--line-soft:#222b35;--accent:#e2a54c;--accent-2:#eab86f;
+    --accent-quiet:rgba(226,165,76,.14);--accent-line:rgba(226,165,76,.42);
+    --st-generated:#8b95a4;--st-applied:#5c92dd;--st-interview:#8b7be6;--st-offer:#3bb47e;
+    --st-rejected:#d9695a;--st-dropped:#7f8896;--red-quiet:rgba(217,105,90,.14);--green-quiet:rgba(59,180,126,.13);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+  body{background:var(--ground);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+
+  .progress{position:fixed;top:0;left:0;height:3px;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-2));z-index:60;transition:width .1s linear;}
+
+  /* ---------- Layout ---------- */
+  .layout{display:grid;grid-template-columns:272px minmax(0,1fr);}
+  .sidebar{
+    position:sticky;top:0;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);background:var(--surface);
+    padding:26px 20px 40px;
+  }
+  .content{min-width:0;padding:0 40px 120px;}
+  .content__col{max-width:900px;margin:0 auto;}
+
+  /* ---------- Sidebar ---------- */
+  .side-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .side-brand .seal{width:18px;height:18px;border:1.5px solid var(--accent);border-radius:5px;display:grid;place-items:center;flex:none;}
+  .side-brand .seal::after{content:"";width:6px;height:6px;background:var(--accent);border-radius:1px;}
+  .side-brand b{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);}
+  .side-sub{font-size:12px;color:var(--ink-faint);margin:0 0 22px 28px;font-family:var(--font-mono);}
+  .toc{display:flex;flex-direction:column;gap:1px;}
+  .toc a{
+    text-decoration:none;color:var(--ink-soft);font-size:13.5px;padding:6px 10px;border-radius:7px;
+    border-left:2px solid transparent;display:flex;gap:9px;align-items:baseline;transition:background .15s,color .15s;
+  }
+  .toc a .tn{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);min-width:16px;}
+  .toc a:hover{background:var(--surface-2);color:var(--ink);}
+  .toc a.active{background:var(--accent-quiet);color:var(--accent-2);border-left-color:var(--accent);font-weight:600;}
+  .toc a.active .tn{color:var(--accent-2);}
+
+  .navtoggle{
+    display:none;position:fixed;top:12px;left:12px;z-index:70;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;
+    background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:8px 12px;cursor:pointer;box-shadow:var(--shadow);
+  }
+  .scrim{display:none;}
+
+  /* ---------- Hero ---------- */
+  .doc-hero{padding:64px 0 36px;border-bottom:1px solid var(--line-soft);margin-bottom:8px;}
+  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:12px;margin:0 0 20px;}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent);display:inline-block;flex:none;}
+  h1{font-family:var(--font-display);font-weight:600;font-size:clamp(2.1rem,4.2vw,3.1rem);line-height:1.08;letter-spacing:-.01em;margin:0 0 16px;text-wrap:balance;}
+  .doc-hero p{font-size:1.08rem;color:var(--ink-soft);max-width:64ch;margin:0;}
+  .metabar{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
+  .metabar .m{font-family:var(--font-mono);font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:6px 13px;color:var(--ink-soft);}
+  .metabar .m b{color:var(--accent-2);}
+
+  /* ---------- Sections ---------- */
+  .section{padding:44px 0;border-top:1px solid var(--line-soft);scroll-margin-top:20px;}
+  .sec-kick{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);margin:0 0 8px;}
+  h2{font-family:var(--font-display);font-weight:600;font-size:1.7rem;line-height:1.15;margin:0 0 8px;letter-spacing:-.005em;text-wrap:balance;}
+  h3{font-family:var(--font-body);font-weight:600;font-size:1.02rem;margin:26px 0 10px;color:var(--ink);}
+  .section > p, .subsec > p{color:var(--ink-soft);max-width:70ch;margin:0 0 14px;}
+  p a{color:var(--accent-2);}
+
+  code{font-family:var(--font-mono);font-size:.84em;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;color:var(--accent-2);word-break:break-word;}
+  .codeblock{font-family:var(--font-mono);font-size:12.5px;line-height:1.6;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--radius-s);padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink);margin:14px 0;}
+  .codeblock .c{color:var(--ink);}
+  .codeblock .p{color:var(--accent-2);user-select:none;}
+  .codeblock .cm{color:var(--ink-faint);}
+
+  /* tables */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius-s);margin:14px 0;box-shadow:var(--shadow);}
+  table.tbl{width:100%;border-collapse:collapse;font-size:.85rem;background:var(--surface);}
+  table.tbl th{text-align:left;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap;}
+  table.tbl td{padding:9px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--ink-soft);}
+  table.tbl td:first-child{color:var(--ink);}
+  table.tbl tr:last-child td{border-bottom:0;}
+  table.tbl td code{font-size:.82rem;white-space:nowrap;}
+  table.tbl.nums td{font-variant-numeric:tabular-nums;}
+
+  /* callouts */
+  .callout{border-left:3px solid var(--accent);background:var(--accent-quiet);border-radius:0 var(--radius-s) var(--radius-s) 0;padding:14px 18px;font-size:.92rem;color:var(--ink-soft);margin:16px 0;}
+  .callout b{color:var(--ink);}
+  .callout.warn{border-left-color:var(--st-rejected);background:var(--red-quiet);}
+  .callout .lbl{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:6px;}
+  .callout.warn .lbl{color:var(--st-rejected);}
+
+  /* chips */
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 4px;}
+  .chip{font-family:var(--font-mono);font-size:11px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:16px;padding:3px 10px;color:var(--ink-soft);}
+  .chip.on{border-color:var(--accent-line);background:var(--accent-quiet);color:var(--accent-2);}
+  .badge{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;padding:2px 7px;border-radius:5px;white-space:nowrap;}
+  .badge.write{background:var(--red-quiet);color:var(--st-rejected);}
+  .badge.read{background:var(--green-quiet);color:var(--st-offer);}
+  .badge.int{background:var(--surface-2);color:var(--ink-faint);}
+
+  /* ---------- Architecture diagram ---------- */
+  .arch{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px 22px;margin:16px 0;box-shadow:var(--shadow);}
+  .arch-row{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}
+  .node{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:12px 16px;text-align:center;min-width:180px;}
+  .node .nt{font-family:var(--font-body);font-weight:600;font-size:.92rem;color:var(--ink);}
+  .node .ns{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);margin-top:3px;}
+  .node.orch{border-color:var(--accent-line);background:var(--accent-quiet);}
+  .node.orch .nt{color:var(--accent-2);}
+  .node.sub{border-style:dashed;}
+  .node.db{border-color:var(--st-applied);}
+  .node.db .nt{color:var(--st-applied);}
+  .arch-conn{display:flex;justify-content:center;color:var(--accent);font-size:18px;line-height:1;margin:8px 0;}
+  .arch-label{text-align:center;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);margin:2px 0 4px;}
+  .arch-sats{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-top:8px;}
+  @media (max-width:620px){.arch-sats{grid-template-columns:1fr;}}
+  .arch-sats .sat{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:var(--surface-2);text-align:center;font-size:.85rem;}
+  .arch-sats .sat .sn{font-weight:600;color:var(--ink);}
+  .arch-sats .to-db{text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);}
+
+  /* ---------- Pipeline steps ---------- */
+  .steps{display:flex;flex-direction:column;gap:0;margin:16px 0;}
+  .step{display:grid;grid-template-columns:58px 1fr;gap:16px;padding:14px 0;border-top:1px solid var(--line-soft);}
+  .step:first-child{border-top:0;}
+  .step__n{font-family:var(--font-mono);font-size:12.5px;color:var(--accent-2);border:1px solid var(--accent-line);background:var(--accent-quiet);border-radius:7px;height:fit-content;padding:4px 0;text-align:center;font-weight:600;}
+  .step.gate .step__n{color:var(--st-rejected);border-color:var(--st-rejected);background:var(--red-quiet);}
+  .step__b h4{margin:0 0 3px;font-size:.98rem;font-weight:600;color:var(--ink);font-family:var(--font-body);}
+  .step__b p{margin:0;font-size:.9rem;color:var(--ink-soft);}
+  .step__b .art{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:5px;}
+  .step__b .art b{color:var(--accent-2);font-weight:400;}
+
+  /* two-col cards */
+  .cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+  @media (max-width:720px){.cardgrid{grid-template-columns:1fr;}}
+  .icard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-s);padding:16px 18px;box-shadow:var(--shadow);}
+  .icard h4{margin:0 0 6px;font-size:.95rem;font-weight:600;color:var(--ink);}
+  .icard p{margin:0;font-size:.87rem;color:var(--ink-soft);}
+  .icard .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);margin-bottom:8px;}
+
+  ul.tight{margin:10px 0;padding-left:20px;}
+  ul.tight li{margin:5px 0;color:var(--ink-soft);font-size:.92rem;}
+  ul.tight li b, ul.tight li code{color:var(--ink);}
+  ul.tight li code{color:var(--accent-2);}
+
+  .footer{border-top:1px solid var(--line-soft);margin-top:40px;padding-top:24px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);}
+
+  ::selection{background:var(--accent-quiet);}
+
+  /* ---------- Responsive sidebar ---------- */
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+    .navtoggle{display:block;}
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;width:280px;height:100vh;z-index:65;
+      transform:translateX(-100%);transition:transform .25s ease;box-shadow:var(--shadow);
+    }
+    .sidebar.open{transform:none;}
+    .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:64;}
+    .content{padding:0 22px 100px;}
+    .doc-hero{padding-top:70px;}
+  }
+</style>
+
+<div class="progress" id="progress"></div>
+<button class="navtoggle" id="navtoggle" aria-label="Toggle table of contents">☰ Sommaire</button>
+<div class="scrim" id="scrim"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand"><span class="seal"></span><b>Référence technique</b></div>
+    <p class="side-sub">Job Prospecting · plugin v1.0.0</p>
+    <nav class="toc" id="toc">
+      <a href="#architecture"><span class="tn">1</span> Architecture</a>
+      <a href="#skills"><span class="tn">2</span> Les cinq skills</a>
+      <a href="#pipeline"><span class="tn">3</span> Pipeline du flux sur offre</a>
+      <a href="#cold"><span class="tn">4</span> Flux spéculatif (cold)</a>
+      <a href="#cli"><span class="tn">5</span> La CLI</a>
+      <a href="#scripts"><span class="tn">6</span> Inventaire des scripts</a>
+      <a href="#database"><span class="tn">7</span> La base de données</a>
+      <a href="#factbase"><span class="tn">8</span> Base de faits du CV</a>
+      <a href="#guardrails"><span class="tn">9</span> Garde-fous</a>
+      <a href="#customization"><span class="tn">10</span> Personnalisation</a>
+      <a href="#outputs"><span class="tn">11</span> Livrables</a>
+      <a href="#scoring"><span class="tn">12</span> Score d'adéquation</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <div class="content__col">
+
+      <header class="doc-hero">
+        <p class="eyebrow">Documentation d'ingénierie</p>
+        <h1>Job Prospecting — Référence technique</h1>
+        <p>Le fonctionnement interne de la boîte à outils : comment les cinq skills se délèguent le travail et interagissent, le pipeline de génération de bout en bout, la couche CLI et scripts, le schéma SQLite, et les garde-fous de véracité qui rendent chaque affirmation générée traçable jusqu'au CV source.</p>
+        <div class="metabar">
+          <span class="m"><b>5</b> skills</span>
+          <span class="m"><b>19</b> sous-commandes CLI</span>
+          <span class="m"><b>25+</b> scripts</span>
+          <span class="m">schéma <b>v3</b></span>
+          <span class="m">détection de doublons sur <b>3</b> couches</span>
+          <span class="m"><b>4</b> garde-fous</span>
+          <span class="m">Python <b>3.10+</b></span>
+        </div>
+      </header>
+
+      <!-- 1 · ARCHITECTURE -->
+      <section class="section" id="architecture">
+        <p class="sec-kick">01 · Forme du système</p>
+        <h2>Architecture &amp; flux de données</h2>
+        <p>Deux skills <b>orchestrateurs</b> (offre et cold) partagent une infrastructure unique et délèguent tous deux leur préambule de préparation du CV à un seul <b>sous-skill</b> interne. Deux skills <b>satellites</b> opèrent sur la base SQLite partagée — l'un écrit, l'autre lit. Tout le code partagé (<code>scripts/</code>, <code>schemas/</code>, <code>config/</code>, <code>references/</code>) réside physiquement dans <code>job-application-tailor</code> ; chaque autre skill y pointe via <code>SKILL_BASE_TAILOR</code> au lieu de le copier.</p>
+
+        <div class="arch">
+          <div class="arch-row">
+            <div class="node orch"><div class="nt">job-application-tailor</div><div class="ns">orchestrateur sur offre</div></div>
+            <div class="node orch"><div class="nt">job-cold-prospect</div><div class="ns">orchestrateur spéculatif (cold)</div></div>
+          </div>
+          <div class="arch-label">tous deux délèguent les étapes 0–2.5 ↓</div>
+          <div class="arch-conn">▼</div>
+          <div class="arch-row">
+            <div class="node sub"><div class="nt">job-prep-cv</div><div class="ns">sous-skill interne · disable-model-invocation</div></div>
+          </div>
+          <div class="arch-conn">▼</div>
+          <div class="arch-row">
+            <div class="node"><div class="nt">infrastructure partagée</div><div class="ns">scripts · schemas · config · references</div></div>
+          </div>
+          <div class="arch-conn">▼</div>
+          <div class="arch-row">
+            <div class="node db"><div class="nt">resources/job_history.db</div><div class="ns">SQLite · schéma v3 · exclu de git</div></div>
+          </div>
+          <div class="arch-sats">
+            <div class="sat"><span class="sn">job-status</span> <span class="badge write">écrit</span><br><span style="font-size:.78rem;color:var(--ink-faint);">mutations de statut &amp; de listes d'entreprises</span></div>
+            <div class="to-db">→ &nbsp;BDD&nbsp; ←</div>
+            <div class="sat"><span class="sn">job-stats</span> <span class="badge read">lecture seule</span><br><span style="font-size:.78rem;color:var(--ink-faint);">rapports · route les écritures vers job-status</span></div>
+          </div>
+        </div>
+
+        <div class="callout"><span class="lbl">Principe de conception</span><b>La véracité d'abord.</b> Un système de garde-fous en couches (§9) garantit qu'aucun artefact généré ne peut affirmer une compétence, un intitulé ou une métrique qui ne soit traçable jusqu'au CV maître ou au <code>cv_addendum.md</code> de l'utilisateur. Les couches base de données et génération sont délibérément séparées pour que la vérification reste honnête.</div>
+      </section>
+
+      <!-- 2 · SKILLS -->
+      <section class="section" id="skills">
+        <p class="sec-kick">02 · Composition</p>
+        <h2>Les cinq skills</h2>
+        <p>Chaque skill est un <code>SKILL.md</code> avec un frontmatter YAML sous <code>.claude/skills/&lt;name&gt;/</code>. Les rôles se répartissent nettement en orchestrateurs, un sous-skill interne et deux satellites de la BDD.</p>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Skill</th><th>Rôle</th><th>BDD</th><th>allowed-tools</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>job-application-tailor</code></td><td>Orchestrateur — flux sur offre</td><td><span class="badge write">écrit</span></td><td>Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, Agent</td><td>Détient l'infra partagée ; enregistre à l'étape 10</td></tr>
+              <tr><td><code>job-cold-prospect</code></td><td>Orchestrateur — flux spéculatif (cold)</td><td><span class="badge write">écrit</span></td><td>Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, Agent</td><td>Importe l'infra du tailor ; <code>--supersede</code> à l'enregistrement</td></tr>
+              <tr><td><code>job-prep-cv</code></td><td>Sous-skill interne — préambule de préparation du CV</td><td><span class="badge int">init. seul.</span></td><td>Read, Write, Edit, Bash, Glob, Grep</td><td><code>disable-model-invocation: true</code> ; aucun outil web/agent</td></tr>
+              <tr><td><code>job-status</code></td><td>Satellite — mutations</td><td><span class="badge write">écrit</span></td><td>Read, Bash, Glob</td><td>Pas d'outil Write — toutes les écritures passent par <code>cli.py</code></td></tr>
+              <tr><td><code>job-stats</code></td><td>Satellite — rapports en lecture seule</td><td><span class="badge read">lit</span></td><td>Read, Bash, Write, Glob</td><td>Write sert uniquement à l'export CSV ; route les mutations vers job-status</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Contrat de délégation</h3>
+        <p>Les deux orchestrateurs font un <code>Read</code> de <code>job-prep-cv/SKILL.md</code> pour les étapes 0–2.5, en transmettant <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code> et <code>$EARLY_BLACKLIST_NAME</code>. Le sous-skill exécute <code>scripts/preflight.py</code> et renvoie les chemins résolus (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), la <code>$CUSTOMIZATION</code> chargée et un <code>$PREP_DIR/cv_fact_base.json</code> vérifié. Le contrôle revient à l'orchestrateur à l'étape 3.</p>
+      </section>
+
+      <!-- 3 · PIPELINE -->
+      <section class="section" id="pipeline">
+        <p class="sec-kick">03 · Flux sur offre</p>
+        <h2>Pipeline de bout en bout</h2>
+        <p>Le flux sur offre (<code>job-application-tailor/SKILL.md</code>) se déroule en ~10 étapes. Les étapes 6 &amp; 7 s'exécutent comme deux sous-agents <code>Agent</code> en parallèle ; le seuil d'adéquation de l'étape 4 peut interrompre l'exécution avant qu'aucun document ne soit généré.</p>
+        <div class="steps">
+          <div class="step"><div class="step__n">0–2.5</div><div class="step__b"><h4>Préparation du CV (déléguée)</h4><p>Confiée à <code>job-prep-cv</code> : vérification des dépendances &amp; du CV maître, création des dossiers, chargement de la personnalisation, et le chemin en cache chaud de l'extraction/vérification de la base de faits.</p><div class="art"><b>→ cv_fact_base.json</b> (en cache, indexé par hash)</div></div></div>
+          <div class="step"><div class="step__n">3</div><div class="step__b"><h4>Analyser l'offre d'emploi</h4><p>Sonde HEAD de l'URL → WebFetch (avec un garde-fou « préserver la langue d'origine, NE PAS traduire ») → extraction par LLM. Détecte la langue ; exécute le contrôle plateforme-vs-client (agrégateur).</p><div class="art"><b>→ job_offer_analysis.json</b>, raw_offer.md</div></div></div>
+          <div class="step"><div class="step__n">3.5</div><div class="step__b"><h4>Contrôle des doublons &amp; de l'historique</h4><p><code>check-duplicate</code> en une passe, englobant les 3 couches de doublons (URL exacte, entreprise+intitulé, recouvrement flou &gt;80% des compétences), le contexte même-entreprise et une consultation de la blacklist. Un exit 1 arrête.</p></div></div>
+          <div class="step"><div class="step__n">3.6</div><div class="step__b"><h4>Rechercher l'entreprise</h4><p>WebSearch au premier plan pour la taille, l'actualité, la culture, la stack technique et les contacts clés (avec URL LinkedIn). Contournable via <code>behaviour.skip_company_research</code>.</p><div class="art"><b>→ company_research.md</b> (avec <code>## Contacts</code>)</div></div></div>
+          <div class="step gate"><div class="step__n">4</div><div class="step__b"><h4>Analyse d'adéquation / écarts + seuil d'adéquation</h4><p>Matrice par exigence direct / transferable / gap → <code>overall_fit_pct</code>. Recomptage déterministe, validation de schéma, contrôle d'ancrage, renommage du dossier selon le niveau d'adéquation. <b>Interrompt si l'adéquation &lt; 50%.</b></p><div class="art"><b>→ match_analysis.json</b></div></div></div>
+          <div class="step"><div class="step__n">5</div><div class="step__b"><h4>Adapter le CV</h4><p>Réaccentuation tenant compte de la taille de l'entreprise, avec un seuil de compression des expériences plus anciennes ; l'addendum est fusionné <b>en mémoire uniquement</b>. Invariant d'intitulé interdit appliqué.</p><div class="art"><b>→ tailored_cv.json</b></div></div></div>
+          <div class="step"><div class="step__n">6·7</div><div class="step__b"><h4>Lettres &amp; LinkedIn (agents parallèles)</h4><p>Sous-agent 1 : lettre de motivation → lettre courte. Sous-agent 2 : messages LinkedIn utilisant de vrais noms de contacts. Tous validés par schéma ; l'orchestrateur attend les deux.</p><div class="art"><b>→ letter.json · short_letter.json · linkedin.json</b></div></div></div>
+          <div class="step"><div class="step__n">8</div><div class="step__b"><h4>Préparation à l'entretien (au premier plan)</h4><p>Questions probables, arguments clés, contexte de l'entreprise et bandeau de score d'adéquation — générés au premier plan (sans agent en arrière-plan).</p><div class="art"><b>→ interview_prep.md</b></div></div></div>
+          <div class="step"><div class="step__n">9</div><div class="step__b"><h4>Générer les fichiers de sortie</h4><p><code>generate_outputs.py</code> : validation de schéma → DOCX/PDF/TXT + HTML responsive de préparation à l'entretien + résumé d'exécution.</p><div class="art"><b>→ *.docx / *.pdf / *.txt / *.html · run_summary.json</b></div></div></div>
+          <div class="step"><div class="step__n">10</div><div class="step__b"><h4>Enregistrer dans l'historique</h4><p>Insertion de l'entreprise / intitulé / compétences / adéquation / dossier de sortie dans <code>job_history.db</code> pour la détection de doublons et les statistiques futures.</p></div></div>
+        </div>
+      </section>
+
+      <!-- 4 · COLD -->
+      <section class="section" id="cold">
+        <p class="sec-kick">04 · Flux spéculatif</p>
+        <h2>En quoi le flux cold diffère</h2>
+        <p>Les étapes 0–2.5 sont identiques (déléguées). Le milieu du pipeline diverge — il n'y a pas de description de poste, donc rien à noter.</p>
+        <div class="cardgrid">
+          <div class="icard"><div class="k">Remplace l'étape 3</div><h4>Recherche sur l'entreprise</h4><p>Construit <code>company_profile.json</code> à partir du site, du MCP Indeed, de LinkedIn et de l'actualité. Par défaut en français. Canonise le slug du dossier.</p></div>
+          <div class="icard"><div class="k">Ajoute</div><h4>Classification org_type</h4><p>Étiquette l'organisation <code>end_employer</code> / <code>esn</code> / <code>staffing_agency</code> / <code>recruitment_agency</code> / <code>unknown</code>. Structurant : chaque prompt en aval se recadre pour les intermédiaires.</p></div>
+          <div class="icard"><div class="k">Remplace l'étape 4</div><h4>Inférence du poste cible</h4><p><code>infer_target_role.md</code> propose des candidats → contrôle d'ancrage sur la stack → <b>choix interactif de l'utilisateur</b> (jamais sélectionné automatiquement) → <code>selected_role.json</code>.</p></div>
+          <div class="icard"><div class="k">Remplace le score d'adéquation</div><h4>Dossier entreprise</h4><p><code>company_dossier.md</code> (→ HTML). Sa section « Pourquoi vous / pourquoi eux » est un <b>angle d'approche</b> narratif plutôt qu'un score d'adéquation chiffré.</p></div>
+        </div>
+        <div class="callout"><span class="lbl">Le pire indice du flux cold</span>Pour un intermédiaire, vous seriez placé sur la mission d'un client ou présenté à un employeur — la candidature est donc une lettre « voici le profil que je propose », et non une lettre « votre mission me motive ». Écrire la mauvaise est la bévue que <code>org_type</code> existe pour éviter.</div>
+        <p>Les lignes cold enregistrent <code>source='cold'</code> avec <code>org_type</code> et un <code>company_profile_snapshot</code>, laissant à NULL les colonnes de scoring propres aux offres et <code>job_skills</code> vide. <code>--supersede</code> retire une ligne active antérieure pour la même entreprise + poste lors d'une nouvelle prospection.</p>
+      </section>
+
+      <!-- 5 · CLI -->
+      <section class="section" id="cli">
+        <p class="sec-kick">05 · Surface de commande</p>
+        <h2>La CLI — <code>cli.py</code></h2>
+        <p>Point d'entrée unique : <code>python scripts/cli.py --db &lt;path&gt; &lt;subcommand&gt; [options]</code>. <code>build_parser()</code> est la source canonique de vérité — la référence dans <code>references/cli.md</code> en est auto-générée et son écart est contrôlé par un hook de pre-commit.</p>
+        <div class="codeblock"><span class="p">$ </span><span class="c">python scripts/cli.py --db resources/job_history.db list --status applied --limit 100</span></div>
+
+        <h3>Interrogation &amp; rapports <span class="badge read">lecture seule</span></h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Sous-commande</th><th>Objet</th><th>Args / flags principaux</th></tr></thead>
+          <tbody>
+            <tr><td><code>list</code></td><td>Lister les candidatures</td><td><code>--status --company --limit --since --source --org-type --json</code></td></tr>
+            <tr><td><code>get</code></td><td>Une candidature</td><td><code>id</code> · <code>--json</code></td></tr>
+            <tr><td><code>stats</code></td><td>Statistiques</td><td><code>--type {all,status,fit,company,domain,org,skills} --since --source --org-type --json</code></td></tr>
+            <tr><td><code>skills</code></td><td>Tendances des écarts de compétences</td><td><code>--limit --since --source --org-type --json</code></td></tr>
+            <tr><td><code>count</code></td><td>Nombre total</td><td><code>--since --source --org-type</code></td></tr>
+            <tr><td><code>export-csv</code></td><td>Export vers CSV</td><td><code>--output</code> (stdout si omis)</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Mutation de statut &amp; de champs <span class="badge write">écrit</span></h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Sous-commande</th><th>Objet</th><th>Args / flags principaux</th></tr></thead>
+          <tbody>
+            <tr><td><code>update-status</code></td><td>Changer un statut</td><td><code>id status</code> · <code>--expect-company</code> (garde)</td></tr>
+            <tr><td><code>bulk-status</code></td><td>Statut par lot (une sauvegarde)</td><td><code>ids…</code> · <code>--status</code></td></tr>
+            <tr><td><code>update-company</code></td><td>Renommer l'entreprise</td><td><code>id name</code> · <code>--expect-company</code></td></tr>
+            <tr><td><code>update-output-folder</code></td><td>Repointer le dossier de sortie</td><td><code>id path</code></td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Listes d'entreprises · doublons · santé</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Sous-commande</th><th>Objet</th><th>Args / flags principaux</th></tr></thead>
+          <tbody>
+            <tr><td><code>company-list</code></td><td>Afficher black/whitelist</td><td><code>--type {all,blacklist,whitelist}</code></td></tr>
+            <tr><td><code>company-add</code></td><td>Ajouter à une liste</td><td><code>name</code> · <code>--list-type --reason</code></td></tr>
+            <tr><td><code>company-remove</code></td><td>Retirer des listes</td><td><code>name</code></td></tr>
+            <tr><td><code>company-check</code></td><td>Contrôle d'appartenance</td><td><code>name</code></td></tr>
+            <tr><td><code>check-duplicate</code></td><td>Contrôle doublon/blacklist de l'étape 3.5</td><td><code>target</code> · <code>--url --json</code></td></tr>
+            <tr><td><code>doctor</code></td><td>Rapport de santé/empreinte de la BDD</td><td><code>--json</code></td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Cycle de vie — gestion des dossiers / BDD / artefacts</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Sous-commande</th><th>Objet</th><th>Args / flags principaux</th></tr></thead>
+          <tbody>
+            <tr><td><code>record-application</code></td><td>Étape 10 — insérer une ligne d'historique depuis <code>_prep/</code></td><td><code>target</code> · <code>--url --source --language --dry-run --supersede</code></td></tr>
+            <tr><td><code>regenerate-outputs</code></td><td>Reconstruction de l'étape 9 depuis les JSON</td><td><code>target</code> · <code>--check --skip-pdf</code></td></tr>
+            <tr><td><code>rename-application</code></td><td>Renommage atomique dossier+BDD+JSON</td><td><code>id</code> · <code>--new-company --new-slug --no-regenerate</code></td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout"><span class="lbl">Garde-fous de sécurité</span>Chaque sous-commande mutante déclenche <code>snapshot_before_mutation()</code> (sauvegardes glissantes, 20 conservées). <code>--expect-company</code> refuse l'écriture si l'id pointe vers une autre entreprise — une garde contre l'action sur un id périmé après une restauration de la BDD.</div>
+      </section>
+
+      <!-- 6 · SCRIPTS -->
+      <section class="section" id="scripts">
+        <p class="sec-kick">06 · Cartographie des modules</p>
+        <h2>Inventaire des scripts</h2>
+        <p>Tous sous <code>.claude/skills/job-application-tailor/scripts/</code>. <code>common.py</code> est le hub d'utilitaires partagés importé presque partout ; deux contrôles d'ancrage partagent <code>_grounding_common.py</code> pour que leurs tables de synonymes ne puissent pas diverger.</p>
+
+        <h3>BDD &amp; chemins</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Module</th><th>Objet</th></tr></thead>
+          <tbody>
+            <tr><td><code>job_history_db.py</code></td><td><code>JobHistoryDB</code> — l'unique chemin d'écriture de la BDD ; normaliseurs, verrou inter-processus, miroir temporaire, empreinte, migrations</td></tr>
+            <tr><td><code>backfill_history.py</code></td><td>Remplissage rétroactif des lignes en scannant les dossiers <code>output/</code> existants</td></tr>
+            <tr><td><code>paths.py</code></td><td>Résout où résident les données utilisateur (env → legacy → dossier de données de l'OS) ; chargeur de réglages en couches</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Preflight &amp; pipeline</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Module</th><th>Objet</th></tr></thead>
+          <tbody>
+            <tr><td><code>preflight.py</code></td><td>Orchestration consolidée des étapes 0–2.5 ; émet un blob d'état JSON (<code>ok / cache_stale / first_run / blacklisted / error</code>)</td></tr>
+            <tr><td><code>generate_outputs.py</code></td><td>Étape 9 — validation → DOCX/PDF/TXT/HTML + résumé d'exécution</td></tr>
+            <tr><td><code>validate.py</code></td><td>Validateur JSON-Schema (Draft 2020-12) avec des chemins d'erreur lisibles</td></tr>
+            <tr><td><code>recount_match_summary.py</code></td><td>Recalcule de façon déterministe <code>match_summary</code> avant validation</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Génération &amp; rendu</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Module</th><th>Objet</th></tr></thead>
+          <tbody>
+            <tr><td><code>docx_generator.py</code></td><td>Rend le CV &amp; la lettre <code>.docx</code> à partir de dicts de données via docxtpl/Jinja2</td></tr>
+            <tr><td><code>md_to_html.py</code></td><td>Conversion Markdown→HTML sans dépendance pour le livrable de préparation à l'entretien</td></tr>
+            <tr><td><code>pdf_pipeline.py</code></td><td>DOCX→PDF multiplateforme avec une chaîne de repli à 3 convertisseurs</td></tr>
+            <tr><td><code>create_cv_template.py</code></td><td>Génère les modèles de CV <code>.docx</code> fr/en avec styles &amp; espaces réservés</td></tr>
+            <tr><td><code>build_sample_cv.py</code></td><td>Construit le CV d'exemple fictif d'onboarding (« Alex Dupont »)</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Packaging · migration · onboarding</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Module</th><th>Objet</th></tr></thead>
+          <tbody>
+            <tr><td><code>package.py</code></td><td>Construit un bundle de plugin distribuable ; exclusion des données utilisateur imposée par les tests</td></tr>
+            <tr><td><code>migrate.py</code></td><td>Migre une ancienne installation vrac → agencement plugin ; réécrit les chemins de la BDD ; sidecar de rollback</td></tr>
+            <tr><td><code>init.py</code></td><td>Amorçage au premier lancement du dossier de données utilisateur (idempotent ; n'écrase jamais)</td></tr>
+            <tr><td><code>backup_user_data.py</code></td><td>Sauvegarde avant migration ; manifeste SHA-256 par fichier</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Garde-fous &amp; vérification</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Module</th><th>Objet</th></tr></thead>
+          <tbody>
+            <tr><td><code>common.py</code></td><td>Hub partagé : logique de cache de la base de faits, assainissement des slugs/chemins, seuils d'adéquation, recomptage</td></tr>
+            <tr><td><code>factbase_consistency.py</code></td><td>Contrôle canonique de dérive des métriques + fraîcheur du hash</td></tr>
+            <tr><td><code>verify_fact_base.py</code></td><td>Chaque technologie/méthodologie/métrique doit figurer dans le CV brut</td></tr>
+            <tr><td><code>_grounding_common.py</code></td><td>Table de synonymes + tokeniseur partagés pour les deux contrôles d'ancrage</td></tr>
+            <tr><td><code>check_match_grounding.py</code></td><td>Flux sur offre — signale les fausses affirmations de correspondance « direct »</td></tr>
+            <tr><td><code>check_role_grounding.py</code></td><td>Flux cold — signale la fuite de la tech de l'entreprise dans les accents du candidat</td></tr>
+            <tr><td><code>tailor_invariants.py</code></td><td>Validateurs a posteriori des règles de <code>tailor_cv.md</code></td></tr>
+            <tr><td><code>user_customization.py</code></td><td>Parse l'addendum + préférences ; fusion en mémoire dans la base de faits</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Outillage de développement</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Module</th><th>Objet</th></tr></thead>
+          <tbody>
+            <tr><td><code>gen_cli_reference.py</code></td><td>Rend <code>references/cli.md</code> depuis <code>cli.build_parser()</code> (stable au niveau octet)</td></tr>
+            <tr><td><code>lint_cli_usage.py</code></td><td>Lint du markdown pour les invocations <code>cli.py</code> périmées face au parser courant</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 7 · DATABASE -->
+      <section class="section" id="database">
+        <p class="sec-kick">07 · Persistance</p>
+        <h2>La base de données d'historique des candidatures</h2>
+        <p>Un unique fichier SQLite — <code>resources/job_history.db</code> (exclu de git), schéma <b>v3</b>. Tout accès est canalisé par <code>JobHistoryDB</code>, qui n'édite jamais le fichier canonique en direct (voir la note de résilience ci-dessous).</p>
+
+        <h3><code>applications</code> — une ligne par candidature</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td>INTEGER</td><td>PK AUTOINCREMENT</td></tr>
+            <tr><td><code>company_name</code></td><td>TEXT</td><td>NOT NULL</td></tr>
+            <tr><td><code>company_norm</code></td><td>TEXT</td><td>NOT NULL · indexée</td></tr>
+            <tr><td><code>job_title</code> / <code>job_title_norm</code></td><td>TEXT</td><td>NOT NULL</td></tr>
+            <tr><td><code>location · source_url · domain · seniority</code></td><td>TEXT</td><td>—</td></tr>
+            <tr><td><code>fit_level</code></td><td>TEXT</td><td>— (very_good/good/medium/low)</td></tr>
+            <tr><td><code>fit_pct</code></td><td>REAL</td><td>—</td></tr>
+            <tr><td><code>direct_count · transferable_count · gap_count</code></td><td>INTEGER</td><td>—</td></tr>
+            <tr><td><code>output_folder · detected_language</code></td><td>TEXT</td><td>—</td></tr>
+            <tr><td><code>status</code></td><td>TEXT</td><td>NOT NULL DEFAULT <code>'generated'</code> · indexée</td></tr>
+            <tr><td><code>source</code></td><td>TEXT</td><td>NOT NULL DEFAULT <code>'offer'</code> · ajoutée en v2</td></tr>
+            <tr><td><code>org_type</code></td><td>TEXT</td><td>nullable · ajoutée en v3</td></tr>
+            <tr><td><code>company_profile_snapshot</code></td><td>TEXT</td><td>blob JSON · flux cold uniquement · v2</td></tr>
+            <tr><td><code>created_at · updated_at</code></td><td>TEXT</td><td>NOT NULL · ISO-8601</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:.86rem;">Tables associées : <code>job_skills</code> (FK → <code>applications(id)</code> ON DELETE CASCADE ; CHECK de <code>skill_type</code> dans <code>required</code>/<code>preferred</code>), <code>company_lists</code> (PK <code>company_norm</code> ; CHECK de <code>list_type</code> dans <code>blacklist</code>/<code>whitelist</code>), et un <code>schema_version</code> à ligne unique.</p>
+
+        <h3>Valeurs contrôlées</h3>
+        <div class="chips"><span class="chip">status:</span><span class="chip on">generated</span><span class="chip on">applied</span><span class="chip on">interview</span><span class="chip on">offer</span><span class="chip on">rejected</span><span class="chip on">dropped</span></div>
+        <div class="chips"><span class="chip">source:</span><span class="chip on">offer</span><span class="chip on">cold</span></div>
+        <div class="chips"><span class="chip">org_type:</span><span class="chip on">end_employer</span><span class="chip on">esn</span><span class="chip on">staffing_agency</span><span class="chip on">recruitment_agency</span><span class="chip on">unknown</span></div>
+        <p style="font-size:.86rem;margin-top:10px;">Le contrôle des énumérations se fait au niveau applicatif (Python <code>ValueError</code>), sauf <code>skill_type</code> / <code>list_type</code> qui portent des contraintes SQL <code>CHECK</code>. Les lignes <code>dropped</code> sont exclues de tous les contrôles de doublons.</p>
+
+        <h3>Migrations — automatiques, idempotentes</h3>
+        <ul class="tight">
+          <li><b>v1 → v2 :</b> ajoute <code>source</code> (DEFAULT <code>'offer'</code> remplit rétroactivement les lignes existantes) et <code>company_profile_snapshot</code>.</li>
+          <li><b>v2 → v3 :</b> ajoute <code>org_type</code> nullable — les lignes legacy/offer restent NULL ; seul le flux cold le renseigne.</li>
+          <li>Exécutée à chaque ouverture : <code>_init_schema</code> lit <code>MAX(version)</code> et ne fait <code>ALTER TABLE ADD COLUMN</code> que pour les colonnes absentes. Utilise sa propre table <code>schema_version</code>, pas <code>PRAGMA user_version</code>.</li>
+        </ul>
+
+        <h3>Détection de doublons sur 3 couches</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Couche</th><th>Correspondance sur</th><th>Chaîne de motif</th></tr></thead>
+          <tbody>
+            <tr><td>1 · URL exacte</td><td><code>source_url = ?</code></td><td>« exact URL match »</td></tr>
+            <tr><td>2 · Entreprise + intitulé</td><td><code>company_norm AND job_title_norm</code></td><td>« same company + job title »</td></tr>
+            <tr><td>3 · Compétences floues</td><td>même entreprise, recouvrement Jaccard des compétences ≥ <code>0.80</code></td><td>« same company, N% skill overlap »</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:.86rem;">Des alias de normalisation rendent la correspondance robuste : <code>c#→csharp</code>, <code>.net→dotnet</code>, <code>javascript→js</code>, <code>typescript→ts</code>.</p>
+
+        <div class="callout"><span class="lbl">Résilience — sûr sur FS réseau/monté</span><code>JobHistoryDB</code> opère sur un <b>miroir</b> en dossier temporaire indexé par un sha1 du chemin de la BDD, sous un verrou consultatif inter-processus, et ne fait un <code>_sync_back()</code> vers le fichier canonique qu'à l'init et à la fermeture — avec contrôle d'intégrité par <code>PRAGMA integrity_check</code> avant et après <code>os.replace</code>, 4 tentatives, sans jamais écraser une cible saine par une copie corrompue. <code>compute_content_fingerprint</code> (SHA-256 sur des tuples de lignes triés) permet à <code>doctor</code> de détecter un remplacement silencieux ou une restauration périmée.</div>
+      </section>
+
+      <!-- 8 · FACT BASE -->
+      <section class="section" id="factbase">
+        <p class="sec-kick">08 · Source de vérité</p>
+        <h2>La base de faits du CV</h2>
+        <p>Une extraction structurée de tout ce qui est vrai à propos du candidat — <code>resources/cv_fact_base.json</code>, validée contre <code>schemas/cv_fact_base.schema.json</code> (Draft 2020-12). Chaque artefact en aval doit s'ancrer dans ce fichier.</p>
+        <h3>Champs de premier niveau</h3>
+        <div class="chips">
+          <span class="chip">candidate_name*</span><span class="chip">headline</span><span class="chip">contact</span><span class="chip">candidate_location</span>
+          <span class="chip">summary</span><span class="chip">skills</span><span class="chip">technologies</span><span class="chip">technologies_to_deepen</span>
+          <span class="chip">methodologies</span><span class="chip">experience*</span><span class="chip">projects</span><span class="chip">education</span>
+          <span class="chip">languages</span><span class="chip">constraints</span><span class="chip">transition_signals</span>
+        </div>
+        <p style="font-size:.84rem;margin-top:10px;">* requis. Les éléments de <code>experience[]</code> portent <code>type</code> (<code>role</code>|<code>training</code>), <code>details</code> et <code>metrics</code>. <code>technologies_to_deepen</code> est tenu à part pour que l'adaptation ne liste jamais une techno encore en cours d'apprentissage comme compétence centrale.</p>
+        <h3>Cache indexé sur le hash du CV</h3>
+        <div class="codeblock"><span class="cm"># .cv_hash contient le SHA-256 de MASTER_CV.docx (par blocs de 8192 octets)</span>
+cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash existent
+                               AND stored_hash == file_hash(cv_path)</div>
+        <p>Lorsque le CV change, le hash ne correspond plus et <code>preflight</code> émet <code>status: cache_stale</code> — le signal pour <b>ré-extraire</b> (étapes 1–2.5), et non pour rafraîchir le hash à la main.</p>
+      </section>
+
+      <!-- 9 · GUARDRAILS -->
+      <section class="section" id="guardrails">
+        <p class="sec-kick">09 · Véracité</p>
+        <h2>Le système de garde-fous</h2>
+        <p>Quatre contrôles, câblés dans preflight, un hook de pre-commit et le chemin d'écriture du cache — une défense en profondeur contre la livraison d'une affirmation que le CV n'étaye pas.</p>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Contrôle</th><th>Ce qu'il impose</th><th>Sévérité</th></tr></thead>
+          <tbody>
+            <tr><td><code>factbase_consistency.py</code></td><td>Chaque <b>métrique saillante</b> (un nombre portant <code>+</code>, <code>%</code> ou <code>PB/TB/GB</code>) de la base de faits figure encore dans le CV. Les entiers nus &amp; les années sont ignorés. <code>--check-hash</code> compare <code>.cv_hash</code>.</td><td>bloque (exit 1)</td></tr>
+            <tr><td><code>verify_fact_base.py</code></td><td><code>technologies</code> &amp; <code>methodologies</code> doivent figurer littéralement dans le CV ; <code>skills</code> ne donnent que des avertissements ; les métriques réutilisent le contrôle de dérive.</td><td>bloque / avertit</td></tr>
+            <tr><td><code>check_match_grounding.py</code></td><td>Une correspondance <code>direct</code> dont le token tech n'est pas dans la base de faits est un faux « direct » (gonfle l'adéquation). Les tokens tech bloquent ; les expressions de soft-skill avertissent.</td><td>bloque / avertit</td></tr>
+            <tr><td><code>common.save_cv_fact_base()</code></td><td>Exécute le contrôle de dérive <b>avant</b> d'écrire <code>.cv_hash</code> et <b>lève</b> en cas de dérive — re-valider à la main une base de faits périmée est impossible.</td><td>lève</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout warn"><span class="lbl">L'incident qu'ils referment</span>Le CV maître a été mis à jour <code>40+ → 100+ applications</code> alors que la base de faits indiquait encore <code>40+</code>. La vérification de l'époque ne contrôlait que la présence des tech/méthodologies — pas les nombres — et des données périmées ont donc été livrées. Le contrôle de dérive des métriques en fait désormais un échec bloquant, câblé dans preflight, la barrière d'écriture du cache et le hook de pre-commit.</div>
+        <p style="font-size:.86rem;">Les contrôles d'ancrage sur offre et cold (<code>check_match_grounding.py</code>, <code>check_role_grounding.py</code>) importent un <code>_grounding_common.py</code> partagé pour que leurs tables de synonymes et tokeniseurs ne puissent jamais diverger.</p>
+      </section>
+
+      <!-- 10 · CUSTOMIZATION -->
+      <section class="section" id="customization">
+        <p class="sec-kick">10 · Couche utilisateur</p>
+        <h2>Personnalisation — addendum &amp; préférences</h2>
+        <p>Deux fichiers optionnels appartenant à l'utilisateur (tous deux exclus de git) permettent à la boîte à outils de connaître des faits vrais mais absents du CV ainsi que des préférences personnelles, sans jamais muter le cache vérifié.</p>
+        <div class="cardgrid">
+          <div class="icard"><div class="k">cv_addendum.md</div><h4>Trois sections reconnues</h4>
+            <ul class="tight" style="margin-bottom:0;">
+              <li><code>## Additional experience entries</code> → puces rattachées à un poste existant (associé par entreprise + dates)</li>
+              <li><code>## Hidden skills</code> → <code>addendum_hidden_skills</code></li>
+              <li><code>## Off-CV facts to remember</code> → <code>addendum_off_cv_facts</code></li>
+            </ul>
+          </div>
+          <div class="icard"><div class="k">user_prefs.yaml</div><h4>Clés honorées</h4>
+            <ul class="tight" style="margin-bottom:0;">
+              <li><code>preferred_title_labels</code> / <code>forbidden_title_labels</code></li>
+              <li><code>tone_directives</code></li>
+              <li><code>team_context_companies</code></li>
+              <li><code>default_language</code> (défaut <code>auto</code>)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><span class="lbl">L'invariant critique</span><code>merge_addendum_into_fact_base()</code> renvoie un <b>nouveau</b> dict et ne mute jamais le cache. Les puces de l'addendum se rattachent uniquement à <code>experience[].details</code> — jamais à <code>technologies</code>/<code>methodologies</code> — ce qui garde <code>verify_fact_base.py</code> honnête. L'addendum enrichit l'<i>exécution</i> sans corrompre le <i>cache indexé par hash</i>.</div>
+        <p style="font-size:.86rem;">Deux vérificateurs d'invariants étayent les préférences : <code>find_forbidden_title_label_violations</code> (correspondance de mot entier avec l'intitulé du CV adapté) et <code>find_team_context_solo_phrasing</code> (signale « solo / only developer / seul développeur » à proximité d'une mention d'entreprise en contexte d'équipe).</p>
+      </section>
+
+      <!-- 11 · OUTPUTS -->
+      <section class="section" id="outputs">
+        <p class="sec-kick">11 · Livrables</p>
+        <h2>Génération des livrables</h2>
+        <p>Chaque exécution écrit dans <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offre) ou <code>output/cold-[date]-[company-slug]/</code> (cold). Les JSON/MD intermédiaires résident dans un sous-dossier <code>_prep/</code> afin que n'importe quelle étape puisse être ré-exécutée isolément.</p>
+        <h3>Artefacts <code>_prep/</code></h3>
+        <div class="chips">
+          <span class="chip">cv_fact_base.json</span><span class="chip">job_offer_analysis.json</span><span class="chip">match_analysis.json</span>
+          <span class="chip">company_research.md</span><span class="chip">tailored_cv.json</span><span class="chip">letter.json</span>
+          <span class="chip">short_letter.json</span><span class="chip">linkedin.json</span><span class="chip">interview_prep.md</span>
+          <span class="chip">company_dossier.md</span>
+        </div>
+        <p style="font-size:.84rem;margin-top:8px;"><code>run_summary.json</code> est écrit à la racine du dossier (et non dans <code>_prep/</code>).</p>
+        <h3>Formats</h3>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Livrable</th><th>Format</th></tr></thead>
+          <tbody>
+            <tr><td>CV adapté</td><td>DOCX + PDF</td></tr>
+            <tr><td>Lettre de motivation</td><td>DOCX (+PDF en cold)</td></tr>
+            <tr><td>Lettre courte</td><td>TXT · 500–750 caractères</td></tr>
+            <tr><td>Messages LinkedIn</td><td>TXT · noms + URL</td></tr>
+            <tr><td>Préparation entretien / Dossier entreprise</td><td>HTML responsive</td></tr>
+            <tr><td>Résumé d'exécution</td><td>JSON</td></tr>
+          </tbody>
+        </table></div>
+        <p>Les noms de fichiers sont indexés par langue via <code>config/naming_rules.yaml</code> (FR <code>Lettre_de_motivation_…</code>, EN <code>Cover_letter_…</code>) ; les slugs sont repliés en ASCII et plafonnés à 60 caractères.</p>
+        <h3>Chaîne de repli PDF</h3>
+        <div class="codeblock"><span class="c">convert_docx_to_pdf()</span>  <span class="cm"># s'arrête au premier succès</span>
+   1. docx2pdf      <span class="cm"># nécessite MS Word</span>
+   2. LibreOffice   <span class="cm"># soffice --headless --convert-to pdf</span>
+   3. pandoc        <span class="cm"># nécessite un moteur LaTeX</span>
+   <span class="cm"># tous échouent → PdfConversionError ; le DOCX n'est jamais modifié</span></div>
+      </section>
+
+      <!-- 12 · SCORING -->
+      <section class="section" id="scoring">
+        <p class="sec-kick">12 · Le seuil d'adéquation</p>
+        <h2>Score d'adéquation</h2>
+        <p>Chaque exigence de l'offre est classée, puis un pourcentage unique décide si le pipeline se poursuit.</p>
+        <div class="chips" style="margin-bottom:14px;">
+          <span class="chip on" style="border-color:var(--st-offer);color:var(--st-offer);">direct</span>
+          <span class="chip on" style="border-color:var(--st-applied);color:var(--st-applied);">transferable</span>
+          <span class="chip" style="color:var(--st-dropped);">gap</span>
+        </div>
+        <div class="codeblock"><span class="cm"># common.recount_match_summary — déterministe, exécuté avant validation</span>
+overall_fit_pct = round( (direct + transferable * 0.5) / total * 100 )
+   <span class="cm"># aucune correspondance → 0</span></div>
+        <div class="cardgrid">
+          <div class="icard"><div class="k">Seuil dur</div><h4>50% ou on arrête</h4><p>En dessous de <code>overall_fit_pct = 50</code>, l'exécution s'interrompt avant l'adaptation du CV. L'analyse d'adéquation et le dossier renommé sont conservés.</p></div>
+          <div class="icard"><div class="k">config/settings.default.yaml</div><h4>Niveaux d'adéquation</h4><p><code>very_good ≥ 85</code> · <code>good ≥ 70</code> · <code>medium ≥ 50</code> · en dessous = <code>low</code>. Fait correspondre le pct → préfixe de dossier.</p></div>
+        </div>
+        <p style="font-size:.86rem;">Un mode <b>dry-run / score seul</b> (<code>behaviour.dry_run</code>, ou « juste le score » dans la demande) s'arrête après l'analyse d'adéquation — score d'adéquation uniquement, sans CV ni lettres — tout en enregistrant quand même la candidature.</p>
+      </section>
+
+      <footer class="footer">
+        Job Prospecting · Référence technique — générée à partir de la base de code vivante (skills, <code>cli.py</code>, <code>job_history_db.py</code>, schémas &amp; prompts). Complément de la présentation d'ensemble non technique.
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var deck = document; // page scrolls on the body
+  var progress = document.getElementById('progress');
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  var sidebar = document.getElementById('sidebar');
+  var navtoggle = document.getElementById('navtoggle');
+  var scrim = document.getElementById('scrim');
+
+  function onScroll(){
+    var st = window.scrollY || document.documentElement.scrollTop;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.width = (max > 0 ? (st/max)*100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  // scrollspy
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        var id = e.target.id;
+        links.forEach(function(a){
+          a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, {rootMargin:'-15% 0px -70% 0px', threshold:0});
+  sections.forEach(function(s){ if(s) io.observe(s); });
+
+  // mobile drawer
+  function closeNav(){ sidebar.classList.remove('open'); scrim.classList.remove('show'); }
+  function openNav(){ sidebar.classList.add('open'); scrim.classList.add('show'); }
+  navtoggle.addEventListener('click', function(){
+    sidebar.classList.contains('open') ? closeNav() : openNav();
+  });
+  scrim.addEventListener('click', closeNav);
+  links.forEach(function(a){ a.addEventListener('click', closeNav); });
+})();
+</script>
