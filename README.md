@@ -25,6 +25,19 @@ It also tells apart **real employers from intermediaries** — an ESN/SSII, an i
 | `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped), filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
 | `/job-stats` | Application statistics, trends, skill gap analysis, exports |
 
+## Documentation
+
+Full documentation lives in [`docs/`](docs/) as self-contained HTML pages — open any of them directly in a browser. Start at the hub:
+
+**→ [`docs/index.html`](docs/index.html)** — a bilingual (FR / EN) landing page linking every page below.
+
+| Page | 🇬🇧 English | 🇫🇷 Français |
+|------|------------|-------------|
+| **Overview** — non-technical walkthrough: what it does, the pipeline, the truthfulness guardrail, and a getting-started guide | [overview](docs/job-prospecting-with-ai.html) | [vue d'ensemble](docs/job-prospecting-with-ai.fr.html) |
+| **Technical reference** — architecture, end-to-end pipeline, CLI, scripts, database schema, and guardrails | [reference](docs/job-prospecting-technical-reference.html) | [référence](docs/job-prospecting-technical-reference.fr.html) |
+
+> These pages are hand-authored. A pre-commit gate reminds you to update them (and keep the EN/FR versions in step) whenever doc-relevant source changes — see [CLAUDE.md](CLAUDE.md).
+
 ## Install
 
 The plugin is distributed as a Claude Code plugin bundle. You have three install paths.
