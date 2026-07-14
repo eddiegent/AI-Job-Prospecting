@@ -31,22 +31,17 @@ import json
 import sys
 from pathlib import Path
 
-try:
-    from scripts._grounding_common import (
-        candidate_has,
-        canonical,
-        extract_candidate_vocab,
-        is_tech_shaped,
-        split_tokens,
-    )
-except ImportError:
-    from _grounding_common import (  # type: ignore
-        candidate_has,
-        canonical,
-        extract_candidate_vocab,
-        is_tech_shaped,
-        split_tokens,
-    )
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts._grounding_common import (  # noqa: E402
+    candidate_has,
+    canonical,
+    extract_candidate_vocab,
+    is_tech_shaped,
+    split_tokens,
+)
+from scripts.common import force_utf8_stdio  # noqa: E402
 
 
 def _extract_universes(offer: dict) -> tuple[set[str], set[str]]:
@@ -170,8 +165,7 @@ def check(
 
 
 def main() -> None:
-    if hasattr(sys.stdout, "buffer"):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    force_utf8_stdio()
 
     parser = argparse.ArgumentParser(
         description=(

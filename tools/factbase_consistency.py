@@ -13,16 +13,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_SKILL_SCRIPTS = (
+_SKILL_ROOT = (
     Path(__file__).resolve().parent.parent
-    / ".claude" / "skills" / "job-application-tailor" / "scripts"
+    / ".claude" / "skills" / "job-application-tailor"
 )
-if str(_SKILL_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_SKILL_SCRIPTS))
+if str(_SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SKILL_ROOT))
 
 # Re-export the public API so `from tools.factbase_consistency import check`
 # (and find_metric_drift, etc.) still resolves to the canonical implementation.
-from factbase_consistency import (  # noqa: E402,F401
+from scripts.factbase_consistency import (  # noqa: E402,F401
     check,
     extract_cv_text,
     file_sha256,

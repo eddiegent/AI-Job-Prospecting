@@ -40,22 +40,21 @@ import sys
 import traceback
 from pathlib import Path
 
-# Allow importing siblings when run directly (python scripts/preflight.py)
-# as well as via module path (python -m scripts.preflight) — same pattern
-# as scripts/init.py.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from common import (
+from scripts.common import (  # noqa: E402
     auto_slug,
     copy_cached_cv_fact_base,
     current_date_ddmmyyyy,
     cv_cache_is_valid,
     ensure_dir,
+    force_utf8_stdio,
     slug_for_filename,
 )
-from job_history_db import JobHistoryDB
-from paths import resolve_user_data_dir
-from user_customization import load_customization_context
+from scripts.job_history_db import JobHistoryDB  # noqa: E402
+from scripts.paths import resolve_user_data_dir  # noqa: E402
+from scripts.user_customization import load_customization_context  # noqa: E402
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
 
@@ -262,7 +261,7 @@ def main(argv: list[str]) -> int:
 if __name__ == "__main__":
     # Wrap stdout once at the entry point so non-ASCII (paths, addendum
     # content with em-dashes / arrows) survive Windows cp1252 default.
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    force_utf8_stdio()
     try:
         raise SystemExit(main(sys.argv[1:]))
     except SystemExit:

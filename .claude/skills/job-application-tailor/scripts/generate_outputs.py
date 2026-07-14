@@ -4,7 +4,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from common import (
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.common import (  # noqa: E402
     build_output_folder_name,
     current_date_ddmmyyyy,
     dump_json,
@@ -14,9 +17,9 @@ from common import (
     safe_filename,
 )
 from docx_generator import generate_cv_docx, generate_letter_docx
-from md_to_html import render_html_document
-from pdf_pipeline import PdfConversionError, convert_docx_to_pdf
-from validate import validate
+from scripts.md_to_html import render_html_document  # noqa: E402
+from scripts.pdf_pipeline import PdfConversionError, convert_docx_to_pdf  # noqa: E402
+from scripts.validate import validate  # noqa: E402
 
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 

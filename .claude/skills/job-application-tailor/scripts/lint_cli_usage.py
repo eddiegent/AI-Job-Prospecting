@@ -27,9 +27,10 @@ import sys
 from pathlib import Path
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(SKILL_BASE / "scripts"))
+sys.path.insert(0, str(SKILL_BASE))
 
-from cli import build_parser  # noqa: E402
+from scripts.cli import build_parser  # noqa: E402
+from scripts.common import force_utf8_stdio  # noqa: E402
 
 # Flags that belong to the top-level parser, valid in every invocation
 TOP_LEVEL_FLAGS = {"--db", "--help", "-h"}
@@ -143,9 +144,7 @@ def main() -> int:
     ap.add_argument("paths", nargs="*", help="Markdown files to lint (default: all *.md)")
     args = ap.parse_args()
 
-    if sys.platform == "win32":
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+    force_utf8_stdio()
 
     index = _build_subcommand_index()
     if args.paths:

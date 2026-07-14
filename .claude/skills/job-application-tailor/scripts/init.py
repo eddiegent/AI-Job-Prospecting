@@ -28,7 +28,10 @@ from typing import Any
 # as via module path (python -m scripts.init).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from paths import SKILL_ROOT, resolve_user_data_dir
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.paths import SKILL_ROOT, resolve_user_data_dir  # noqa: E402
 
 
 SAMPLE_CV_NAME = "MASTER_CV.example.docx"

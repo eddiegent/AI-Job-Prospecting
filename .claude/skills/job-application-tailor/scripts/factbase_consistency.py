@@ -47,13 +47,10 @@ from pathlib import Path
 
 from docx import Document
 
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-def file_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
+from scripts.common import file_hash as file_sha256  # noqa: E402  (re-exported)
 
 
 def extract_cv_text(docx_path: Path) -> str:

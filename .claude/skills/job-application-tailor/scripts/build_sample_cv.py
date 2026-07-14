@@ -21,7 +21,10 @@ from docx import Document
 # as well as via module path (python -m scripts.build_sample_cv).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from create_cv_template import (
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.create_cv_template import (  # noqa: E402
     SKILL_ROOT,
     _create_styles,
     _para,

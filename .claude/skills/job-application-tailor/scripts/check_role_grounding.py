@@ -15,26 +15,18 @@ import re
 import sys
 from pathlib import Path
 
-try:
-    # Run as module: `python -m scripts.check_role_grounding`
-    from scripts._grounding_common import (
-        candidate_has,
-        canonical,
-        extract_candidate_vocab,
-        snippet_around,
-        split_tokens,
-        tech_in_text,
-    )
-except ImportError:
-    # Run as script: `python scripts/check_role_grounding.py`
-    from _grounding_common import (  # type: ignore
-        candidate_has,
-        canonical,
-        extract_candidate_vocab,
-        snippet_around,
-        split_tokens,
-        tech_in_text,
-    )
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts._grounding_common import (  # noqa: E402
+    candidate_has,
+    canonical,
+    extract_candidate_vocab,
+    snippet_around,
+    split_tokens,
+    tech_in_text,
+)
+from scripts.common import force_utf8_stdio  # noqa: E402
 
 
 def _extract_company_techs(profile: dict) -> set[str]:
@@ -115,8 +107,7 @@ def check(
 
 
 def main() -> None:
-    if hasattr(sys.stdout, "buffer"):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    force_utf8_stdio()
 
     parser = argparse.ArgumentParser(
         description=(

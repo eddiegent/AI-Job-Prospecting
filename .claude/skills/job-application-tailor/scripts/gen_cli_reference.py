@@ -16,9 +16,10 @@ import sys
 from pathlib import Path
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(SKILL_BASE / "scripts"))
+sys.path.insert(0, str(SKILL_BASE))
 
-from cli import build_parser  # noqa: E402
+from scripts.cli import build_parser  # noqa: E402
+from scripts.common import force_utf8_stdio  # noqa: E402
 
 OUTPUT_PATH = SKILL_BASE / "references" / "cli.md"
 
@@ -137,8 +138,7 @@ def main() -> int:
     ap.add_argument("--check", action="store_true", help="Exit 1 if file is out of date")
     args = ap.parse_args()
 
-    if sys.platform == "win32":
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    force_utf8_stdio()
 
     new_content = render()
 

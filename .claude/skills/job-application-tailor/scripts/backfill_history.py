@@ -17,7 +17,10 @@ from pathlib import Path
 # Allow importing siblings
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from job_history_db import JobHistoryDB
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.job_history_db import JobHistoryDB  # noqa: E402
 
 
 def _load_json(path: Path) -> dict | None:

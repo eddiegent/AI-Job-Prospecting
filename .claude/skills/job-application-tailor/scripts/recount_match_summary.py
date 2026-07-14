@@ -21,11 +21,14 @@ import sys
 from pathlib import Path
 
 # When invoked as a script, scripts/ is on sys.path so the bare import works.
-from common import recount_match_summary
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.common import force_utf8_stdio, recount_match_summary  # noqa: E402
 
 
 def main(argv: list[str]) -> int:
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    force_utf8_stdio()
     if len(argv) != 2:
         print("Usage: recount_match_summary.py <path-to-match_analysis.json>", file=sys.stderr)
         return 1

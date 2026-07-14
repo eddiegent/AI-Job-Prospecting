@@ -12,7 +12,7 @@ from docx.oxml.ns import qn
 from docxtpl import DocxTemplate, RichText
 from jinja2 import Environment
 
-from common import ensure_dir, load_yaml
+from scripts.common import ensure_dir, load_yaml
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = SKILL_ROOT / "templates"

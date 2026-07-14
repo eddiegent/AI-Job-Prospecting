@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import sys
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -312,6 +314,25 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def force_utf8_stdio() -> None:
+    """Force UTF-8 stdout/stderr on Windows consoles.
+
+    The cp1252 default mangles accented output and crashes on characters like
+    em-dashes in company names. No-op on other platforms and on streams that
+    are already wrapped (e.g. pytest capture without a raw buffer).
+    """
+    if sys.platform != "win32":
+        return
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name)
+        if not hasattr(stream, "buffer"):
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, OSError):
+            setattr(sys, name, io.TextIOWrapper(stream.buffer, encoding="utf-8"))
+
+
 def file_hash(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -347,10 +368,7 @@ def save_cv_fact_base(cv_path: Path, prep_dir: Path) -> None:
     import shutil
     # Importable as a bare module (scripts dir on sys.path) or as a package
     # member (skill root on sys.path, e.g. under pytest / preflight).
-    try:
-        from factbase_consistency import check
-    except ImportError:  # pragma: no cover - exercised via the package-import path
-        from scripts.factbase_consistency import check
+    from scripts.factbase_consistency import check
 
     resources_dir = cv_path.parent
     src = prep_dir / "cv_fact_base.json"

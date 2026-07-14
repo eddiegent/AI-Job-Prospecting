@@ -17,18 +17,22 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
-from common import (
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.common import (  # noqa: E402
     auto_slug,
     delete_stale_slug_deliverables,
+    force_utf8_stdio,
     matched_aggregator,
 )
-from job_history_db import (
+from scripts.job_history_db import (  # noqa: E402
     JobHistoryDB,
     compute_content_fingerprint,
     normalise_company,
     normalise_title,
 )
-from paths import load_settings
+from scripts.paths import load_settings  # noqa: E402
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
 
@@ -1104,10 +1108,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    # Handle UTF-8 on Windows
-    if sys.platform == "win32":
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+    force_utf8_stdio()
 
     parser = build_parser()
     args = parser.parse_args()

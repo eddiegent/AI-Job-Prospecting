@@ -19,30 +19,10 @@ import re
 import sys
 from pathlib import Path
 
-from docx import Document
+if __package__ in (None, ""):  # direct run: make `scripts.*` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-# Importable both as a bare script (preflight runs `python scripts/verify_fact_base.py`,
-# putting the scripts dir on sys.path[0]) and as a package member (pytest puts the
-# skill root on sys.path, so the module is `scripts.factbase_consistency`).
-try:
-    from factbase_consistency import find_metric_drift
-except ImportError:  # pragma: no cover - exercised via the package-import path
-    from scripts.factbase_consistency import find_metric_drift
-
-
-def extract_cv_text(docx_path: Path) -> str:
-    """Extract all text from a DOCX file (paragraphs + tables), lowercased."""
-    doc = Document(str(docx_path))
-    parts: list[str] = []
-    for p in doc.paragraphs:
-        if p.text.strip():
-            parts.append(p.text)
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                if cell.text.strip():
-                    parts.append(cell.text)
-    return "\n".join(parts).lower()
+from scripts.factbase_consistency import extract_cv_text, find_metric_drift  # noqa: E402
 
 
 # Known synonyms: fact base term -> also accept these in the CV text
