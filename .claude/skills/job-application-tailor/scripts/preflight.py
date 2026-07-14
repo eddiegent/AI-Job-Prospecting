@@ -179,7 +179,7 @@ def main(argv: list[str]) -> int:
 
     if not master_cv.exists():
         # First-run onboarding: run init.py and tell the orchestrator to stop.
-        from init import init_user_data
+        from scripts.init import init_user_data
 
         try:
             init_user_data()
@@ -236,7 +236,7 @@ def main(argv: list[str]) -> int:
         # but run the consistency check in-process too so the cache-stale
         # downgrade does not depend solely on the child's exit code.
         try:
-            from factbase_consistency import check as _fb_check
+            from scripts.factbase_consistency import check as _fb_check
 
             drift_errs, _ = _fb_check(master_cv, fact_base_path)
         except Exception:

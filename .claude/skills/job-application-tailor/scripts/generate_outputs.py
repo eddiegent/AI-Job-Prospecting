@@ -43,7 +43,7 @@ def main() -> None:
     parser.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion of the CV (DOCX only)")
     args = parser.parse_args()
 
-    from paths import load_settings
+    from scripts.paths import load_settings
     settings = load_settings(defaults_path=Path(args.settings))
     naming = load_yaml(Path(args.naming_rules))
 
