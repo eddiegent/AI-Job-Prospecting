@@ -15,6 +15,7 @@ import sqlite3
 import subprocess
 import sys
 import textwrap
+import time
 from pathlib import Path
 
 from scripts.job_history_db import (
@@ -42,7 +43,7 @@ def test_lock_is_reentrant_within_process(tmp_path):
 
 
 # argv: db_path, n, skill_root, hold_seconds, interval_out, disable_lock("0"/"1"),
-#       go_file
+#       go_file, ready_file
 _WORKER = textwrap.dedent(
     """
     import os, sys, time
@@ -51,9 +52,12 @@ _WORKER = textwrap.dedent(
     if sys.argv[6] == "1":                  # control: disable the lock
         J.acquire_db_lock = lambda *a, **k: False
         J.release_db_lock = lambda *a, **k: None
-    while not os.path.exists(sys.argv[7]):  # start barrier: all workers begin
-        time.sleep(0.01)                    # their hold together, so unlocked
-                                            # runs overlap even on a loaded box
+    open(sys.argv[8], "w").write("r")       # signal: this worker is up
+    while not os.path.exists(sys.argv[7]):  # start barrier: released only once
+        time.sleep(0.01)                    # ALL workers are up, so hold
+                                            # windows begin together even when
+                                            # interpreter startup is slow on a
+                                            # loaded box
     db = J.JobHistoryDB(sys.argv[1])        # lock acquired here
     start = time.time()
     time.sleep(float(sys.argv[4]))          # hold the critical section
@@ -81,14 +85,25 @@ def _run_workers(tmp_path, *, disable_lock):
         procs.append(subprocess.Popen([
             sys.executable, str(worker), str(db_path), str(i),
             str(SKILL_ROOT), str(HOLD), str(iv), "1" if disable_lock else "0",
-            str(go_file),
+            str(go_file), str(tmp_path / f"ready_{i}"),
         ]))
+    deadline = time.time() + 60                     # wait for every worker to
+    while time.time() < deadline:                   # come up before releasing
+        if all((tmp_path / f"ready_{i}").exists() for i in range(n)):
+            break
+        time.sleep(0.01)
     go_file.write_text("go")                        # release the start barrier
-    for p in procs:
-        assert p.wait(timeout=90) == 0
+    exit_codes = [p.wait(timeout=90) for p in procs]
+    failures = sum(1 for c in exit_codes if c != 0)
+    if not disable_lock:
+        # With the lock on, every worker must survive. With it off, a crash
+        # (e.g. "file is not a database" from racing the shared mirror) is
+        # itself evidence of the race, so the control tolerates non-zero exits.
+        assert failures == 0, f"locked workers died: exit codes {exit_codes}"
     intervals = sorted(
         tuple(float(x) for x in (tmp_path / f"iv_{i}.txt").read_text().split())
         for i in range(n)
+        if (tmp_path / f"iv_{i}.txt").exists()      # crashed workers write none
     )
     # count pairs of critical sections that overlap in time
     overlaps = sum(
@@ -98,11 +113,11 @@ def _run_workers(tmp_path, *, disable_lock):
         if intervals[a][1] > intervals[b][0] + 0.01
         and intervals[b][1] > intervals[a][0] + 0.01
     )
-    return db_path, n, overlaps
+    return db_path, n, overlaps, failures
 
 
 def test_parallel_critical_sections_are_serialised(tmp_path):
-    db_path, n, overlaps = _run_workers(tmp_path, disable_lock=False)
+    db_path, n, overlaps, _failures = _run_workers(tmp_path, disable_lock=False)
     assert overlaps == 0, f"lock failed: {overlaps} overlapping critical sections"
     con = sqlite3.connect(str(db_path))
     try:
@@ -114,6 +129,9 @@ def test_parallel_critical_sections_are_serialised(tmp_path):
 
 def test_overlap_detector_has_teeth(tmp_path):
     # Sanity that the serialisation test above is not vacuous: with the lock
-    # disabled the same workers DO overlap, so the assertion would fire.
-    _db, _n, overlaps = _run_workers(tmp_path, disable_lock=True)
-    assert overlaps > 0
+    # disabled the same workers DO race — visibly overlapping critical
+    # sections, or a worker crashing outright on the shared mirror file
+    # ("file is not a database"). Either outcome proves the unlocked run is
+    # unsafe and therefore that the serialisation assertion has teeth.
+    _db, _n, overlaps, failures = _run_workers(tmp_path, disable_lock=True)
+    assert overlaps > 0 or failures > 0
