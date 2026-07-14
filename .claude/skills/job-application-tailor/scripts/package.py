@@ -75,6 +75,13 @@ PACKAGE_EXCLUDE_FILE_NAMES = frozenset({
 
 PACKAGE_EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".sqlite", ".sqlite3", ".db")
 
+# Gitignored personal example artefacts (scripts/example_*.json / *.md hold
+# real generated content with the author's name, email, and employer). The
+# packager copies from the filesystem, not from git, so the gitignore rule
+# alone does not protect the bundle.
+PACKAGE_EXCLUDE_NAME_PREFIX = "example_"
+PACKAGE_EXCLUDE_PREFIX_SUFFIXES = (".json", ".md")
+
 
 # ---------------------------------------------------------------------------
 # Core API
@@ -87,6 +94,12 @@ def _should_skip(path: Path) -> bool:
     if path.is_file() and name in PACKAGE_EXCLUDE_FILE_NAMES:
         return True
     if path.is_file() and path.suffix.lower() in PACKAGE_EXCLUDE_SUFFIXES:
+        return True
+    if (
+        path.is_file()
+        and name.startswith(PACKAGE_EXCLUDE_NAME_PREFIX)
+        and path.suffix.lower() in PACKAGE_EXCLUDE_PREFIX_SUFFIXES
+    ):
         return True
     return False
 

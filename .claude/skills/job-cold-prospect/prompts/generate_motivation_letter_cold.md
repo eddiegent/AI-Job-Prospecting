@@ -81,7 +81,7 @@ Apply `user_prefs.tone_directives` verbatim. They override these defaults on con
 - **No fabricated company facts.** Every company claim maps to `company_profile.json` and its cited sources. `tech_stack_hints` and `pain_points_inferred` are **inferred** — treat them as plausible angles ("it looks like your product might benefit from …"), not confirmed needs.
 - **No solo-work phrasing** for any company in `user_prefs.team_context_companies` — no "j'ai piloté seul", "single-handedly", "as the only developer", "j'ai développé seul", "by myself", "en autonomie complète". These companies were team environments regardless of what an individual bullet says.
 - **No pretending there's a posting.** Avoid "votre annonce", "in response to your offer", "pour ce poste". The letter is speculative.
-- **Geographic proximity** — if the candidate is near `company_profile.locations[0]`, mention it naturally once (e.g. "basé à Brunoy, à proximité de vos locaux"). Skip if remote-first or if the distance is large.
+- **Geographic proximity** — if the candidate is near `company_profile.locations[0]`, mention it naturally once (e.g. "basé à Lyon, à proximité de vos locaux"). Skip if remote-first or if the distance is large.
 - **Respect `forbidden_title_labels`** — if `selected_role.title` contains a forbidden label (only possible if it's a `user_override`), paraphrase around it in the letter using a neutral alternative.
 - Keep it short (3–4 paragraphs, 2–4 sentences each).
 - Write in `default_language` (fallback `fr` for cold flow).

@@ -44,15 +44,15 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 {
   "match_summary": {"direct_count": 8, "transferable_count": 3, "gap_count": 2, "overall_fit_pct": 73},
   "location_analysis": {
-    "candidate_location": "Brunoy (91)",
+    "candidate_location": "Lyon (69)",
     "job_location": "Paris",
     "work_mode": "hybrid",
     "commute_assessment": "Trajet faisable",
     "notes": "40-50 min en RER D, gérable en hybride"
   },
   "matches": [
-    {"requirement": "C#", "category": "required_skill", "match_type": "direct", "evidence": "15 ans en C#/.NET chez Oodrive", "notes": ""},
-    {"requirement": "Docker", "category": "preferred_skill", "match_type": "transferable", "evidence": "Conteneurisation Docker chez Oodrive", "notes": "Utilisé pour CI/CD, pas en production"},
+    {"requirement": "C#", "category": "required_skill", "match_type": "direct", "evidence": "15 ans en C#/.NET chez Acme Corp", "notes": ""},
+    {"requirement": "Docker", "category": "preferred_skill", "match_type": "transferable", "evidence": "Conteneurisation Docker chez Acme Corp", "notes": "Utilisé pour CI/CD, pas en production"},
     {"requirement": "Kubernetes", "category": "technology", "match_type": "gap", "evidence": "", "notes": "Non mentionné dans le CV"}
   ]
 }

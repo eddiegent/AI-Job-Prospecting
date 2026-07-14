@@ -126,7 +126,7 @@ def sanitize_component(text: str, replacement: str = "-", trim_chars: str = " .-
 
 # Cap the job-title portion of a filename so a verbose posting title can't
 # produce a monster path. The real incident was
-# "CV_Edward_Gent_Architecte_applicatif_-_Tech_Lead_NET_Desktop_Services_
+# "CV_Jane_Doe_Architecte_applicatif_-_Tech_Lead_NET_Desktop_Services_
 # poste_en_CDI_a_representer_via_Talent-R.docx". Only the filename SLUG is
 # trimmed — the document content keeps the full title.
 _MAX_FILENAME_SLUG_LEN = 60

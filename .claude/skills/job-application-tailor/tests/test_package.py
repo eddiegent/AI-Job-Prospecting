@@ -115,6 +115,21 @@ def fake_project(tmp_path: Path) -> Path:
     (resources / "job_history.db").write_bytes(b"SQLITE")
     (resources / "cv_fact_base.json").write_text("{}", encoding="utf-8")
 
+    # Gitignored personal example artefacts under scripts/ that must be
+    # excluded (the packager copies from the filesystem, not git)
+    scripts_dir = (
+        project / ".claude" / "skills" / "job-application-tailor" / "scripts"
+    )
+    (scripts_dir / "example_tailored_cv.json").write_text(
+        '{"candidate": "REAL-CV-SECRET"}', encoding="utf-8"
+    )
+    (scripts_dir / "example_letter.md").write_text(
+        "REAL-CV-SECRET", encoding="utf-8"
+    )
+    (scripts_dir / "example_usage.sh").write_text(
+        "echo docs\n", encoding="utf-8"
+    )
+
     # Top-level user data that must be excluded
     (project / "resources").mkdir()
     (project / "resources" / "MASTER_CV.docx").write_bytes(b"REAL-CV-SECRET")
@@ -176,6 +191,12 @@ def test_build_plugin_tree_excludes_user_data(fake_project: Path) -> None:
         skill_root = target / "skills" / skill
         assert not (skill_root / "resources").exists()
         assert not (skill_root / "output").exists()
+
+    # Personal example artefacts are excluded; the .sh usage doc still ships
+    tailor_scripts = target / "skills" / "job-application-tailor" / "scripts"
+    assert not (tailor_scripts / "example_tailored_cv.json").exists()
+    assert not (tailor_scripts / "example_letter.md").exists()
+    assert (tailor_scripts / "example_usage.sh").exists()
 
 
 def test_build_plugin_tree_excludes_backups(fake_project: Path) -> None:

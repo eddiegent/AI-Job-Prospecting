@@ -28,7 +28,7 @@
     },
     "candidate_location": {
       "type": "string",
-      "description": "Candidate's residential location as shown in the CV header, e.g. 'Brunoy (91)', 'London, UK', 'Austin, TX'"
+      "description": "Candidate's residential location as shown in the CV header, e.g. 'Lyon (69)', 'London, UK', 'Austin, TX'"
     },
     "summary": {
       "type": "string"

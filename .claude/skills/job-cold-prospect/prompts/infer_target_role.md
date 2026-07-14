@@ -17,7 +17,7 @@ Produce 1–3 candidate roles, each with enough substance that the user can pick
 - **No stack mirroring in candidate-side fields.** A tech may appear in `company_profile.tech_stack_hints` AND in `cv_fact_base` (technologies / skills / methodologies / experience details / addendum) — if so, naming it in `emphasis_areas` or rationale is fine. A tech that appears ONLY in the company hints is a fact about the company; it must not show up as a candidate strength in `emphasis_areas` or in rationale prose. Concrete failure to avoid: agap2's listing requires Entity Framework, but the candidate's fact base only has SQL Server + Dapper — write `"SQL Server"` in `emphasis_areas`, not `"SQL Server / Entity Framework"`. Same for Razor, ASP.NET MVC, Azure DevOps, Git when they aren't in the fact base. A deterministic post-check (`scripts/check_role_grounding.py`) runs after this prompt and will reject the output if any leak slips through.
 - **Don't quote the company's stack verbatim in rationale.** Phrases like *"la stack listée — A, B, C, D, E — recouvre ligne pour ligne"* are an attractive nuisance: they invite copying the company's full tech list into the rationale where every entry implies candidate competence. Describe the alignment qualitatively instead, naming only techs that are in the candidate's fact base.
 - **Respect forbidden title labels.** If `user_prefs.forbidden_title_labels` contains a label (e.g. "Backend"), never produce a candidate title using it. Check after generation.
-- **Prefer label conventions.** If `user_prefs.preferred_title_labels` is set, lean on those labels where they fit (e.g. "Desktop & Services" for Eddie, not "Backend").
+- **Prefer label conventions.** If `user_prefs.preferred_title_labels` is set, lean on those labels where they fit (e.g. a candidate whose prefs say "Desktop & Services" must not be labelled "Backend").
 - **No fabrication about the company.** `rationale` must only reference company facts that appear in `company_profile` — hiring signals, mission, products, recent news, leadership, inferred pain points (clearly marked as inferred). Do not invent needs the company did not express.
 - **Honest risk notes.** Each candidate must list 1+ `risk_notes` unless the match is overwhelming. Gaps the user should know about before committing.
 - **At least one substantially different angle.** When proposing 2–3 candidates, make them genuinely distinct (e.g. IC lead vs. manager, or core product vs. tooling) — not three variations of the same title. If only one angle is credible, return just one candidate.
@@ -64,14 +64,14 @@ Return valid JSON conforming to `schemas/role_candidates.schema.json`.
   "candidates": [
     {
       "title": "Tech Lead .NET — Desktop & Services",
-      "rationale": "Acme's 2026 hiring plan (Series B news) calls out 'scaling the simulation tooling' — a WPF-heavy desktop product close to Eddie's 8+ years on Oodrive Cloud Files Desktop. CTO Marie Durand's public interview names platform reliability as a priority, which maps to Eddie's service-architecture track. Fits their stated 'ingénierie française' positioning.",
+      "rationale": "Acme's 2026 hiring plan (Series B news) calls out 'scaling the simulation tooling' — a WPF-heavy desktop product close to the candidate's 8+ years on a flagship desktop sync client. CTO Marie Durand's public interview names platform reliability as a priority, which maps to the candidate's service-architecture track. Fits their stated 'ingénierie française' positioning.",
       "seniority_band": "lead",
       "emphasis_areas": ["WPF Desktop", "service architecture", "team mentoring", "Windows integration"],
       "risk_notes": ["no cloud-native / Kubernetes experience on record", "robotics-domain onboarding will take weeks"]
     },
     {
       "title": "Senior .NET Engineer — Simulation Tooling",
-      "rationale": "If Acme prefers an IC hire, the 12 open engineering roles on their careers page (hiring_signals) include multiple simulation / tooling positions where Eddie's Fortran→C++ modernisation track at JFC plus his long Oodrive tenure give credible specialist depth. Avoids committing to management.",
+      "rationale": "If Acme prefers an IC hire, the 12 open engineering roles on their careers page (hiring_signals) include multiple simulation / tooling positions where the candidate's legacy-modernisation track (Fortran→C++) plus a long product tenure give credible specialist depth. Avoids committing to management.",
       "seniority_band": "senior",
       "emphasis_areas": ["simulation tooling modernisation", "C++ interop", "performance-sensitive desktop"],
       "risk_notes": ["narrower scope than the lead angle — may underclaim seniority if the company actually wants a lead"]

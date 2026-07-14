@@ -22,7 +22,7 @@ Adapt the level of detail based on company size. This matters because small comp
 - **Large company / ESN (> 500)**: focus on depth. Emphasize technical expertise, methodology (SOLID, tests, CI/CD), and the ability to work within structured teams and processes.
 
 ## Candidate location
-Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Location is valuable on a CV — it tells the recruiter at a glance whether the candidate is local, nearby, or would need to relocate. Keep the original format from the CV (e.g. "Brunoy (91)", "London, UK").
+Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Location is valuable on a CV — it tells the recruiter at a glance whether the candidate is local, nearby, or would need to relocate. Keep the original format from the CV (e.g. "Lyon (69)", "London, UK").
 
 ## Allowed changes
 - **Adjust** the title / headline / summary to highlight the most relevant aspects of the candidate's actual profile — but the core identity must come from the master CV and from `user_prefs.yaml` (`preferred_title_labels` / `forbidden_title_labels`), not from the job offer. If the master CV uses a specific self-description and the user's prefs reinforce it, do not replace that with a different specialisation label just because the job offer uses different words. You may reorder or emphasise existing terms, drop less relevant ones, or add a qualifier that is evidenced in the CV — but never inject a specialisation label that the candidate doesn't use to describe themselves, and never use any label listed in `forbidden_title_labels`.
@@ -164,7 +164,7 @@ Preserve the master CV's granular skill categories as separate `skills_sections`
 ### Experience line format
 Each experience entry has two separate fields:
 - `role_line` — the role/job title **only** (e.g. `"IT Project Manager"`, `"R&D Engineer"`, `"Development Manager"`). No company, no dates. Rendered bold on its own line.
-- `metadata_line` — a single pipe-separated string `"Company | Location | Month YYYY – Month YYYY"` (e.g. `"Oodrive SA | Paris | July 2010 – March 2025"`). Rendered italic-gray on its own line directly under the role.
+- `metadata_line` — a single pipe-separated string `"Company | Location | Month YYYY – Month YYYY"` (e.g. `"Acme Corp | Paris | July 2010 – March 2025"`). Rendered italic-gray on its own line directly under the role.
 
 This matches how ATS parsers expect to find role, employer, and dates — each on its own clear line rather than merged.
 

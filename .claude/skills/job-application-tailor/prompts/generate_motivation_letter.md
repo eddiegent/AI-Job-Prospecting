@@ -34,7 +34,7 @@ Recruiters read dozens of letters a day. The ones that stand out feel genuine, n
 - No empty flattery or generic buzzwords
 - No exaggerated passion story
 - **Don't imply solo work** — phrases like "en autonomie complète" or "j'ai piloté seul" suggest the candidate did everything alone. In reality, most work happened within a team. Only mention autonomy if the CV fact base explicitly marks a period as solo/autonomous, and even then scope it to that specific period, not the whole tenure. Companies listed in `user_prefs.yaml → team_context_companies` are a hard no for any solo-work phrasing, regardless of what the CV bullets say.
-- If the candidate lives near the job location, it's worth mentioning naturally (e.g. "basé à Brunoy, à proximité de vos locaux" or "based locally in..."). Geographic proximity is a real advantage — recruiters prefer candidates who won't need relocation. But don't force it if the role is fully remote or if the candidate is far away.
+- If the candidate lives near the job location, it's worth mentioning naturally (e.g. "basé à Lyon, à proximité de vos locaux" or "based locally in..."). Geographic proximity is a real advantage — recruiters prefer candidates who won't need relocation. But don't force it if the role is fully remote or if the candidate is far away.
 - Keep it short (3-4 paragraphs max)
 - Paragraphs should be 2-4 sentences, not dense blocks
 - Don't headline the same metric/achievement in more than one paragraph — state each strongest proof point once and let other paragraphs cover different ground (e.g. don't repeat a throughput figure or a signature phrase like "reverse engineering" in several places).

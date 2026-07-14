@@ -29,7 +29,7 @@ Produce a truthful CV tailored to the **selected role angle** at this specific c
 
 ## Candidate location
 
-Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Keep the original format from the CV (e.g. "Brunoy (91)"). Geographic proximity to `company_profile.locations[0]` (when close) is useful context for the motivation letter — not for the CV.
+Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Keep the original format from the CV (e.g. "Lyon (69)"). Geographic proximity to `company_profile.locations[0]` (when close) is useful context for the motivation letter — not for the CV.
 
 ## Allowed changes
 

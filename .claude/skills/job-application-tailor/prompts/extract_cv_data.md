@@ -9,7 +9,7 @@ This extractor only sees the raw `MASTER_CV.docx`. It must **not** incorporate a
 ## Extract
 - candidate name, headline / title, contact details
 - **contact.github** — if the CV header includes a GitHub URL (e.g. `github.com/janedoe` or `github.com/janedoe/my-project`), capture it verbatim in `contact.github`. Many CVs will not have one — if absent, **omit the field entirely** rather than writing an empty string.
-- **candidate location** — the candidate's residential location as it appears in the CV header or contact section (e.g. "Brunoy (91)", "London, UK", "Austin, TX"). Keep the original formatting. This is used later for commute and distance analysis against job locations.
+- **candidate location** — the candidate's residential location as it appears in the CV header or contact section (e.g. "Lyon (69)", "London, UK", "Austin, TX"). Keep the original formatting. This is used later for commute and distance analysis against job locations.
 - summary
 - skills, tools / technologies, methodologies
 - experience by role (company, location, role, dates, details, metrics, international signals)
