@@ -1,5 +1,10 @@
 # Cold Prospect Roadmap
 
+> **Status: shipped — historical document.** All seven phases (A-G)
+> completed 2026-04-20; later work is tracked in the repo-root
+> `CHANGELOG.md`. Unticked checkboxes below reflect the drafting state,
+> not reality.
+
 Design and multi-session build plan for a new sibling skill, `job-cold-prospect`, that produces a speculative (cold-call) application pack from a company name or URL — no job offer required. Drafted 2026-04-17. Read this before starting any of the phases below.
 
 ## Motivation

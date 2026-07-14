@@ -14,7 +14,7 @@ A Claude Code skill that generates a speculative (cold-call) application pack fo
 6. **History DB** (F) — cold row inserted with `source='cold'` + a company-profile snapshot, segmented from offer-flow rows
 7. **Tests + docs** (G) — schema validation tests, DB v2 migration tests, documented sample workflow
 
-See `../../COLD_PROSPECT_ROADMAP.md` for the full design and phased build plan.
+See `../../../docs/roadmaps/COLD_PROSPECT_ROADMAP.md` for the original design and phased build plan (historical — the skill shipped).
 
 ## When to use this skill
 

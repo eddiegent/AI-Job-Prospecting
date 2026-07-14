@@ -1,5 +1,7 @@
 # Skill Improvements Roadmap
 
+> **Status: shipped — historical document.** All five items completed.
+
 Multi-session improvement plan for the `job-application-tailor` and `job-status` skills. Drafted 2026-04-17 after the Omnitech SA / Free-Work run surfaced several rough edges. Read this before starting work on any of the five items below — context matters for scope decisions.
 
 ## Context

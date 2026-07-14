@@ -1,5 +1,8 @@
 # Operational Fixes Roadmap
 
+> **Status: shipped — historical document.** All three items completed
+> 2026-05-07.
+
 Three-item plan to remove the failure modes that hit during the Speechify run on 2026-05-06. Read this before picking up any of the items below — context matters for scope decisions.
 
 ## Context
