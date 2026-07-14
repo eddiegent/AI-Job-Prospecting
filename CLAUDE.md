@@ -29,6 +29,15 @@ Key frontmatter fields:
 
 Use `!`shell-command`` in skill body to inject dynamic context at invocation time.
 
+## Running tests
+
+Two pytest suites, one per skill that has a `tests/` directory. They cannot share a single pytest process (both declare a `tests` package, and the names collide), so run them as two invocations — each skill's `pyproject.toml` makes this work from any cwd:
+
+```bash
+python -m pytest ".claude/skills/job-application-tailor" -q
+python -m pytest ".claude/skills/job-cold-prospect" -q
+```
+
 ## CLI signatures — single source of truth
 
 The `cli.py` argparse parser is the canonical reference. Auto-generated docs live at `.claude/skills/job-application-tailor/references/cli.md`. **Before composing any `cli.py` invocation**, read that file or run `python scripts/cli.py <subcommand> --help` — never compose flags from convention.

@@ -1,0 +1,12 @@
+# Pytest configuration for the job-cold-prospect suite.
+#
+# The sibling job-application-tailor skill root is on pythonpath because this
+# suite validates against its schemas and scripts (`from scripts.validate
+# import validate`). From the repo root:  pytest ".claude/skills/job-cold-prospect"
+#
+# Note: the two skill suites cannot run in one pytest process — both declare a
+# `tests` package and the names collide. Run them as two invocations.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "../job-application-tailor"]

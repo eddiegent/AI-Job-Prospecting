@@ -1,0 +1,14 @@
+# Pytest configuration for the job-application-tailor suite.
+#
+# `pythonpath` makes `scripts.*` imports resolve regardless of the caller's
+# cwd — previously that only worked because tests/conftest.py inserted the
+# skill root at import time, which required running pytest from this
+# directory. From the repo root:  pytest ".claude/skills/job-application-tailor"
+#
+# Note: the two skill suites cannot run in one pytest process — both declare a
+# `tests` package and the names collide. Run them as two invocations (that is
+# also what scripts/package.py's release gate does).
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
