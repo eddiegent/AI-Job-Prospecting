@@ -26,7 +26,7 @@ _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from cli import cmd_update_status  # noqa: E402
+from scripts.commands.status import cmd_update_status  # noqa: E402
 from job_history_db import (  # noqa: E402
     _SCHEMA_VERSION,
     JobHistoryDB,

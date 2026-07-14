@@ -18,7 +18,7 @@ _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from cli import cmd_record_application  # noqa: E402
+from scripts.commands.records import cmd_record_application  # noqa: E402
 from job_history_db import JobHistoryDB  # noqa: E402
 
 
