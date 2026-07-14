@@ -50,19 +50,10 @@ print(folder)
 WebFetch silently consumes a round-trip on aggregators that block automated requests (e.g. lesjeudis returns 403). Probe with a HEAD request first so the failure is fast and the fallback ("paste below or share a file path") fires immediately.
 
 ```bash
-python -u -c "
-import sys, urllib.request, urllib.error
-url = sys.argv[1]
-req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': 'Mozilla/5.0'})
-try:
-    urllib.request.urlopen(req, timeout=5)
-    print('OK')
-except urllib.error.HTTPError as e:
-    print(f'BLOCKED {e.code}' if e.code in (401, 403, 429, 451) else f'OTHER_HTTP {e.code}')
-except Exception as e:
-    print(f'OTHER_ERROR {type(e).__name__}: {e}')
-" "<offer-url>"
+cd "$SKILL_BASE" && python scripts/cli.py probe-url "<offer-url>"
 ```
+
+Prints exactly one line: `OK`, `BLOCKED <code>`, `OTHER_HTTP <code>`, or `OTHER_ERROR <type>: <msg>`.
 
 If the probe prints `BLOCKED <code>`, skip WebFetch and ask the user: *"`<host>` blocks automated requests (HTTP `<code>`). Paste the offer text below, or share a path to a local file."*
 
@@ -73,13 +64,7 @@ If it prints `OTHER_ERROR` (DNS, TLS, corporate proxy, timeout) treat that as in
 Write the raw offer text (WebFetch response or pasted input) to `$PREP_DIR/raw_offer.md` before analysis. Run once per offer, after `$PREP_DIR` exists and before Step 3 analysis.
 
 ```bash
-python -u -c "
-import sys, io
-from pathlib import Path
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-Path('$PREP_DIR/raw_offer.md').write_text(sys.stdin.read(), encoding='utf-8')
-print('Cached raw offer ->', '$PREP_DIR/raw_offer.md')
-" <<'OFFER'
+cd "$SKILL_BASE" && python scripts/cli.py cache-raw-offer "$OUTPUT_DIR" <<'OFFER'
 <paste the WebFetch response or raw offer text here>
 OFFER
 ```
@@ -88,54 +73,27 @@ If you already have the text in a variable, pipe it in instead of the heredoc. T
 
 ## Platform Detection
 
-After Step 3 produces `job_offer_analysis.json`, probe the company name against the configured aggregator list. Returns the matched platform (to use as `source_platform`) or empty string if the company is a direct employer.
+After Step 3 produces `job_offer_analysis.json`, probe the company name against the configured aggregator list. Prints the matched platform (to use as `source_platform`) or an empty line if the company is a direct employer.
 
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.common import matched_aggregator
-from scripts.paths import load_settings
-from pathlib import Path
-import json
-settings = load_settings()
-platforms = settings.get('aggregators', {}).get('known_platforms', [])
-job = json.loads(Path('$PREP_DIR/job_offer_analysis.json').read_text(encoding='utf-8'))
-hit = matched_aggregator(job.get('company_name', ''), platforms)
-print(hit or '')
-"
+cd "$SKILL_BASE" && python scripts/cli.py detect-platform "$OUTPUT_DIR"
 ```
 
 After the user supplies the real client, patch `job_offer_analysis.json` directly (read, update `company_name`, set `source_platform` to the old value and `company_is_aggregator` to `false`, re-save, re-validate).
 
 ## CV Caching
 
-### Check cache validity
-```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.common import cv_cache_is_valid
-from pathlib import Path
-print('VALID' if cv_cache_is_valid(Path('$PROJECT_ROOT/resources/MASTER_CV.docx')) else 'STALE')
-"
-```
+### Check cache validity / copy cached fact base
 
-### Copy cached fact base to prep dir
-```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.common import copy_cached_cv_fact_base
-from pathlib import Path
-copy_cached_cv_fact_base(Path('$PROJECT_ROOT/resources/MASTER_CV.docx'), Path('$PREP_DIR'))
-"
-```
+Both are handled by `scripts/preflight.py` (job-prep-cv's consolidated invocation): a cache hit returns `status: ok` with the fact base already copied into `$PREP_DIR` and verified. There is no separate command to run.
 
 ### Save fact base + hash after extraction
+
 ```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.common import save_cv_fact_base
-from pathlib import Path
-save_cv_fact_base(Path('$PROJECT_ROOT/resources/MASTER_CV.docx'), Path('$PREP_DIR'))
-"
+cd "$SKILL_BASE" && python scripts/cli.py save-cv-cache "$OUTPUT_DIR"
 ```
+
+Runs the metric-drift consistency guard first and refuses (exit 1) if the fact base disagrees with the CV — a stale fact base can never be re-blessed. Pass `--cv <path>` if the master CV is not at the resolved user-data dir.
 
 ### Read master CV text
 ```bash
@@ -236,29 +194,20 @@ prefix — collapsing two historical renames into one and producing a
 meaningful folder name on the first try.
 
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.common import rename_folder_with_fit, load_json
-from pathlib import Path
-match = load_json(Path('$PREP_DIR/match_analysis.json'))
-job = load_json(Path('$PREP_DIR/job_offer_analysis.json'))
-pct = match['match_summary']['overall_fit_pct']
-new_path = rename_folder_with_fit(
-    Path('$OUTPUT_DIR'),
-    pct,
-    job_title=job.get('job_title'),
-    company=job.get('company_name'),
-)
-print(new_path)
-"
+cd "$SKILL_BASE" && python scripts/cli.py rename-with-fit "$OUTPUT_DIR"
 ```
 
-Update `$OUTPUT_DIR` and `$PREP_DIR` to point to the renamed folder.
+The command reads `overall_fit_pct`, `job_title`, and `company_name` from the
+`_prep/` JSONs and prints the new folder path. Update `$OUTPUT_DIR` and
+`$PREP_DIR` to point to it.
 
-For the cold flow, omit `job_title` / `company` — there's no fit score
-to anchor on and the cold prefix is set at folder creation, so the
-helper just becomes a no-op there.
+The cold flow uses `rename-cold-folder` instead (no fit score to anchor on —
+the slug is rebuilt from `company_profile.company_name`; the `cold-` prefix is
+preserved):
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py rename-cold-folder "$OUTPUT_DIR"
+```
 
 ## Job History Database
 
@@ -297,18 +246,7 @@ Low-level primitives remain available for scripting beyond this step: `db.find_d
 
 ### Company Lists
 ```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
-result = db.check_company_list('<company_name>')
-if result:
-    print(f\"{result['list_type'].upper()}: {result['company_name']} — {result.get('reason', 'no reason given')}\")
-else:
-    print('Not on any list')
-db.close()
-"
+cd "$SKILL_BASE" && python scripts/cli.py company-check "<company_name>"
 ```
 
 ### Record Application

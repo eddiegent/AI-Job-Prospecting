@@ -73,7 +73,7 @@ Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, val
 **Platform-vs-client check.** Platforms like Free-Work, Indeed, LinkedIn etc. post on behalf of real employers — tailoring a pack to the platform rather than the real client wastes a run. The full list lives in `config/settings.default.yaml` → `aggregators.known_platforms`.
 
 1. If the LLM already set `company_is_aggregator: true` or `source_platform`, trust it.
-2. Otherwise post-annotate: call `scripts.common.matched_aggregator(company_name, known_platforms)`. If it returns a platform name, set `company_is_aggregator: true`. See `references/commands.md` § Platform Detection.
+2. Otherwise post-annotate: run `scripts/cli.py detect-platform "$OUTPUT_DIR"`. If it prints a platform name, set `company_is_aggregator: true`. See `references/commands.md` § Platform Detection.
 3. When flagged, ask the user: *"`<company_name>` looks like a platform, not usually the employer. Who's the real client? (blank = keep `<company_name>` as-is, or 'force' to confirm you really mean this company.)"*
 4. If the user provides a real client name, rewrite `company_name` to that name, set `source_platform` to the original platform value, and set `company_is_aggregator: false`. Re-save and re-validate `job_offer_analysis.json`.
 5. If the user replies `force` (or confirms the platform really is the employer — e.g. they work at Free-Work itself), leave `company_name` alone, clear `company_is_aggregator` to `false`, and omit `source_platform`.
@@ -140,13 +140,13 @@ fact_base_for_tailoring = merge_addendum_into_fact_base(fact_base, $CUSTOMIZATIO
 
 The merged fact base must NOT be written back to `resources/cv_fact_base.json`. It's used only for this tailoring run.
 
-After the tailored CV is produced, optionally run the invariant checker from `scripts/user_customization.py` to catch forbidden title labels the model might have slipped through:
+After the tailored CV is produced, run the forbidden-label check to catch title labels the model might have slipped through (the command loads `forbidden_title_labels` from `user_prefs.yaml` itself):
 
-```python
-from scripts.user_customization import find_forbidden_title_label_violations
-violations = find_forbidden_title_label_violations(tailored_cv, $CUSTOMIZATION["prefs"])
-# if violations: surface them and regenerate
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/tailored_cv.json"
 ```
+
+Exit 1 lists the violations — surface them and regenerate.
 
 ### Steps 6, 7 — Letter and LinkedIn (parallel agents)
 

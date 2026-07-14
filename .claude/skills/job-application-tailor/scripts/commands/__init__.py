@@ -21,6 +21,8 @@ class Command:
     configure: Callable[[argparse.ArgumentParser], None]
     handler: Callable[..., None]          # (db, args) -> None
     mutating: bool = False                # True => snapshot the DB before running
+    needs_db: bool = True                 # False => handler is called with db=None
+                                          # and no DB file is opened or created
 
 
 # Registration order == the order subcommands appear in --help (kept identical
@@ -29,16 +31,19 @@ _ORDER = [
     "list", "get", "update-status", "bulk-status", "update-company",
     "update-output-folder", "stats", "skills", "company-list", "company-add",
     "company-remove", "company-check", "check-duplicate", "export-csv",
-    "doctor", "count", "regenerate-outputs", "record-application",
+    "doctor", "count", "timeline", "regenerate-outputs", "record-application",
     "rename-application",
+    # pipeline-support commands (no DB)
+    "probe-url", "cache-raw-offer", "detect-platform", "rename-with-fit",
+    "rename-cold-folder", "check-forbidden-labels", "save-cv-cache",
 ]
 
 
 def all_commands() -> list[Command]:
-    from scripts.commands import admin, companies, records, reporting, status
+    from scripts.commands import admin, companies, pipeline, records, reporting, status
 
     by_name: dict[str, Command] = {}
-    for module in (reporting, status, companies, records, admin):
+    for module in (reporting, status, companies, records, admin, pipeline):
         for cmd in module.COMMANDS:
             if cmd.name in by_name:
                 raise RuntimeError(f"duplicate command name: {cmd.name}")

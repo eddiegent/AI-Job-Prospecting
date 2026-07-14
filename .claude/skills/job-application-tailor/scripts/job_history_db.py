@@ -928,3 +928,41 @@ class JobHistoryDB:
             f"SELECT COUNT(*) as c FROM applications{where}", params
         ).fetchone()
         return row["c"]
+
+    def timeline(
+        self,
+        *,
+        group_by: str = "week",
+        since: str | None = None,
+        source: str | None = None,
+        org_type: str | None = None,
+    ) -> list[dict]:
+        """Per-week / per-month application trend, newest period first.
+
+        One row per period: total applications, average fit % (offer rows
+        only — cold rows carry no score), and per-status counts. This is the
+        deterministic replacement for the old job-stats instruction to query
+        `count --since 7d` and `--since 14d` and subtract.
+        """
+        fmts = {"week": "%Y-W%W", "month": "%Y-%m"}
+        if group_by not in fmts:
+            raise ValueError(f"group_by must be one of {sorted(fmts)}")
+        conds, params = _segment_filters(since=since, source=source, org_type=org_type)
+        where = (" WHERE " + " AND ".join(conds)) if conds else ""
+        rows = self._conn.execute(
+            f"""
+            SELECT strftime('{fmts[group_by]}', created_at) AS period,
+                   COUNT(*) AS applications,
+                   ROUND(AVG(CASE WHEN source = 'offer' THEN fit_pct END), 1) AS avg_fit_pct,
+                   SUM(CASE WHEN status = 'generated' THEN 1 ELSE 0 END) AS generated,
+                   SUM(CASE WHEN status = 'applied'   THEN 1 ELSE 0 END) AS applied,
+                   SUM(CASE WHEN status = 'interview' THEN 1 ELSE 0 END) AS interview,
+                   SUM(CASE WHEN status = 'rejected'  THEN 1 ELSE 0 END) AS rejected,
+                   SUM(CASE WHEN status = 'offer'     THEN 1 ELSE 0 END) AS offer,
+                   SUM(CASE WHEN status = 'dropped'   THEN 1 ELSE 0 END) AS dropped
+            FROM applications{where}
+            GROUP BY period ORDER BY period DESC
+            """,
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]

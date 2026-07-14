@@ -181,6 +181,37 @@ def _configure_count(p: argparse.ArgumentParser) -> None:
     _add_segment_filters(p)
 
 
+def cmd_timeline(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    """Per-week / per-month trend table: volume, average fit, status counts."""
+    since = resolve_since(args.since) if args.since else None
+    rows = db.timeline(
+        group_by=args.group_by, since=since, source=args.source, org_type=args.org_type
+    )
+    if args.json:
+        print(json.dumps({"group_by": args.group_by, "periods": rows},
+                         ensure_ascii=False, indent=2))
+        return
+    if not rows:
+        print("No applications in the selected window.")
+        return
+    print(f"{'Period':<10} | {'Apps':>4} | {'Avg fit':>7} | "
+          f"{'Gen':>3} {'App':>3} {'Int':>3} {'Rej':>3} {'Off':>3} {'Drp':>3}")
+    print("-" * 62)
+    for r in rows:
+        fit = f"{r['avg_fit_pct']:.0f}%" if r["avg_fit_pct"] is not None else "—"
+        print(f"{r['period']:<10} | {r['applications']:>4} | {fit:>7} | "
+              f"{r['generated']:>3} {r['applied']:>3} {r['interview']:>3} "
+              f"{r['rejected']:>3} {r['offer']:>3} {r['dropped']:>3}")
+
+
+def _configure_timeline(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--group-by", dest="group_by", default="week", choices=["week", "month"],
+                   help="Bucket size for the trend (default: week)")
+    p.add_argument("--since", help="Only include apps since date")
+    _add_segment_filters(p)
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
+
 COMMANDS = [
     Command('list',
             help='List applications',
@@ -200,4 +231,7 @@ COMMANDS = [
     Command('count',
             help='Show total application count',
             configure=_configure_count, handler=cmd_count),
+    Command('timeline',
+            help='Per-week / per-month application trend (volume, avg fit, status counts)',
+            configure=_configure_timeline, handler=cmd_timeline),
 ]

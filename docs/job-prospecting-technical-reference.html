@@ -336,7 +336,7 @@
       <section class="section" id="cli">
         <p class="sec-kick">05 · Command surface</p>
         <h2>The CLI — <code>cli.py</code></h2>
-        <p>Single entry point: <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. The history database is resolved automatically (<code>JOB_TAILOR_HOME</code> → legacy repo <code>resources/</code> → OS app-data dir); <code>--db &lt;path&gt;</code> overrides it. <code>build_parser()</code> is the canonical source of truth — the reference at <code>references/cli.md</code> is auto-generated from it and drift-checked by a pre-commit hook.</p>
+        <p>Single entry point: <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. The history database is resolved automatically (<code>JOB_TAILOR_HOME</code> → legacy repo <code>resources/</code> → OS app-data dir); <code>--db &lt;path&gt;</code> overrides it. Besides the DB commands, the CLI carries the pipeline-support subcommands the skills call between steps (<code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>check-forbidden-labels</code>, <code>save-cv-cache</code>) and a <code>timeline</code> trend report. <code>build_parser()</code> is the canonical source of truth — the reference at <code>references/cli.md</code> is auto-generated from it and drift-checked by a pre-commit hook.</p>
         <div class="codeblock"><span class="p">$ </span><span class="c">python scripts/cli.py list --status applied --limit 100</span></div>
 
         <h3>Querying &amp; reporting <span class="badge read">read-only</span></h3>

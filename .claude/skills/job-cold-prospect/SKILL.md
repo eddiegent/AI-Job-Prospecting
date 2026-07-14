@@ -97,23 +97,10 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
 
 Validation must pass before continuing. If it fails, fix the flagged fields and re-run.
 
-**Blacklist re-check against the canonical name.** Research may resolve "acme" to "Acme Robotics SAS" — that new name might itself be on the blacklist, so re-check:
+**Blacklist re-check against the canonical name.** Research may resolve "acme" to "Acme Robotics SAS" — that new name might itself be on the blacklist, so re-check with the canonical name from `company_profile.json`:
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import sys, io, json
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from pathlib import Path
-from scripts.job_history_db import JobHistoryDB
-profile = json.loads(Path('$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
-db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
-result = db.check_company_list(profile['company_name'])
-if result:
-    print(f\"{result['list_type'].upper()}: {result['company_name']} — {result.get('reason', 'no reason given')}\")
-else:
-    print('Not on any list')
-db.close()
-"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py company-check "<company_profile.company_name>"
 ```
 
 If the canonical name is blacklisted, stop and surface the reason. If the whitelist hits, flag it to the user as a positive signal but continue.
@@ -130,15 +117,7 @@ This mirrors the offer flow's aggregator handling (`config/settings.default.yaml
 **Canonicalise the folder slug.** Preflight built the output folder slug from the raw `$INPUT_SEED` — usually a URL, often unreadable (e.g. `cold-14052026-https-wwwlinkedincom-company-francebillet/`). Now that research has resolved `company_profile.company_name`, rebuild the slug in one shot. Idempotent — when the slug already matches, this prints the same path back and stops.
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import sys, io, json
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from pathlib import Path
-from scripts.common import rename_cold_folder_with_canonical_name
-profile = json.loads(Path(r'$PREP_DIR/company_profile.json').read_text(encoding='utf-8'))
-new = rename_cold_folder_with_canonical_name(Path(r'$OUTPUT_DIR'), profile['company_name'])
-print(str(new))
-"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py rename-cold-folder "$OUTPUT_DIR"
 ```
 
 Capture the printed path and reassign the orchestrator's shell variables before continuing — every later step reads from these:
@@ -170,26 +149,13 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
   "$SKILL_BASE/schemas/role_candidates.schema.json"
 ```
 
-**4b. Forbidden-label post-check.** The prompt tells the LLM to respect `forbidden_title_labels`, but surface-check in Python as a safety net (same spirit as `find_forbidden_title_label_violations` in the tailor skill):
+**4b. Forbidden-label post-check.** The prompt tells the LLM to respect `forbidden_title_labels`, but surface-check deterministically as a safety net. The command loads the labels from `user_prefs.yaml` itself — nothing is spliced in from context:
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python -u -c "
-import sys, io, json
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from pathlib import Path
-candidates = json.loads(Path(r'$PREP_DIR/role_candidates.json').read_text(encoding='utf-8'))
-# $CUSTOMIZATION['prefs']['forbidden_title_labels'] — pass in from context
-forbidden = $FORBIDDEN_LABELS_PYTHON_LIST  # e.g. ['Backend']
-hits = [(i, c['title']) for i,c in enumerate(candidates['candidates'])
-        for lbl in forbidden if lbl.lower() in c['title'].lower()]
-if hits:
-    print('VIOLATIONS:', hits)
-else:
-    print('OK')
-"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/role_candidates.json"
 ```
 
-If violations appear, regenerate 4a — do not ship candidates with forbidden labels.
+Exit 1 lists the violating candidates. If violations appear, regenerate 4a — do not ship candidates with forbidden labels.
 
 **4b-bis. Stack-grounding post-check.** Run `scripts/check_role_grounding.py` to confirm no tech listed in `company_profile.tech_stack_hints` has leaked into the candidates' `emphasis_areas` or rationale unless that tech is actually in the candidate's fact base. This is the deterministic guard the 4a prompt cannot enforce on its own.
 
@@ -278,11 +244,11 @@ cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
 
 **Forbidden-title post-check** — same as the tailor skill:
 
-```python
-from scripts.user_customization import find_forbidden_title_label_violations
-violations = find_forbidden_title_label_violations(tailored_cv, $CUSTOMIZATION["prefs"])
-# if violations: surface them and regenerate
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/tailored_cv.json"
 ```
+
+Exit 1 means a forbidden label reached the CV title — surface the violation and regenerate.
 
 ### Step 6 — Speculative motivation letter + short letter
 

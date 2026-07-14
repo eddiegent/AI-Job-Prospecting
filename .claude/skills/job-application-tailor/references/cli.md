@@ -26,6 +26,20 @@ bulk-status <ids> --status <status>
 | `ids` | positional | One or more application IDs |
 | `--status` | required |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` |
 
+### `cache-raw-offer`
+
+Write stdin verbatim to <run>/_prep/raw_offer.md as the audit snapshot
+
+**Signature:**
+
+```
+cache-raw-offer <target>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `target` | positional | Output folder for this run (or its _prep/ subfolder) |
+
 ### `check-duplicate`
 
 Step 3.5 — check duplicate / same-company / blacklist against a job_offer_analysis.json
@@ -41,6 +55,20 @@ check-duplicate <target> [--url <url>] [--json]
 | `target` | positional | Path to _prep/job_offer_analysis.json, or a folder containing one |
 | `--url` | optional | Override source URL if missing from the offer JSON |
 | `--json` | flag | Output as JSON |
+
+### `check-forbidden-labels`
+
+Check titles in a generated JSON against user_prefs.forbidden_title_labels (exit 1 on violation)
+
+**Signature:**
+
+```
+check-forbidden-labels <json_file>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `json_file` | positional | tailored_cv.json, role_candidates.json, or selected_role.json to check |
 
 ### `company-add`
 
@@ -116,6 +144,20 @@ count [--since <since>] [--source <source>] [--org-type <org_type>]
 | `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
 | `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 
+### `detect-platform`
+
+Print the known aggregator matching the offer's company_name (empty if none)
+
+**Signature:**
+
+```
+detect-platform <target>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `target` | positional | Output folder for this run (or its _prep/ subfolder) |
+
 ### `doctor`
 
 Read-only DB health/fingerprint report; surfaces the temp mirror and any divergence
@@ -179,6 +221,20 @@ list [--status <status>] [--company <company>] [--limit <limit>] [--since <since
 | `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 | `--json` | flag | Output as JSON |
 
+### `probe-url`
+
+HEAD-probe an offer URL before WebFetch (prints OK / BLOCKED <code> / OTHER_*)
+
+**Signature:**
+
+```
+probe-url <url>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `url` | positional | Job-offer URL to probe with a HEAD request |
+
 ### `record-application`
 
 Step 10 — read _prep/ artefacts and insert the history row
@@ -231,6 +287,49 @@ rename-application <id> --new-company <new_company> [--new-slug <new_slug>] [--n
 | `--new-slug` | optional | Override the auto-derived folder slug (defaults to '{job_title}-{new_company}') |
 | `--no-regenerate` | flag | Skip the regenerate-outputs step at the end (rename + DB + JSON only) |
 
+### `rename-cold-folder`
+
+Cold Step 3 — rename the run folder from company_profile.company_name; prints the new path
+
+**Signature:**
+
+```
+rename-cold-folder <target>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `target` | positional | Cold-flow output folder for this run |
+
+### `rename-with-fit`
+
+Offer Step 4 — rename the run folder with the fit prefix + rebuilt slug; prints the new path
+
+**Signature:**
+
+```
+rename-with-fit <target>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `target` | positional | Output folder for this run |
+
+### `save-cv-cache`
+
+Save _prep/cv_fact_base.json as the shared cache (+ .cv_hash) after the drift guard passes
+
+**Signature:**
+
+```
+save-cv-cache <target> [--cv <cv>]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `target` | positional | Output folder (or _prep/) holding the freshly extracted cv_fact_base.json |
+| `--cv` | optional | Master CV path (default: <user-data-dir>/MASTER_CV.docx) |
+
 ### `skills`
 
 Show skill gap trends
@@ -262,6 +361,24 @@ stats [--type <type>] [--since <since>] [--source <source>] [--org-type <org_typ
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `--type` | optional |  — choices: `all`, `status`, `fit`, `company`, `domain`, `org`, `skills` (default: `all`) |
+| `--since` | optional | Only include apps since date |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
+| `--json` | flag | Output as JSON |
+
+### `timeline`
+
+Per-week / per-month application trend (volume, avg fit, status counts)
+
+**Signature:**
+
+```
+timeline [--group-by <group_by>] [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--group-by` | optional | Bucket size for the trend (default: week) — choices: `week`, `month` (default: `week`) |
 | `--since` | optional | Only include apps since date |
 | `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
 | `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |

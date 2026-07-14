@@ -56,6 +56,10 @@ def main() -> None:
 
     command = {c.name: c for c in all_commands()}[args.command]
 
+    if not command.needs_db:
+        command.handler(None, args)
+        return
+
     db_path = args.db or str(resolve_user_data_dir() / "job_history.db")
     db = JobHistoryDB(db_path)
     try:
