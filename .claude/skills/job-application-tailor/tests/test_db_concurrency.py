@@ -41,15 +41,19 @@ def test_lock_is_reentrant_within_process(tmp_path):
     assert key not in _LOCK_REGISTRY                 # fully released, fd closed
 
 
-# argv: db_path, n, skill_root, hold_seconds, interval_out, disable_lock("0"/"1")
+# argv: db_path, n, skill_root, hold_seconds, interval_out, disable_lock("0"/"1"),
+#       go_file
 _WORKER = textwrap.dedent(
     """
-    import sys, time
+    import os, sys, time
     sys.path.insert(0, sys.argv[3])
     import scripts.job_history_db as J
     if sys.argv[6] == "1":                  # control: disable the lock
         J.acquire_db_lock = lambda *a, **k: False
         J.release_db_lock = lambda *a, **k: None
+    while not os.path.exists(sys.argv[7]):  # start barrier: all workers begin
+        time.sleep(0.01)                    # their hold together, so unlocked
+                                            # runs overlap even on a loaded box
     db = J.JobHistoryDB(sys.argv[1])        # lock acquired here
     start = time.time()
     time.sleep(float(sys.argv[4]))          # hold the critical section
@@ -69,6 +73,7 @@ def _run_workers(tmp_path, *, disable_lock):
     JobHistoryDB(str(db_path)).close()              # create schema first
     worker = tmp_path / "worker.py"
     worker.write_text(_WORKER)
+    go_file = tmp_path / "go"
     n = 6
     procs = []
     for i in range(n):
@@ -76,7 +81,9 @@ def _run_workers(tmp_path, *, disable_lock):
         procs.append(subprocess.Popen([
             sys.executable, str(worker), str(db_path), str(i),
             str(SKILL_ROOT), str(HOLD), str(iv), "1" if disable_lock else "0",
+            str(go_file),
         ]))
+    go_file.write_text("go")                        # release the start barrier
     for p in procs:
         assert p.wait(timeout=90) == 0
     intervals = sorted(
