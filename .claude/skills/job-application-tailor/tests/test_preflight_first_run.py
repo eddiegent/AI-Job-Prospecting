@@ -50,6 +50,39 @@ def test_first_run_seeds_templates_and_stops(tmp_path):
     )
 
 
+def test_project_root_plugin_install_falls_back_to_user_data_dir(tmp_path, monkeypatch):
+    """Regression pin: on an installed plugin (no .git/.claude between the
+    skill base and the home dir), the walk must NOT match ~/.claude — that is
+    Claude Code's global config, not a project — and packs must land under
+    the user-data dir instead of ~/output."""
+    from scripts import preflight
+
+    home = tmp_path / "userhome"
+    (home / ".claude").mkdir(parents=True)  # the global config decoy
+    skill_base = home / "AppData" / "plugins" / "job-prospecting" / "skills" / "tailor"
+    skill_base.mkdir(parents=True)
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("JOB_TAILOR_HOME", str(data_dir))
+    monkeypatch.setattr(preflight, "_git_toplevel", lambda: None)
+
+    resolved = preflight._resolve_project_root(skill_base=skill_base, home=home)
+    assert resolved == data_dir
+
+
+def test_project_root_repo_layout_still_walks_to_repo(tmp_path, monkeypatch):
+    from scripts import preflight
+
+    home = tmp_path / "userhome"
+    repo = home / "projects" / "my-repo"
+    skill_base = repo / ".claude" / "skills" / "job-application-tailor"
+    skill_base.mkdir(parents=True)
+    (repo / ".git").mkdir()
+    monkeypatch.setattr(preflight, "_git_toplevel", lambda: None)
+
+    resolved = preflight._resolve_project_root(skill_base=skill_base, home=home)
+    assert resolved == repo
+
+
 def test_first_run_is_idempotent(tmp_path):
     home = tmp_path / "fresh-home"
     first = _run_preflight(home)

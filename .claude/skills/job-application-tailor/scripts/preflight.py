@@ -59,15 +59,8 @@ from scripts.user_customization import load_customization_context  # noqa: E402
 SKILL_BASE = Path(__file__).resolve().parent.parent
 
 
-def _resolve_project_root() -> Path:
-    """Return the user's project root.
-
-    The orchestrator may invoke this from the skill base after a ``cd``,
-    so ``Path.cwd()`` would point inside the skill rather than at the
-    project. Prefer ``git rev-parse --show-toplevel`` when available, fall
-    back to walking up from the skill base looking for ``resources/`` or
-    ``.git/``, and finally fall back to ``Path.cwd()``.
-    """
+def _git_toplevel() -> Path | None:
+    """Return `git rev-parse --show-toplevel` for the cwd, or None."""
     import os
     import subprocess
 
@@ -87,15 +80,40 @@ def _resolve_project_root() -> Path:
                 return Path(top)
     except (OSError, subprocess.TimeoutExpired):
         pass
+    return None
 
-    # Walk up from the skill base looking for a project marker. We use
-    # ``.git`` and ``.claude`` rather than the legacy ``resources/`` dir
-    # so the user-data path stays funnelled through resolve_user_data_dir.
-    for parent in SKILL_BASE.parents:
+
+def _resolve_project_root(
+    skill_base: Path | None = None, home: Path | None = None
+) -> Path:
+    """Return the directory the run's ``output/`` folder lives under.
+
+    The orchestrator may invoke this from the skill base after a ``cd``,
+    so ``Path.cwd()`` would point inside the skill rather than at the
+    project. Prefer ``git rev-parse --show-toplevel`` when available, then
+    walk up from the skill base looking for a ``.git`` / ``.claude``
+    project marker — **stopping before the user's home directory**, whose
+    ``~/.claude`` is Claude Code's global config, not a project (an
+    installed plugin lives under app-data, so without the stop the walk
+    would 'find' the home dir and scatter packs into ``~/output``). When
+    no project marker exists (the normal case for an installed plugin),
+    fall back to the user-data dir, keeping packs next to the CV and DB —
+    ``init.py`` seeds ``output/`` there for exactly this case.
+    """
+    skill_base = skill_base or SKILL_BASE
+    home = home or Path.home()
+
+    top = _git_toplevel()
+    if top is not None:
+        return top
+
+    for parent in skill_base.parents:
+        if parent == home:
+            break
         if (parent / ".git").exists() or (parent / ".claude").exists():
             return parent
 
-    return Path.cwd()
+    return resolve_user_data_dir()
 
 
 def _check_dependencies() -> None:
