@@ -214,9 +214,18 @@ def acquire_db_lock(target: Path, timeout: float = 60.0) -> bool:
             return True
     try:
         fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o644)
-        os.write(fd, b"\0")                  # ensure >=1 byte for msvcrt locking
     except OSError:
         return True                          # can't create lockfile -> unlocked
+    try:
+        # Ensure >=1 byte exists for msvcrt to lock against — but only on a
+        # fresh file. Windows region locks are mandatory: writing byte 0 while
+        # another process holds the lock raises ERROR_LOCK_VIOLATION, and that
+        # must mean "wait for the holder", never "proceed unlocked". A holder
+        # always seeds the byte before locking, so a locked file is never empty.
+        if os.fstat(fd).st_size == 0:
+            os.write(fd, b"\0")
+    except OSError:
+        pass
     deadline = time.time() + timeout
     while True:
         if _try_lock_fd(fd):
