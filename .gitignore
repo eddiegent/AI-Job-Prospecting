@@ -5,6 +5,7 @@
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # OS
 Thumbs.db
@@ -19,6 +20,7 @@ Desktop.ini
 resources/MASTER_CV.docx
 resources/*.docx
 resources/cv-text/
+.daily_run/
 
 # Skill cache (auto-generated)
 resources/.cv_hash
