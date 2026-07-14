@@ -336,7 +336,7 @@
       <section class="section" id="cli">
         <p class="sec-kick">05 · Surface de commande</p>
         <h2>La CLI — <code>cli.py</code></h2>
-        <p>Point d'entrée unique : <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. La base d'historique est résolue automatiquement (<code>JOB_TAILOR_HOME</code> → <code>resources/</code> du dépôt legacy → répertoire app-data de l'OS) ; <code>--db &lt;path&gt;</code> permet de la remplacer. Au-delà des commandes BDD, la CLI porte les sous-commandes de support du pipeline que les skills appellent entre les étapes (<code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>check-forbidden-labels</code>, <code>save-cv-cache</code>) ainsi qu'un rapport de tendance <code>timeline</code>. <code>build_parser()</code> est la source canonique de vérité — la référence dans <code>references/cli.md</code> en est auto-générée et son écart est contrôlé par un hook de pre-commit.</p>
+        <p>Point d'entrée unique : <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. La base d'historique est résolue automatiquement (<code>JOB_TAILOR_HOME</code> → <code>resources/</code> du dépôt legacy → répertoire app-data de l'OS) ; <code>--db &lt;path&gt;</code> permet de la remplacer. Au-delà des commandes BDD, la CLI porte les sous-commandes de support du pipeline que les skills appellent entre les étapes (<code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>check-forbidden-labels</code>, <code>save-cv-cache</code>) ainsi qu'un rapport de tendance <code>timeline</code>. Les sous-commandes sont définies déclarativement dans le registre <code>scripts/commands/</code> (un module par domaine) — le parseur, la table de dispatch et l'ensemble des sauvegardes pré-mutation en dérivent tous, donc ils ne peuvent pas diverger. <code>build_parser()</code> est la source canonique de vérité — la référence dans <code>references/cli.md</code> en est auto-générée et son écart est contrôlé par un hook de pre-commit.</p>
         <div class="codeblock"><span class="p">$ </span><span class="c">python scripts/cli.py list --status applied --limit 100</span></div>
 
         <h3>Interrogation &amp; rapports <span class="badge read">lecture seule</span></h3>
@@ -392,7 +392,7 @@
       <section class="section" id="scripts">
         <p class="sec-kick">06 · Cartographie des modules</p>
         <h2>Inventaire des scripts</h2>
-        <p>Tous sous <code>.claude/skills/job-application-tailor/scripts/</code>. <code>common.py</code> est le hub d'utilitaires partagés importé presque partout ; deux contrôles d'ancrage partagent <code>_grounding_common.py</code> pour que leurs tables de synonymes ne puissent pas diverger.</p>
+        <p>Tous sous <code>.claude/skills/job-application-tailor/scripts/</code>. <code>cli.py</code> est un assembleur mince au-dessus du paquet-registre <code>commands/</code> (reporting / status / companies / records / admin / pipeline). <code>common.py</code> est le hub d'utilitaires partagés importé presque partout ; deux contrôles d'ancrage partagent <code>_grounding_common.py</code> pour que leurs tables de synonymes ne puissent pas diverger.</p>
 
         <h3>BDD &amp; chemins</h3>
         <div class="tbl-wrap"><table class="tbl">

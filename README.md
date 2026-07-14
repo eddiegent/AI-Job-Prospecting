@@ -2,6 +2,8 @@
 
 Five [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills — four user-facing plus a shared internal sub-skill (`job-prep-cv`) — that automate a job search end-to-end: generate a fully tailored application pack from a job offer and your master CV, send speculative (cold) applications to companies with no advertised vacancy, track every application in SQLite, and report on your pipeline.
 
+**Current release: v1.0.0** (2026-07-15) — git tags `v1.0.0` and `job-prospecting--v1.0.0` (the marketplace version convention). See [CHANGELOG.md](CHANGELOG.md).
+
 ## What you get
 
 `/job-application-tailor` takes a job offer (URL or pasted text) and your master CV, and produces:
@@ -23,7 +25,7 @@ It also tells apart **real employers from intermediaries** — an ESN/SSII, an i
 | Skill | Description |
 |-------|-------------|
 | `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped), filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
-| `/job-stats` | Application statistics, trends, skill gap analysis, exports |
+| `/job-stats` | Application statistics, weekly/monthly timeline trends, skill gap analysis, exports |
 
 ## Documentation
 
@@ -51,15 +53,16 @@ The plugin is distributed as a Claude Code plugin bundle. You have three install
 
 The `@<marketplace-name>` suffix is **required** — it disambiguates plugins that share a name across marketplaces; there is no bare-name install. Publishing this path yourself also needs a [`.claude-plugin/marketplace.json`](https://code.claude.com/docs/en/plugin-marketplaces) catalog at the repo root — it isn't in the repo yet, which is why this path is marked *once published*. Until then, use option B or C below.
 
-### B. From a local directory (dev / trial)
+### B. From a clone (project skills — dev / trial)
 
-Clone this repo and point Claude Code at it:
+Clone the repo (optionally at the release tag) and open Claude Code inside it — the five skills under `.claude/skills/` load as **project skills**, no plugin install needed:
 
+```bash
+git clone --branch v1.0.0 https://github.com/eddiegent/AI-Job-Prospecting.git
+cd AI-Job-Prospecting && claude
 ```
-claude --plugin-dir /path/to/job-prospecting
-```
 
-Skills become `/job-prospecting:job-application-tailor`, `/job-prospecting:job-cold-prospect`, `/job-prospecting:job-stats`, `/job-prospecting:job-status`.
+Note: `claude --plugin-dir` must point at a **built bundle** (option C's `dist/job-prospecting/`), not at this repo — plugin auto-discovery scans `skills/` at the plugin root, and the repo keeps its skills under `.claude/skills/`. With the bundle, skills become `/job-prospecting:job-application-tailor`, `/job-prospecting:job-cold-prospect`, `/job-prospecting:job-stats`, `/job-prospecting:job-status`.
 
 ### C. From a built bundle
 
@@ -133,6 +136,13 @@ A pre-commit hook keeps CLI documentation in sync with `cli.py` and lints markdo
 
 ```bash
 git config core.hooksPath .githooks
+```
+
+Tests run as two pytest invocations (the suites can't share one process — both declare a `tests` package):
+
+```bash
+python -m pytest ".claude/skills/job-application-tailor" -q
+python -m pytest ".claude/skills/job-cold-prospect" -q
 ```
 
 See [CLAUDE.md](CLAUDE.md) for details. The canonical CLI reference is auto-generated at [.claude/skills/job-application-tailor/references/cli.md](.claude/skills/job-application-tailor/references/cli.md).
