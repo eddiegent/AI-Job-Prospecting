@@ -22,8 +22,8 @@ Shared infrastructure (master CV, fact base, DOCX generation, history DB, user c
 - `output/` — generated packs. Cold packs are prefixed `cold-[DDMMYYYY]-[company-slug]/` to distinguish them from offer-based packs.
 
 **`SKILL_BASE`** (`.claude/skills/job-cold-prospect`) — this skill's own assets:
-- `prompts/` — cold-specific prompts (added in Phases B–E)
-- `schemas/` — `company_profile.schema.json`, `role_candidates.schema.json` (added in Phases B–C)
+- `prompts/` — cold-specific prompts
+- `schemas/` — `company_profile.schema.json`, `role_candidates.schema.json`, `selected_role.schema.json`
 
 **`SKILL_BASE_TAILOR`** (`.claude/skills/job-application-tailor`) — sibling skill, imported:
 - `scripts/` — DOCX generation, validation, paths, user customization, history DB, common helpers
@@ -78,7 +78,7 @@ Produce a structured profile of the target company. This step anchors every down
 1. Company's own website (About, Careers, Products, Team / Leadership): **WebFetch**
 2. Indeed company data: **`mcp__claude_ai_Indeed__get_company_data`** — call with the company name, cite the Indeed company URL
 3. LinkedIn company page: **WebFetch** (best-effort; gated results go into `research_gaps`)
-4. Recent news (last 12 months): **WebSearch** scoped to `site:news.example OR after:2025-04-17` etc.
+4. Recent news (last 12 months): **WebSearch** scoped to e.g. `site:news.example OR after:<date 12 months before today>`
 5. Tech radar hints: **WebFetch** / **WebSearch** for Stack Share, the company's GitHub org, or job listings even on aggregators
 
 Web tools require foreground approval — do not spawn a subagent for this step.
@@ -147,7 +147,7 @@ PREP_DIR="$OUTPUT_DIR/_prep"
 
 The rename happens **before** `selected_role.json`, the tailored CV, the letters, the LinkedIn output, the dossier, the DOCX/PDF files, the `run_summary.json`, and the history-DB insert are produced — so nothing downstream needs path fix-up. If the target folder already exists (left over from a previous run on the same company), the helper raises `FileExistsError`; surface the error to the user and let them decide whether to delete the old pack or pick a different angle.
 
-**Phase B stop point.** For now the pipeline ends here: the research has produced `company_profile.json` plus the cached raw research, and the output folder is named after the canonical company. Summarise the profile back to the user — company name, **organisation type** (and whether it's inferred), size band, mission, 3–5 top findings, research gaps — and note that Phases C+ (role inference, tailoring, letters, dossier) are not yet implemented. Do **not** attempt to generate a CV, letter, or LinkedIn pack in Phase B.
+**Research checkpoint.** At this point the research has produced `company_profile.json` plus the cached raw research, and the output folder is named after the canonical company. Summarise the profile back to the user — company name, **organisation type** (and whether it's inferred), size band, mission, 3–5 top findings, research gaps — then continue to Step 4.
 
 ### Step 4 — Target-role inference
 
@@ -250,7 +250,7 @@ cd "$SKILL_BASE_TAILOR" && python scripts/check_role_grounding.py \
 
 If non-zero, surface the violations to the user, ask them to amend the override (or revisit the pick), and only proceed once the check passes — Step 5 onward consumes `selected_role.emphasis_areas` directly and any leak here propagates into the CV, letters, LinkedIn, and dossier.
 
-**Phase C stop point.** For now the pipeline ends here: research + selected role are locked. Summarise the pick back to the user — title, source, emphasis areas, risk notes — and note that Phases D+ (CV tailoring, letters, LinkedIn, dossier) are not yet implemented.
+**Role checkpoint.** Research + selected role are now locked. Summarise the pick back to the user — title, source, emphasis areas, risk notes — then continue to Step 5.
 
 ### Step 5 — Tailor the CV
 
@@ -334,7 +334,7 @@ The dossier has nine sections in order: Quick reference, Company at a glance, Wh
 
 ### Step 9 — Generate output files
 
-With Phases D–E complete, the tailor skill's `scripts/generate_outputs.py` receives CV + letters, the LinkedIn JSON, AND the dossier Markdown. Passing `--dossier-markdown` makes the script render `$PREP_DIR/company_dossier.md` into `$OUTPUT_DIR/company_dossier.html` (responsive, mobile-friendly) — the same treatment the offer flow gives its interview prep.
+The tailor skill's `scripts/generate_outputs.py` receives CV + letters, the LinkedIn JSON, AND the dossier Markdown. Passing `--dossier-markdown` makes the script render `$PREP_DIR/company_dossier.md` into `$OUTPUT_DIR/company_dossier.html` (responsive, mobile-friendly) — the same treatment the offer flow gives its interview prep.
 
 ```bash
 cd "$SKILL_BASE_TAILOR" && python scripts/generate_outputs.py \
