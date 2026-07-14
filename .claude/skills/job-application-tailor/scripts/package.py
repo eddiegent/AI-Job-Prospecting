@@ -40,7 +40,13 @@ from typing import Iterable
 
 
 PLUGIN_NAME = "job-prospecting"
-DEFAULT_SKILLS = ("job-application-tailor", "job-stats", "job-status")
+DEFAULT_SKILLS = (
+    "job-application-tailor",
+    "job-prep-cv",
+    "job-cold-prospect",
+    "job-stats",
+    "job-status",
+)
 
 # Directories that must never appear anywhere under a packaged skill.
 # Matched by basename at every depth.

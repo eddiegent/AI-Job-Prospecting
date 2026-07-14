@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from scripts.package import (
+    DEFAULT_SKILLS,
     PACKAGE_EXCLUDE_DIR_NAMES,
     build_plugin_tree,
     package_plugin,
@@ -23,12 +24,29 @@ from scripts.package import (
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 PLUGIN_MANIFEST = REPO_ROOT / ".claude-plugin" / "plugin.json"
-SKILLS = ("job-application-tailor", "job-stats", "job-status")
+SKILLS = DEFAULT_SKILLS
 
 
 # ---------------------------------------------------------------------------
 # Manifest
 # ---------------------------------------------------------------------------
+
+def test_default_skills_covers_every_repo_skill() -> None:
+    """DEFAULT_SKILLS must name every skill that exists in the repo.
+
+    Regression pin: the packager once listed only three of five skills, so
+    the built bundle shipped a tailor skill whose Steps 0-2.5 delegate to a
+    missing job-prep-cv, and no job-cold-prospect at all.
+    """
+    repo_skills = {
+        p.parent.name
+        for p in (REPO_ROOT / ".claude" / "skills").glob("*/SKILL.md")
+    }
+    assert set(DEFAULT_SKILLS) == repo_skills, (
+        f"DEFAULT_SKILLS {sorted(DEFAULT_SKILLS)} != repo skills "
+        f"{sorted(repo_skills)}"
+    )
+
 
 def test_plugin_manifest_is_valid_json() -> None:
     assert PLUGIN_MANIFEST.exists(), (
