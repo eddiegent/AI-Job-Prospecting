@@ -1,9 +1,51 @@
 # Changelog
 
-Build history for the job-prospecting skills. Kept out of the individual
+Build history for the job-prospecting toolkit. Kept out of the individual
 `SKILL.md` bodies so those stay lean (a SKILL.md loads into context on every
 trigger; historical notes don't need to ride along). Newest entries first
-within each skill.
+within each section.
+
+## v1.0.0 (unreleased)
+
+The version declared in `.claude-plugin/plugin.json`. Tagging is held until
+the packaged bundle passes a fresh-machine smoke test (see
+`PLUGIN_ROADMAP.md` § Phase 5). Everything below is part of this release.
+
+## Repo & infrastructure
+
+- **Publication readiness (2026-07-14)** — the packager now bundles all
+  **five** skills (`job-prep-cv` and `job-cold-prospect` were missing, so a
+  built bundle shipped a tailor skill that broke at Step 0); one canonical
+  plugin manifest at `.claude-plugin/plugin.json` (the unsupported per-skill
+  `plugin.json` files are gone); skill setup blocks resolve both the dev
+  layout and the installed-plugin layout (`$CLAUDE_PLUGIN_ROOT/skills/…`);
+  the shippable surface is scrubbed of author-specific data (gitignored
+  `example_*.json` excluded from bundles by name, prompt/schema examples
+  genericized). Windows fix: the cross-process DB lock no longer silently
+  degrades under contention (mandatory region locks made a waiter's lockfile
+  seed write fail, which was misread as "proceed unlocked").
+- **Review sprint 1 (2026-07-14)** — removed stale "Phase B/C stop point"
+  instructions that halted the cold-prospect pipeline mid-run; untracked
+  three personal job-offer texts committed before their ignore rule existed;
+  `.daily_run/` and `.pytest_cache/` gitignored; the `Write(output/**)`
+  permission the tailor skill's parallel subagents need now ships in the
+  tracked `.claude/settings.json`.
+- **Documentation set (2026-07-09 → 14)** — bilingual (EN + FR) non-technical
+  overview and technical reference under `docs/`, plus a hub page; a
+  pre-commit documentation-drift gate blocks commits that change
+  doc-relevant source without touching `docs/` (bypass: `DOCS_OK=1`).
+- **Pipeline hardening Phases 0–3 (2026-06-25 → 07-07)** — DB schema v3
+  (`org_type` column + `--source` / `--org-type` segmentation across `stats`,
+  `skills`, `count`, `list`); automatic DB snapshot to `db-backups/` before
+  every mutating CLI command; `--expect-company` guard on `update-status` /
+  `update-company`; `bulk-status` for multi-id updates; `record-application
+  --supersede` to retire prior duplicate rows; `doctor` diagnostics; filename
+  slug length cap. Details in `PIPELINE_HARDENING_ROADMAP.md`.
+
+## job-application-tailor
+
+Maintained in its own changelog:
+[`.claude/skills/job-application-tailor/CHANGELOG.md`](.claude/skills/job-application-tailor/CHANGELOG.md).
 
 ## job-cold-prospect
 

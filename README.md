@@ -1,6 +1,6 @@
 # Job Prospecting — a Claude Code plugin
 
-Four [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills that automate a job search end-to-end: generate a fully tailored application pack from a job offer and your master CV, send speculative (cold) applications to companies with no advertised vacancy, track every application in SQLite, and report on your pipeline.
+Five [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills — four user-facing plus a shared internal sub-skill (`job-prep-cv`) — that automate a job search end-to-end: generate a fully tailored application pack from a job offer and your master CV, send speculative (cold) applications to companies with no advertised vacancy, track every application in SQLite, and report on your pipeline.
 
 ## What you get
 
