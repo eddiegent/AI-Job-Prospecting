@@ -24,13 +24,20 @@ if __package__ in (None, ""):  # direct run: make `scripts.*` importable
 from scripts.commands import all_commands  # noqa: E402
 from scripts.common import force_utf8_stdio  # noqa: E402
 from scripts.job_history_db import JobHistoryDB  # noqa: E402
+from scripts.paths import resolve_user_data_dir  # noqa: E402
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py", description="Job history database CLI")
-    parser.add_argument("--db", required=True, help="Path to SQLite database")
+    parser.add_argument(
+        "--db",
+        default=None,
+        help="Path to SQLite database (default: <user-data-dir>/job_history.db, "
+        "resolved via JOB_TAILOR_HOME, then the legacy repo resources/ layout, "
+        "then the OS app-data dir)",
+    )
     sub = parser.add_subparsers(dest="command")
     for cmd in all_commands():
         cmd.configure(sub.add_parser(cmd.name, help=cmd.help))
@@ -49,7 +56,8 @@ def main() -> None:
 
     command = {c.name: c for c in all_commands()}[args.command]
 
-    db = JobHistoryDB(args.db)
+    db_path = args.db or str(resolve_user_data_dir() / "job_history.db")
+    db = JobHistoryDB(db_path)
     try:
         # Auto-backup before any command that writes (roadmap 1.2). Best-effort:
         # snapshot_before_mutation never raises, so a backup hiccup can't block

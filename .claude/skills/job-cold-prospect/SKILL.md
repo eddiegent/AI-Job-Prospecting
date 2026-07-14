@@ -369,8 +369,7 @@ Insert the generated pack into the shared `job_history.db` so it segments cleanl
 Use the `record-application` wrapper. The `cold-` folder prefix tells it to take the cold-flow path: read `selected_role.json` + `company_profile.json`, build the snapshot subset, set `source='cold'`, and leave the offer-only scoring columns (`fit_*`, `direct_count`, `transferable_count`, `gap_count`) NULL. `job_skills` rows stay empty by design — the cold flow has no JD to extract requirements from.
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
-  record-application "$OUTPUT_DIR" --language "<fr|en>"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py record-application "$OUTPUT_DIR" --language "<fr|en>"
 ```
 
 Pass the language explicitly — there is no JD to auto-detect from. Defaults to `fr` if omitted, matching the cold-flow default. The wrapper reads `company_profile.canonical_url` for `source_url`; pass `--url` if you want a different URL recorded (e.g. the leadership page used to anchor the outreach). See `$SKILL_BASE_TAILOR/references/commands.md` § Record Application for the full flag reference.
@@ -378,7 +377,7 @@ Pass the language explicitly — there is no JD to auto-detect from. Defaults to
 **Re-prospecting a company that already has a pack.** The `cold-DDMMYYYY-` prefix carries the run date, so a second run on a later date lands in a *new* folder and, by default, records a *second* live row (the historical `#41` vs `#100` duplication). If this is a deliberate refresh of the same role — not a distinct role at the same company — add `--supersede`: it marks any prior live application to the **same company + same role** as `dropped` before recording the new one, leaving one active row per role. A different role at the same company is untouched. First check what already exists so you (and the user) choose deliberately:
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" list --company "<company>"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py list --company "<company>"
 ```
 
 **Note on `job-stats`.** Cold rows record their `source` (`cold`) and, when the profile classified it, their `org_type`. Segment any report with `--source cold` (or `offer`) and narrow to an organisation type with `--org-type esn|end_employer|staffing_agency|recruitment_agency|unknown` — available on `stats`, `skills`, `count`, and `list`, plus a `stats --type org` breakdown. See `job-stats`.

@@ -21,13 +21,14 @@ SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"   # dev/repo la
 if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
   SKILL_BASE="$CLAUDE_PLUGIN_ROOT/skills/job-application-tailor"   # installed plugin
 fi
-DB_PATH="$PROJECT_ROOT/resources/job_history.db"
 ```
 
-**Important**: Paths may contain spaces. Always quote variables in commands — use `"$DB_PATH"`, `"$SKILL_BASE"`, etc. Do NOT store compound commands in a variable (e.g. `CLI="python ... $DB_PATH"`) because spaces in the path will break argument splitting. Instead, write the full command each time:
+The CLI resolves the history database automatically (`JOB_TAILOR_HOME` env var → legacy repo `resources/` layout → OS app-data dir). Pass `--db <path>` only to target a different file.
+
+**Important**: Paths may contain spaces. Always quote variables in commands — use `"$SKILL_BASE"`, `"$PROJECT_ROOT"`, etc. Do NOT store compound commands in a variable because spaces in the path will break argument splitting. Instead, write the full command each time:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" <command> [args...]
+cd "$SKILL_BASE" && python scripts/cli.py <command> [args...]
 ```
 
 ## Available reports
@@ -37,35 +38,35 @@ Parse `$ARGUMENTS` to determine which report(s) the user wants. If no specific r
 ### Overview dashboard
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all
+cd "$SKILL_BASE" && python scripts/cli.py stats --type all
 ```
 
 ### Individual reports
 
 By status only:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type status
+cd "$SKILL_BASE" && python scripts/cli.py stats --type status
 ```
 
 By fit level:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type fit
+cd "$SKILL_BASE" && python scripts/cli.py stats --type fit
 ```
 
 By company:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type company
+cd "$SKILL_BASE" && python scripts/cli.py stats --type company
 ```
 
 By domain:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type domain
+cd "$SKILL_BASE" && python scripts/cli.py stats --type domain
 ```
 
 By organisation type (cold-flow employer vs ESN vs agency; offer-flow and
 legacy rows collapse into a single `(unset)` bucket):
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type org
+cd "$SKILL_BASE" && python scripts/cli.py stats --type org
 ```
 
 ### Skill gap trends
@@ -73,7 +74,7 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type org
 Shows which required skills appear most often across applications, helping identify what to learn next:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" skills --limit 20
+cd "$SKILL_BASE" && python scripts/cli.py skills --limit 20
 ```
 
 ### Time-based filtering
@@ -81,7 +82,7 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" skills --limit 20
 If the user asks about recent activity (e.g. "this week", "last 30 days", "since March"), add `--since`:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py stats --type all --since 30d
 ```
 
 Map natural-language time expressions to `--since` values:
@@ -102,11 +103,11 @@ to a cold-flow organisation type (`end_employer` / `esn` / `staffing_agency` /
 
 ```bash
 # How many speculative applications have I sent?
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count --source cold
+cd "$SKILL_BASE" && python scripts/cli.py count --source cold
 # Skills most requested by ESNs specifically
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" skills --org-type esn
+cd "$SKILL_BASE" && python scripts/cli.py skills --org-type esn
 # Full offer-flow report for the last month
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --source offer --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py stats --type all --source offer --since 30d
 ```
 
 Fit-% averages are computed from offer rows only — cold rows carry no fit score
@@ -116,7 +117,7 @@ by design, and the SQL average ignores them automatically.
 
 For structured output, add `--json` to any command:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --json
+cd "$SKILL_BASE" && python scripts/cli.py stats --type all --json
 ```
 
 ### CSV export
@@ -124,14 +125,14 @@ cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type all --jso
 Export all applications to a CSV file:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" export-csv --output "$PROJECT_ROOT/output/applications_export.csv"
+cd "$SKILL_BASE" && python scripts/cli.py export-csv --output "$PROJECT_ROOT/output/applications_export.csv"
 ```
 
 ### Quick count
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count --since 7d
+cd "$SKILL_BASE" && python scripts/cli.py count
+cd "$SKILL_BASE" && python scripts/cli.py count --since 7d
 ```
 
 ### Time-series & trends
@@ -142,8 +143,8 @@ These reports are generated by querying the database with time filters and prese
 
 ```bash
 # Query each week separately and compile results
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count --since 7d
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" count --since 14d
+cd "$SKILL_BASE" && python scripts/cli.py count --since 7d
+cd "$SKILL_BASE" && python scripts/cli.py count --since 14d
 # Subtract to get per-week counts, then present as:
 ```
 
@@ -161,7 +162,7 @@ Example output:
 **Fit trend over time** — Query `stats --type fit --json` for successive time windows and compute the average fit % per period:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type fit --json --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py stats --type fit --json --since 30d
 ```
 
 Example output:
@@ -177,7 +178,7 @@ Example output:
 **Status pipeline** — Show how applications move through statuses over time by querying `stats --type status --json` for each period:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" stats --type status --json --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py stats --type status --json --since 30d
 ```
 
 Example output:

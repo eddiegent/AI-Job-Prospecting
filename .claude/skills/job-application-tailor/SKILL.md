@@ -84,8 +84,7 @@ Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, val
 After the job offer analysis is complete, run the one-shot `check-duplicate` subcommand — it wraps all three history checks, the same-company context surface, and the blacklist lookup in a single call. See `references/commands.md` § Duplicate Detection.
 
 ```bash
-python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
-  check-duplicate "$PREP_DIR" --url "<job-url>"
+python scripts/cli.py check-duplicate "$PREP_DIR" --url "<job-url>"
 ```
 
 Exit code `0` = clear to proceed. Exit code `1` = flagged (duplicate or blacklisted) — stop and surface the output to the user before continuing.

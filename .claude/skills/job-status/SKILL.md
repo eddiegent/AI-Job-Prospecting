@@ -19,13 +19,14 @@ SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-application-tailor"   # dev/repo la
 if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
   SKILL_BASE="$CLAUDE_PLUGIN_ROOT/skills/job-application-tailor"   # installed plugin
 fi
-DB_PATH="$PROJECT_ROOT/resources/job_history.db"
 ```
 
-**Important**: Paths may contain spaces. Always quote variables in commands — use `"$DB_PATH"`, `"$SKILL_BASE"`, etc. Do NOT store compound commands in a variable (e.g. `CLI="python ... $DB_PATH"`) because spaces in the path will break argument splitting. Instead, write the full command each time:
+The CLI resolves the history database automatically (`JOB_TAILOR_HOME` env var → legacy repo `resources/` layout → OS app-data dir). Pass `--db <path>` only to target a different file.
+
+**Important**: Paths may contain spaces. Always quote variables in commands — use `"$SKILL_BASE"`, `"$PROJECT_ROOT"`, etc. Do NOT store compound commands in a variable because spaces in the path will break argument splitting. Instead, write the full command each time:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" <command> [args...]
+cd "$SKILL_BASE" && python scripts/cli.py <command> [args...]
 ```
 
 ## What it does
@@ -42,27 +43,27 @@ This skill interacts with the SQLite database at `resources/job_history.db` (man
 
 List all recent applications (default limit 50):
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list
+cd "$SKILL_BASE" && python scripts/cli.py list
 ```
 
 Filter by status (e.g. only rejected, only applied):
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --status rejected
+cd "$SKILL_BASE" && python scripts/cli.py list --status rejected
 ```
 
 Filter by company:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --company "Cegid"
+cd "$SKILL_BASE" && python scripts/cli.py list --company "Cegid"
 ```
 
 Combine filters:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --status applied --company "OPEN" --limit 10
+cd "$SKILL_BASE" && python scripts/cli.py list --status applied --company "OPEN" --limit 10
 ```
 
 If the user mentions a time period (e.g. "this week", "last 30 days"), add `--since`:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --since 30d
+cd "$SKILL_BASE" && python scripts/cli.py list --since 30d
 ```
 
 Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO date (`2026-03-01`).
@@ -71,8 +72,8 @@ To list only one flow, add `--source offer` or `--source cold`; to list only a
 cold-flow organisation type, add `--org-type` (`end_employer` / `esn` /
 `staffing_agency` / `recruitment_agency` / `unknown`):
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --source cold
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --org-type esn
+cd "$SKILL_BASE" && python scripts/cli.py list --source cold
+cd "$SKILL_BASE" && python scripts/cli.py list --org-type esn
 ```
 
 ### If the user wants to update a status
@@ -87,7 +88,7 @@ loudly instead of silently mutating the wrong record.
 1. Parse `$ARGUMENTS` for a company name, job title, or application ID, plus the new status.
 2. **Re-resolve to a current id by company name** (even if the user gave an id):
    ```bash
-   cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" list --company "<name>"
+   cd "$SKILL_BASE" && python scripts/cli.py list --company "<name>"
    ```
    If ambiguous (several matches), show them and ask the user to pick one.
 3. **Before executing the update**, show the current application details and the proposed change:
@@ -98,12 +99,12 @@ loudly instead of silently mutating the wrong record.
    id isn't the company you resolved (exit 2, nothing changed):
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-status <app_id> <new_status> --expect-company "<company>"
+cd "$SKILL_BASE" && python scripts/cli.py update-status <app_id> <new_status> --expect-company "<company>"
 ```
 
 To look up an application's current details first:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" get <app_id>
+cd "$SKILL_BASE" && python scripts/cli.py get <app_id>
 ```
 
 `update-company` takes the same `--expect-company` guard. A mutation also
@@ -120,7 +121,7 @@ bulk is inherently multi-company). Any missing id is reported and skipped, and
 the command exits non-zero so a typo doesn't pass silently.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" bulk-status 104 102 98 --status applied
+cd "$SKILL_BASE" && python scripts/cli.py bulk-status 104 102 98 --status applied
 ```
 
 Still confirm the list of ids and the target status with the user before running.
@@ -130,8 +131,8 @@ Still confirm the list of ids and the target status with the user before running
 Use when the real hiring company wasn't known at generation time (e.g. the offer was posted via a platform like Free-Work) and has since been identified, or when the output folder was renamed on disk.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-company <app_id> "<new name>"
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" update-output-folder <app_id> "<new path>"
+cd "$SKILL_BASE" && python scripts/cli.py update-company <app_id> "<new name>"
+cd "$SKILL_BASE" && python scripts/cli.py update-output-folder <app_id> "<new path>"
 ```
 
 Both commands update `updated_at`. `update-company` also refreshes `company_name_norm` so future duplicate detection sees the new name. Do not edit the database directly — these two primitives cover the common cases.
@@ -141,7 +142,7 @@ Both commands update `updated_at`. `update-company` also refreshes `company_name
 When the real client surfaces after generation (the classic "Free-Work posted on behalf of Omnitech SA" case), `rename-application` does the whole dance in one shot: filesystem rename, DB updates, `_prep/job_offer_analysis.json` patch, `run_summary.json` path rewrite, and a regenerate-outputs pass so DOCX/PDF filenames pick up the new slug.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" rename-application <app_id> \
+cd "$SKILL_BASE" && python scripts/cli.py rename-application <app_id> \
   --new-company "Omnitech SA"
 ```
 
@@ -163,22 +164,22 @@ If the old company matched a known aggregator (`Free-Work`, `Indeed`, `LinkedIn`
 
 Show blacklist and whitelist:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-list
+cd "$SKILL_BASE" && python scripts/cli.py company-list
 ```
 
 Check if a specific company is listed:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-check "<company_name>"
+cd "$SKILL_BASE" && python scripts/cli.py company-check "<company_name>"
 ```
 
 Add to blacklist or whitelist:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-add "<company_name>" --list-type blacklist --reason "optional reason"
+cd "$SKILL_BASE" && python scripts/cli.py company-add "<company_name>" --list-type blacklist --reason "optional reason"
 ```
 
 Remove from lists:
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$DB_PATH" company-remove "<company_name>"
+cd "$SKILL_BASE" && python scripts/cli.py company-remove "<company_name>"
 ```
 
 ## Display format

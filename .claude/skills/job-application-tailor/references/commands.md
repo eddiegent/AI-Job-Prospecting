@@ -285,8 +285,7 @@ cd "$SKILL_BASE" && python scripts/backfill_history.py \
 Preferred: the `check-duplicate` subcommand wraps all three history checks (exact URL, company+title, fuzzy skill overlap), the same-company context surface, and the blacklist lookup in one call. It reads company/title/skills/URL from `_prep/job_offer_analysis.json`.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
-  check-duplicate "$PREP_DIR" --url "<offer-url-if-not-in-JSON>"
+cd "$SKILL_BASE" && python scripts/cli.py check-duplicate "$PREP_DIR" --url "<offer-url-if-not-in-JSON>"
 ```
 
 - Accepts either the folder (`$OUTPUT_DIR` or `$PREP_DIR`) or the `_prep/job_offer_analysis.json` path directly.
@@ -317,8 +316,7 @@ db.close()
 `record-application` is the one-line wrapper for Step 10. It auto-detects offer vs. cold flow from the folder prefix (`cold-…` → cold), reads the appropriate `_prep/` artefacts (`job_offer_analysis.json` + `match_analysis.json` for offer; `selected_role.json` + `company_profile.json` for cold), composes the `add_application()` kwargs once, and inserts.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
-  record-application "$OUTPUT_DIR"
+cd "$SKILL_BASE" && python scripts/cli.py record-application "$OUTPUT_DIR"
 ```
 
 Accepts either a filesystem path or an integer application id (resolved via the DB — useful when re-recording an already-renamed run). Flags:
@@ -355,8 +353,7 @@ Pass `--skip-pdf` to produce DOCX only.
 For subsequent runs against an existing folder, `regenerate-outputs` is the one-line wrapper. It reads `job_title` and `detected_language` from `_prep/job_offer_analysis.json` and invokes `generate_outputs.py` with all ten flags already composed. Use this for Step 9 regeneration (deterministic doc rebuilding); steps 5-8 still need the skill's LLM flow.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
-  regenerate-outputs "$OUTPUT_DIR"
+cd "$SKILL_BASE" && python scripts/cli.py regenerate-outputs "$OUTPUT_DIR"
 ```
 
 Accepts either a filesystem path or an integer application id (resolved via the DB). Add `--check` to validate `_prep/` completeness without running generation (exit 0 = ready, 1 = missing files). Add `--skip-pdf` to produce DOCX only.
@@ -366,8 +363,7 @@ Accepts either a filesystem path or an integer application id (resolved via the 
 When the real client surfaces after generation (the Free-Work / Omnitech case), `rename-application` is the atomic wrapper that swaps the folder, DB row, `_prep/job_offer_analysis.json`, and `run_summary.json` in one shot, then runs `regenerate-outputs` so DOCX/PDF filenames pick up the new slug.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py --db "$PROJECT_ROOT/resources/job_history.db" \
-  rename-application <app_id> --new-company "<real client name>"
+cd "$SKILL_BASE" && python scripts/cli.py rename-application <app_id> --new-company "<real client name>"
 ```
 
 - Auto-slug keeps `{fit_level}-{date}-` and uses `{job_title}-{new_company}` for the rest. Override with `--new-slug "<slug>"`.

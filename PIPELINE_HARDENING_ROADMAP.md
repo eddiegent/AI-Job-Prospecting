@@ -50,7 +50,7 @@ one commit so any can be reverted independently. Check off as they land.
   - [x] 1.1 `db doctor` fingerprint (read-only) — done; surfaced the temp mirror
   - [x] 1.2 Auto-backup before DB mutations — done (`snapshot_before_mutation`, git-ignored `db-backups/`)
   - [x] 1.3 Natural-key resolution + id-reuse warning — done (`--expect-company` guard + job-status workflow)
-  - [ ] 1.4 *(design-only, deferred)* Portable export/import/merge + stable `JOB_TAILOR_HOME`
+  - [~] 1.4 *(partially done 2026-07-14)* Sub-task 1 shipped: `cli.py --db` now defaults to `resolve_user_data_dir()/job_history.db` and the satellites (`job-stats`, `job-status`, cold Step 10) no longer hardcode `resources/job_history.db`. Export/import JSONL and the mirror mtime-gate remain deferred pending environment decisions.
 - [x] **Phase 2 — Pipeline segmentation (B)** · done
   - [x] 2.1 DB migration v2→v3: `org_type` column + snapshot field — live DB
     migrated in place (105 rows, fingerprint unchanged `b1875f391258cfcd`)
