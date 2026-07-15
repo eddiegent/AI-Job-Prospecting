@@ -44,14 +44,16 @@ Full documentation lives in [`docs/`](docs/) as self-contained HTML pages — op
 
 The plugin is distributed as a Claude Code plugin bundle. You have three install paths.
 
-### A. From a marketplace (once published)
+### A. From the marketplace
 
 ```
-/plugin marketplace add <owner>/<repo>
-/plugin install job-prospecting@<marketplace-name>
+/plugin marketplace add eddiegent/AI-Job-Prospecting
+/plugin install job-prospecting@ai-job-prospecting
 ```
 
-The `@<marketplace-name>` suffix is **required** — it disambiguates plugins that share a name across marketplaces; there is no bare-name install. Publishing this path yourself also needs a [`.claude-plugin/marketplace.json`](https://code.claude.com/docs/en/plugin-marketplaces) catalog at the repo root — it isn't in the repo yet, which is why this path is marked *once published*. Until then, use option B or C below.
+The `@ai-job-prospecting` suffix is **required** — it disambiguates plugins that share a name across marketplaces; there is no bare-name install. The repo hosts its own [`.claude-plugin/marketplace.json`](https://code.claude.com/docs/en/plugin-marketplaces) catalog: the plugin's source is the repo root, with skill discovery pointed at `.claude/skills/`, so the marketplace install and the dev checkout share one layout.
+
+Note for marketplace testing: `/plugin marketplace add <local-path>` copies the **working tree verbatim** into the plugin cache — it does not respect `.gitignore`. Test local marketplace changes from a clean clone, not from a working copy that holds personal data (`resources/`, `output/`). Installs from GitHub clone the git tree and are unaffected.
 
 ### B. From a clone (project skills — dev / trial)
 

@@ -5,6 +5,21 @@ Build history for the job-prospecting toolkit. Kept out of the individual
 trigger; historical notes don't need to ride along). Newest entries first
 within each section.
 
+## Unreleased
+
+- **Marketplace catalog (2026-07-15)** — `.claude-plugin/marketplace.json`
+  makes the repo its own plugin marketplace (`ai-job-prospecting`). The plugin
+  entry uses `source: "./"` with skill discovery overridden to
+  `./.claude/skills/`, so the marketplace install reuses the dev layout — no
+  committed dist tree. Live `/plugin install` flow verified on Windows in an
+  isolated `CLAUDE_CONFIG_DIR`/`CLAUDE_CODE_PLUGIN_CACHE_DIR`: marketplace
+  add → install (v1.0.0 resolved from `plugin.json`) → all five skills
+  discovered (`job-prep-cv` correctly hidden) → headless
+  `/job-prospecting:job-status` ran its CLI from the cached tree and honored
+  `JOB_TAILOR_HOME`. Caveat documented in the README: adding a marketplace
+  from a **local path** copies the working tree verbatim (ignores
+  `.gitignore`) — test from a clean clone; GitHub installs clone the git tree.
+
 ## v1.0.0 — 2026-07-15
 
 First tagged release (git tags `v1.0.0` and `job-prospecting--v1.0.0`, the

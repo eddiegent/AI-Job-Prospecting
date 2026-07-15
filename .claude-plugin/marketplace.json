@@ -1,0 +1,16 @@
+{
+  "name": "ai-job-prospecting",
+  "owner": {
+    "name": "Eddie Gent"
+  },
+  "description": "Marketplace for the Job Prospecting plugin: tailored and speculative application packs grounded in your master CV, with SQLite tracking and stats.",
+  "plugins": [
+    {
+      "name": "job-prospecting",
+      "source": "./",
+      "description": "Job search automation: generate tailored application packs (CV, motivation letter, LinkedIn messages, interview prep) from a job offer, or speculative cold-application packs from just a company name — grounded in your master CV so nothing is invented. Tracks applications in SQLite with duplicate detection, status updates, and stats/skill-gap reporting.",
+      "category": "productivity",
+      "skills": "./.claude/skills/"
+    }
+  ]
+}
