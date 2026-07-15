@@ -47,11 +47,11 @@ The plugin is distributed as a Claude Code plugin bundle. You have three install
 ### A. From the marketplace
 
 ```
-/plugin marketplace add eddiegent/AI-Job-Prospecting
+/plugin marketplace add https://github.com/eddiegent/AI-Job-Prospecting
 /plugin install job-prospecting@ai-job-prospecting
 ```
 
-The `@ai-job-prospecting` suffix is **required** — it disambiguates plugins that share a name across marketplaces; there is no bare-name install. The repo hosts its own [`.claude-plugin/marketplace.json`](https://code.claude.com/docs/en/plugin-marketplaces) catalog: the plugin's source is the repo root, with skill discovery pointed at `.claude/skills/`, so the marketplace install and the dev checkout share one layout.
+Use the full HTTPS URL — the `owner/repo` shorthand clones over SSH and fails unless you have GitHub SSH keys configured. The `@ai-job-prospecting` suffix is **required** — it disambiguates plugins that share a name across marketplaces; there is no bare-name install. The repo hosts its own [`.claude-plugin/marketplace.json`](https://code.claude.com/docs/en/plugin-marketplaces) catalog: the plugin's source is the repo root, with skill discovery pointed at `.claude/skills/`, so the marketplace install and the dev checkout share one layout.
 
 Note for marketplace testing: `/plugin marketplace add <local-path>` copies the **working tree verbatim** into the plugin cache — it does not respect `.gitignore`. Test local marketplace changes from a clean clone, not from a working copy that holds personal data (`resources/`, `output/`). Installs from GitHub clone the git tree and are unaffected.
 
