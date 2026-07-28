@@ -147,6 +147,62 @@ cd "$SKILL_BASE" && python scripts/cli.py timeline --group-by month --source off
 
 `--since`, `--source`, and `--org-type` work exactly as on `stats`. The text output is a ready-made table (newest period first); add `--json` to reformat it yourself, e.g. as a markdown table with trend arrows or +/- deltas.
 
+By default each period buckets applications by when the **pack was generated**.
+Add `--basis applied` to bucket by when the application was actually **sent** —
+usually the question being asked when someone says "how many did I send in
+June?". Applications never sent drop out of that view entirely.
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py timeline --group-by month --basis applied
+```
+
+## Pipeline history reports
+
+Every status change is recorded with its date (schema v4), which makes three
+questions answerable that current-status counting cannot reach.
+
+### Funnel — where applications actually get to
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py funnel
+```
+
+Counts applications that **ever reached** each stage, with conversion rates, and
+lists `rejected` / `dropped` separately as exits rather than as stages everyone
+fails. These numbers are legitimately larger than `stats --type status`: an
+application sitting at `rejected` today still passed through `applied`, and
+often `interview` — only the history preserves that.
+
+### Response time — how fast employers reply
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py response-time
+```
+
+Days from applying to the employer's first move, with median, fastest, slowest,
+and a count still waiting.
+
+Events reconstructed by the v4 migration are deliberately **excluded** — their
+dates were inferred from generation dates, so a duration measured against one
+describes how long a pack sat around, not how fast anyone replied. On a
+migrated database this report therefore starts out empty and fills in as real
+status changes get recorded. If the user asks why it's empty, that's the honest
+answer: the data to compute it was overwritten before the history table existed.
+
+### Follow-up — applications that have gone quiet
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py follow-up
+cd "$SKILL_BASE" && python scripts/cli.py follow-up --days 30
+```
+
+Applications whose most recent event is `applied`, with no movement for 21+
+days (override with `--days`), longest wait first. This is the actionable one —
+present it as a to-do list, not a statistic.
+
+All three take `--source`, `--org-type`, and `--json`; `funnel` and
+`response-time` also take `--since`.
+
 ## Display format
 
 Present reports using clean markdown tables or formatted text. For the overview dashboard, use section headers to separate each report. Highlight actionable insights — for example, if many applications share the same skill gaps, suggest that as a learning priority.

@@ -24,8 +24,8 @@ It also tells apart **real employers from intermediaries** — an ESN/SSII, an i
 
 | Skill | Description |
 |-------|-------------|
-| `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped), filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
-| `/job-stats` | Application statistics, weekly/monthly timeline trends, skill gap analysis, exports |
+| `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped) — backdate a change with `--at` so response-time stats stay honest, attach a note, view an application's full status history, filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
+| `/job-stats` | Application statistics, weekly/monthly timeline trends, funnel conversion, employer response times, a follow-up list of applications gone quiet, skill gap analysis, exports |
 
 ## Documentation
 

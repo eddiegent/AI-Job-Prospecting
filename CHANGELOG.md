@@ -7,6 +7,18 @@ within each section.
 
 ## Unreleased
 
+- **Status history — schema v4 (2026-07-28)** — status changes are now appended
+  to an `application_events` table instead of overwriting a single column, so an
+  application's path through the pipeline survives. `update-status` /
+  `bulk-status` gain `--at` (when it actually happened) and `--note`; four new
+  reports arrive — `history`, `funnel`, `response-time`, `follow-up` — and
+  `timeline` gains `--basis applied`. The migration reconstructs what pre-v4
+  rows still support and marks every reconstructed row `[backfill]`, which
+  `response-time` filters out because those dates were inferred rather than
+  observed. `applications.status` stays the cached current value, so existing
+  queries are unaffected. Full detail in
+  `.claude/skills/job-application-tailor/CHANGELOG.md`.
+
 - **Marketplace catalog (2026-07-15)** — `.claude-plugin/marketplace.json`
   makes the repo its own plugin marketplace (`ai-job-prospecting`). The plugin
   entry uses `source: "./"` with skill discovery overridden to

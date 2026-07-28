@@ -31,7 +31,10 @@ _ORDER = [
     "list", "get", "update-status", "bulk-status", "update-company",
     "update-output-folder", "stats", "skills", "company-list", "company-add",
     "company-remove", "company-check", "check-duplicate", "export-csv",
-    "doctor", "count", "timeline", "regenerate-outputs", "record-application",
+    "doctor", "count", "timeline",
+    # event-sourced reports (schema v4)
+    "history", "response-time", "funnel", "follow-up",
+    "regenerate-outputs", "record-application",
     "rename-application",
     # pipeline-support commands (no DB)
     "probe-url", "cache-raw-offer", "detect-platform", "rename-with-fit",

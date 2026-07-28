@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.job_history_db import JobHistoryDB
+from scripts.job_history_db import _SCHEMA_VERSION, JobHistoryDB
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ def test_v2_db_upgrades_to_v3_on_first_open(tmp_path: Path) -> None:
 
     db = JobHistoryDB(str(db_path))
     try:
-        assert _schema_version(db_path) == 3
+        assert _schema_version(db_path) == _SCHEMA_VERSION
         assert "org_type" in _column_names(db_path, "applications")
     finally:
         db.close()
@@ -163,7 +163,7 @@ def test_v1_db_fast_forwards_to_v3(tmp_path: Path) -> None:
 
     db = JobHistoryDB(str(db_path))
     try:
-        assert _schema_version(db_path) == 3
+        assert _schema_version(db_path) == _SCHEMA_VERSION
         cols = _column_names(db_path, "applications")
         assert {"source", "company_profile_snapshot", "org_type"} <= set(cols)
         row = db._conn.execute(
@@ -180,11 +180,11 @@ def test_reopen_of_v3_db_is_noop(tmp_path: Path) -> None:
     db_path = tmp_path / "history.db"
     _build_db(db_path, _V2_SCHEMA_SQL, 2)
     JobHistoryDB(str(db_path)).close()
-    assert _schema_version(db_path) == 3
+    assert _schema_version(db_path) == _SCHEMA_VERSION
 
     db = JobHistoryDB(str(db_path))
     try:
-        assert _schema_version(db_path) == 3
+        assert _schema_version(db_path) == _SCHEMA_VERSION
     finally:
         db.close()
 
@@ -192,7 +192,7 @@ def test_reopen_of_v3_db_is_noop(tmp_path: Path) -> None:
 def test_fresh_db_is_created_at_v3(tmp_path: Path) -> None:
     db = JobHistoryDB(str(tmp_path / "fresh.db"))
     try:
-        assert _schema_version(tmp_path / "fresh.db") == 3
+        assert _schema_version(tmp_path / "fresh.db") == _SCHEMA_VERSION
         assert "org_type" in _column_names(tmp_path / "fresh.db", "applications")
     finally:
         db.close()

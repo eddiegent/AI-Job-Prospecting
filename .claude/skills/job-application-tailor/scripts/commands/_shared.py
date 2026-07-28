@@ -30,6 +30,37 @@ def resolve_since(value: str) -> str:
     return value
 
 
+def resolve_occurred_at(value: str) -> str:
+    """Normalise a user-supplied `--at` into an ISO timestamp.
+
+    Accepts a plain date ('2026-07-14', taken as midday so week bucketing isn't
+    thrown off by timezone drift at the boundaries), a full ISO timestamp, or
+    'today'/'yesterday'. Rejects anything else loudly — a silently misparsed
+    date would corrupt every duration computed from it, and the whole point of
+    backdating is that the date is trustworthy.
+    """
+    raw = value.strip()
+    today = datetime.now()
+    if raw == "today":
+        return today.isoformat()
+    if raw == "yesterday":
+        return (today - timedelta(days=1)).isoformat()
+    for fmt, midday in (("%Y-%m-%d", True), ("%Y-%m-%dT%H:%M:%S", False),
+                        ("%Y-%m-%d %H:%M:%S", False), ("%Y-%m-%dT%H:%M", False)):
+        try:
+            dt = datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+        return dt.replace(hour=12).isoformat() if midday else dt.isoformat()
+    try:                                    # last resort: full ISO with micros/offset
+        return datetime.fromisoformat(raw).isoformat()
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"--at: could not read {value!r} as a date. Use 2026-07-14, "
+            "2026-07-14T09:30, 'today', or 'yesterday'."
+        ) from None
+
+
 # ---------------------------------------------------------------------------
 # Formatters
 

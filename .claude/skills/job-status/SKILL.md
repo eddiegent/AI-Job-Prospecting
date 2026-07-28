@@ -107,6 +107,42 @@ To look up an application's current details first:
 cd "$SKILL_BASE" && python scripts/cli.py get <app_id>
 ```
 
+#### Recording *when* it happened
+
+Every status change is appended to the application's history (schema v4), and
+the reports built on that history — `response-time`, `funnel`, `follow-up` —
+are only as good as the dates. `--at` records when the change actually
+happened, rather than when the user got round to telling the tool:
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py update-status 104 applied --at 2026-07-14 --note "via LinkedIn Easy Apply"
+```
+
+Accepts `2026-07-14`, `2026-07-14T09:30`, `today`, or `yesterday`. **When the
+user mentions a day — "I applied to Cegid on Tuesday", "I sent that one last
+week" — convert it and pass `--at`.** Without it the change is stamped now, and
+a Friday catch-up session makes four applications sent on Monday all look
+same-day, which quietly inflates every response-time figure.
+
+`--note` is free text for context worth keeping ("no answer after 3 weeks",
+"rejected after technical round"). Both flags work on `bulk-status` too, where
+they apply to every id in the batch.
+
+Two dates are refused outright rather than stored: one before the application
+existed, and one in the future. Both are almost always a typo, and either would
+corrupt the history quietly.
+
+#### Viewing an application's history
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py history <app_id>
+```
+
+Shows every recorded status change, oldest first. Entries marked `[backfill]`
+were reconstructed by the v4 migration from `created_at`/`updated_at` — the
+tool knows those transitions happened but not exactly when, so treat their
+dates as approximate.
+
 `update-company` takes the same `--expect-company` guard. A mutation also
 auto-snapshots the DB to `db-backups/` first, so a wrong write is recoverable.
 
@@ -121,7 +157,7 @@ bulk is inherently multi-company). Any missing id is reported and skipped, and
 the command exits non-zero so a typo doesn't pass silently.
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py bulk-status 104 102 98 --status applied
+cd "$SKILL_BASE" && python scripts/cli.py bulk-status 104 102 98 --status applied --at 2026-07-14
 ```
 
 Still confirm the list of ids and the target status with the user before running.

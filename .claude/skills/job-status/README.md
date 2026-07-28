@@ -12,7 +12,13 @@ generated --> applied --> interview --> offer
                   \--> rejected
 ```
 
-Transitions are forward-only -- you cannot move an application back to a previous state.
+That is the usual path, not a constraint: any status can follow any other.
+Correcting a mis-recorded status means going backwards, and `dropped` (decided
+not to pursue) can follow any state, so the tool deliberately doesn't enforce an
+order.
+
+Every change is appended to the application's history with the date it happened,
+so the sequence is preserved rather than overwritten.
 
 ## Example: Listing Applications
 
@@ -39,6 +45,38 @@ Change status to: interview?
 
 Updated application #23 to "interview".
 ```
+
+## Example: Recording When It Happened
+
+If you're catching up on paperwork, say when the change actually happened —
+otherwise everything lands on today's date and the response-time and follow-up
+reports in `/job-stats` inherit your bookkeeping lag.
+
+```
+> /job-status Dassault applied --at 2026-07-14 --note "via LinkedIn Easy Apply"
+
+#23 Dassault Sys. -- Senior .NET Developer: generated -> applied (dated 2026-07-14)
+```
+
+`--at` accepts `2026-07-14`, `2026-07-14T09:30`, `today`, or `yesterday`, and
+works on batch updates too. A date before the application existed, or in the
+future, is refused rather than stored — both are almost always typos, and either
+would quietly corrupt the history.
+
+## Example: Viewing an Application's History
+
+```
+> /job-status history 70
+
+#70 Département de l'Essonne -- Responsable d'applications  [now: interview]
+  2026-06-16T10:48  generated   [backfill] generated date from created_at
+  2026-07-10T12:00  applied     via LinkedIn Easy Apply
+  2026-07-18T12:00  interview
+```
+
+Entries marked `[backfill]` were reconstructed by the schema-v4 migration from
+the old `created_at` / `updated_at` columns — the tool knows those transitions
+happened but not exactly when, so treat their dates as approximate.
 
 ## Example: Renaming an Application
 

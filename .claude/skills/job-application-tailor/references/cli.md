@@ -18,13 +18,15 @@ Set the same status on several applications at once (one backup covers the batch
 **Signature:**
 
 ```
-bulk-status <ids> --status <status>
+bulk-status <ids> --status <status> [--at <at>] [--note <note>]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `ids` | positional | One or more application IDs |
 | `--status` | required |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` |
+| `--at` | optional | When the change actually happened (2026-07-14, 'today', 'yesterday', or a full ISO timestamp). Defaults to now — set it when you're catching up on paperwork, otherwise response-time stats inherit the delay. |
+| `--note` | optional | Free-text context stored with the status change |
 
 ### `cache-raw-offer`
 
@@ -186,6 +188,40 @@ export-csv [--output <output>]
 | --- | --- | --- |
 | `--output` | optional | Output file path (prints to stdout if omitted) |
 
+### `follow-up`
+
+Applications with no movement since you applied
+
+**Signature:**
+
+```
+follow-up [--days <days>] [--source <source>] [--org-type <org_type>] [--json]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--days` | optional | Minimum days of silence to flag (default: 21) (default: `21`) |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
+| `--json` | flag | Output as JSON |
+
+### `funnel`
+
+Applications that ever reached each stage, with conversion rates
+
+**Signature:**
+
+```
+funnel [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--since` | optional | Only include apps since date |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
+| `--json` | flag | Output as JSON |
+
 ### `get`
 
 Get a single application
@@ -194,6 +230,21 @@ Get a single application
 
 ```
 get <id> [--json]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `id` | positional | Application ID |
+| `--json` | flag | Output as JSON |
+
+### `history`
+
+Show one application's status history
+
+**Signature:**
+
+```
+history <id> [--json]
 ```
 
 | Arg | Kind | Description |
@@ -315,6 +366,23 @@ rename-with-fit <target>
 | --- | --- | --- |
 | `target` | positional | Output folder for this run |
 
+### `response-time`
+
+Days between applying and the first employer response
+
+**Signature:**
+
+```
+response-time [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--since` | optional | Only include apps since date |
+| `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
+| `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
+| `--json` | flag | Output as JSON |
+
 ### `save-cv-cache`
 
 Save _prep/cv_fact_base.json as the shared cache (+ .cv_hash) after the drift guard passes
@@ -373,12 +441,13 @@ Per-week / per-month application trend (volume, avg fit, status counts)
 **Signature:**
 
 ```
-timeline [--group-by <group_by>] [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
+timeline [--group-by <group_by>] [--basis <basis>] [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `--group-by` | optional | Bucket size for the trend (default: week) — choices: `week`, `month` (default: `week`) |
+| `--basis` | optional | Bucket by pack generation date (default) or by when the application was actually sent — choices: `generated`, `applied` (default: `generated`) |
 | `--since` | optional | Only include apps since date |
 | `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |
 | `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
@@ -422,7 +491,7 @@ Update application status
 **Signature:**
 
 ```
-update-status <id> <status> [--expect-company <expect_company>]
+update-status <id> <status> [--expect-company <expect_company>] [--at <at>] [--note <note>]
 ```
 
 | Arg | Kind | Description |
@@ -430,3 +499,5 @@ update-status <id> <status> [--expect-company <expect_company>]
 | `id` | positional | Application ID |
 | `status` | positional |  — choices: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` |
 | `--expect-company` | optional | Safety guard: refuse if application <id> is not this company (ids can point elsewhere after a DB restore — see `doctor`) |
+| `--at` | optional | When the change actually happened (2026-07-14, 'today', 'yesterday', or a full ISO timestamp). Defaults to now — set it when you're catching up on paperwork, otherwise response-time stats inherit the delay. |
+| `--note` | optional | Free-text context stored with the status change |

@@ -1,4 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Job Prospecting with AI</title>
+
 
 <style>
   /* ---------- Tokens ---------- */
@@ -86,32 +92,71 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  /* ---------- Deck / scroller ---------- */
-  .deck{
-    height:100vh;
-    overflow-y:auto;
-    scroll-snap-type:y proximity;
-    scroll-behavior:smooth;
-    position:relative;
-  }
-  @media (prefers-reduced-motion:reduce){
-    .deck{scroll-behavior:auto;}
-  }
 
-  .slide{
-    scroll-snap-align:start;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    padding:84px 32px 72px;
-    position:relative;
+  /* ---------- Layout (shared with the technical reference) ---------- */
+  .layout{display:grid;grid-template-columns:272px minmax(0,1fr);}
+  .sidebar{
+    position:sticky;top:0;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);background:var(--surface);
+    padding:26px 20px 40px;
   }
-  .slide__inner{
-    width:100%;
-    max-width:var(--maxw);
-    margin:0 auto;
+  .content{min-width:0;padding:0 40px 120px;}
+  .content__col{max-width:900px;margin:0 auto;}
+
+  .side-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;text-decoration:none;}
+  .side-brand:hover b{color:var(--accent-2);}
+  .side-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:5px;}
+  .side-brand .seal{width:18px;height:18px;border:1.5px solid var(--accent);border-radius:5px;display:grid;place-items:center;flex:none;}
+  .side-brand .seal::after{content:"";width:6px;height:6px;background:var(--accent);border-radius:1px;}
+  .side-brand b{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);}
+  .side-sub{font-size:12px;color:var(--ink-faint);margin:0 0 22px 28px;font-family:var(--font-mono);}
+  .toc{display:flex;flex-direction:column;gap:1px;}
+  .toc a{
+    text-decoration:none;color:var(--ink-soft);font-size:13.5px;padding:6px 10px;border-radius:7px;
+    border-left:2px solid transparent;display:flex;gap:9px;align-items:baseline;transition:background .15s,color .15s;
   }
+  .toc a .tn{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);min-width:16px;}
+  .toc a:hover{background:var(--surface-2);color:var(--ink);}
+  .toc a.active{background:var(--accent-quiet);color:var(--accent-2);border-left-color:var(--accent);font-weight:600;}
+  .toc a.active .tn{color:var(--accent-2);}
+
+  .navtoggle{
+    display:none;position:fixed;top:12px;left:12px;z-index:70;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;
+    background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:8px 12px;cursor:pointer;box-shadow:var(--shadow);
+  }
+  .scrim{display:none;}
+
+  /* Sections, not slides: they take the height their content needs. */
+  .section{padding:44px 0;border-top:2px solid var(--line);scroll-margin-top:20px;}
+  .section__inner{width:100%;}
+  /* The opening section carries the title, so it gets hero spacing and no rule. */
+  .section--hero{padding:64px 0 36px;border-top:0;}
+
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+    .navtoggle{display:block;}
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;width:280px;height:100vh;z-index:65;
+      transform:translateX(-100%);transition:transform .25s ease;box-shadow:var(--shadow);
+    }
+    .sidebar.open{transform:none;}
+    .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:64;}
+    .content{padding:0 22px 100px;}
+    .section--hero{padding-top:70px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .sidebar{transition:none;} }
+
+  /* ---------- Type: document scale (was presentation scale) ---------- */
+  h1{font-size:clamp(2.1rem,4.2vw,3.1rem);letter-spacing:-.01em;margin:0 0 16px;}
+  h2{font-size:1.7rem;line-height:1.15;margin:0 0 8px;letter-spacing:-.005em;}
+  h3{font-size:1.02rem;font-family:var(--font-body);margin:26px 0 10px;color:var(--ink);}
+  .lead{font-size:1.06rem;color:var(--ink-soft);max-width:70ch;line-height:1.6;}
+  /* Reveal-on-scroll belonged to the deck; a reference-style page shows its
+     content immediately. The classes stay in the markup, inert. */
+  .reveal{opacity:1 !important;transform:none !important;transition:none !important;}
+
 
   /* eyebrow / section rail */
   .eyebrow{
@@ -133,11 +178,7 @@
   .eyebrow b{color:var(--accent-2);font-weight:600;}
 
   h1,h2,h3{font-family:var(--font-display);font-weight:600;line-height:1.08;text-wrap:balance;margin:0;}
-  h1{font-size:clamp(2.6rem,6vw,4.4rem);letter-spacing:-.01em;}
-  h2{font-size:clamp(1.9rem,4vw,2.9rem);letter-spacing:-.005em;}
-  h3{font-size:1.18rem;line-height:1.2;}
   p{margin:0;}
-  .lead{font-size:clamp(1.05rem,2vw,1.28rem);color:var(--ink-soft);max-width:62ch;line-height:1.55;}
   .kicker-note{color:var(--ink-soft);max-width:60ch;}
 
   strong{color:var(--ink);font-weight:600;}
@@ -166,6 +207,10 @@
     font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--ink-faint);display:flex;align-items:center;gap:9px;
   }
+  .brandmark{text-decoration:none;transition:color .15s;}
+  .brandmark:hover{color:var(--accent-2);}
+  .brandmark:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:4px;}
+  @media (max-width:760px){ .brandmark__label{display:none;} }
   .brandmark .seal{
     width:16px;height:16px;border:1.5px solid var(--accent);border-radius:50%;
     display:grid;place-items:center;flex:none;
@@ -455,7 +500,10 @@
   /* ---------- Getting started ---------- */
   .install-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
   @media (max-width:820px){.install-grid{grid-template-columns:1fr;}}
-  .install-card{padding:20px;border-radius:var(--radius-s);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;}
+  /* min-width:0 lets the card shrink below its longest command line; without it
+     the grid item's automatic minimum size pins the column open and .cmdblock's
+     own overflow-x never gets a chance to scroll. */
+  .install-card{padding:20px;border-radius:var(--radius-s);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0;}
   .install-card .badge{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);margin-bottom:9px;}
   .install-card h3{font-size:1.05rem;margin-bottom:7px;}
   .install-card p{font-size:.85rem;color:var(--ink-soft);margin-bottom:12px;line-height:1.45;}
@@ -463,6 +511,7 @@
     font-family:var(--font-mono);font-size:12px;line-height:1.65;
     background:var(--surface-2);border:1px solid var(--line-soft);border-radius:8px;
     padding:11px 13px;color:var(--ink);overflow-x:auto;white-space:pre;margin-top:auto;
+    min-width:0;
   }
   .cmdblock .p{color:var(--accent-2);user-select:none;}
   .cmd{font-family:var(--font-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--accent-2);white-space:nowrap;}
@@ -492,19 +541,121 @@
 
   a{color:var(--accent-2);}
   ::selection{background:var(--accent-quiet);}
+
+  /* ---------- Doc bar: route home + language, always reachable ---------- */
+  .docbar{
+    position:fixed;top:12px;right:12px;z-index:45;
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;
+  }
+  .docbar a{text-decoration:none;}
+  .docbar__home{
+    display:flex;align-items:center;gap:7px;
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    padding:7px 11px;color:var(--ink-soft);box-shadow:var(--shadow);
+    transition:color .15s,border-color .15s;
+  }
+  .docbar__home:hover{color:var(--accent-2);border-color:var(--accent);}
+  .docbar__seal{
+    width:13px;height:13px;border:1.5px solid var(--accent);border-radius:4px;
+    display:grid;place-items:center;flex:none;
+  }
+  .docbar__seal::after{content:"";width:4px;height:4px;background:var(--accent);border-radius:1px;}
+  .docbar__lang{
+    display:flex;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden;box-shadow:var(--shadow);
+  }
+  .docbar__lang a{padding:7px 10px;color:var(--ink-faint);transition:background .15s,color .15s;}
+  .docbar__lang a + a{border-left:1px solid var(--line);}
+  .docbar__lang a:hover{color:var(--ink);background:var(--surface-2);}
+  .docbar__lang a[aria-current="true"]{background:var(--accent-quiet);color:var(--accent-2);font-weight:600;}
+  .docbar a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media (max-width:560px){ .docbar__label{display:none;} .docbar{top:10px;right:10px;} }
+
+  /* ---------- Print ---------- */
+  @media print{
+    /* Print on white with dark ink whatever the screen theme is: the dark
+       palette arrives via prefers-color-scheme / [data-theme] and would
+       otherwise carry straight onto the page. */
+    :root, :root[data-theme="dark"], :root[data-theme="light"]{
+      --ground:#fff; --surface:#fff; --surface-2:#f1f3f6;
+      --ink:#111; --ink-soft:#333; --ink-faint:#666;
+      --line:#b4b9c0; --line-soft:#d8dce1;
+      --accent:#8a5410; --accent-2:#7a4a0c;
+      --accent-quiet:#f6efe4; --accent-line:#c9a97a;
+      --shadow:none;
+    }
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    html,body{background:#fff;}
+    /* Fixed chrome is navigation; paper has none. */
+    .progress,.docbar,.navtoggle,.scrim,.toast,.totop,.anchor,.hint,.dots,.brandmark{
+      display:none !important;
+    }
+    a{color:inherit;text-decoration:none;}
+  }
+
+  @media print{
+    @page{ margin:16mm 14mm; }
+    body{font-size:10.5pt;line-height:1.45;}
+    .sidebar{display:none !important;}
+    .layout{display:block;}
+    .content{padding:0;}
+    .content__col{max-width:none;margin:0;}
+    .section{padding:14px 0;}
+    .section--hero{padding:0 0 14px;}
+    h1{font-size:20pt;} h2{font-size:14pt;} h3{font-size:11pt;}
+    .lead{font-size:11pt;}
+    h1,h2,h3,h4{break-after:avoid;}
+    .eyebrow{break-after:avoid;}
+    .section,.card,.install-card,.beats li{break-inside:avoid;}
+    .cmdblock{overflow:visible !important;white-space:pre-wrap;}
+  }
 </style>
+</head>
+<body>
 
 <div class="progress" id="progress"></div>
-<div class="brandmark"><span class="seal"></span> Job Prospecting with AI</div>
+<button class="navtoggle" id="navtoggle" aria-label="Toggle table of contents">&#9776; Contents</button>
+<div class="scrim" id="scrim"></div>
 
-<nav class="dots" id="dots" aria-label="Slides"></nav>
-<div class="hint" id="hint"><span class="key">↓</span> scroll or use arrow keys</div>
+<nav class="docbar" aria-label="Documentation">
+  <a class="docbar__home" href="index.html" title="All documentation" aria-label="All documentation">
+    <span class="docbar__seal" aria-hidden="true"></span><span class="docbar__label">Docs</span>
+  </a>
+  <span class="docbar__lang" role="group" aria-label="Language">
+    <a href="job-prospecting-with-ai.fr.html" hreflang="fr" lang="fr">FR</a>
+    <a href="job-prospecting-with-ai.html" hreflang="en" lang="en" aria-current="true">EN</a>
+  </span>
+</nav>
 
-<main class="deck" id="deck">
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a class="side-brand" href="index.html"><span class="seal" aria-hidden="true"></span><b>Overview</b></a>
+    <p class="side-sub">Job Prospecting · plugin v1.0.0</p>
+    <nav class="toc" id="toc">
+      <a href="#s1"><span class="tn">1</span> Overview</a>
+      <a href="#s2"><span class="tn">2</span> The promise</a>
+      <a href="#s3"><span class="tn">3</span> Big picture</a>
+      <a href="#s4"><span class="tn">4</span> The pipeline</a>
+      <a href="#s5"><span class="tn">5</span> The fit gate</a>
+      <a href="#s6"><span class="tn">6</span> Two ways in</a>
+      <a href="#s7"><span class="tn">7</span> What you get</a>
+      <a href="#s8"><span class="tn">8</span> The tracker</a>
+      <a href="#s9"><span class="tn">9</span> The guardrail</a>
+      <a href="#s10"><span class="tn">10</span> By the numbers</a>
+      <a href="#s-install"><span class="tn">11</span> Install</a>
+      <a href="#s-run"><span class="tn">12</span> Set up & run</a>
+      <a href="#s11"><span class="tn">13</span> In one line</a>
+    </nav>
+  </aside>
+
+  <main class="content" id="deck">
+    <div class="content__col">
 
   <!-- 1 · HERO -->
-  <section class="slide" id="s1" data-title="Overview">
-    <div class="slide__inner">
+  <section class="section section--hero" id="s1" data-title="Overview">
+    <div class="section__inner">
       <h1 class="hero__title reveal in">
         <span class="sub">Job Prospecting with AI · a field guide for non-technical readers</span>
         Your whole job search,<br>run by an AI workshop.
@@ -527,9 +678,9 @@
   </section>
 
   <!-- 2 · THE PROMISE -->
-  <section class="slide" id="s2" data-title="The promise">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>01</b> The idea</p>
+  <section class="section" id="s2" data-title="The promise">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>02</b> The idea</p>
       <div class="split">
         <div>
           <h2 class="reveal">Tailoring every application by hand is slow. Faking it is fatal.</h2>
@@ -550,9 +701,9 @@
   </section>
 
   <!-- 3 · BIG PICTURE / FAN-OUT -->
-  <section class="slide" id="s3" data-title="Big picture">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>02</b> The big picture</p>
+  <section class="section" id="s3" data-title="Big picture">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>03</b> The big picture</p>
       <h2 class="reveal" style="margin-bottom:10px;">One CV in. Many perfectly-fitted applications out.</h2>
       <p class="kicker-note reveal d1" style="margin-bottom:34px;">
         You maintain a single “master CV.” For each job, the toolkit produces a version re-emphasised for
@@ -579,9 +730,9 @@
   </section>
 
   <!-- 4 · PIPELINE -->
-  <section class="slide" id="s4" data-title="The pipeline">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>03</b> What happens on a run</p>
+  <section class="section" id="s4" data-title="The pipeline">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>04</b> What happens on a run</p>
       <h2 class="reveal" style="margin-bottom:26px;">Five stages, roughly ten steps — all automatic.</h2>
       <div class="phases">
         <div class="phase reveal d1">
@@ -629,9 +780,9 @@
   </section>
 
   <!-- 5 · FIT GATE -->
-  <section class="slide" id="s5" data-title="The fit gate">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>04</b> The honesty check on effort</p>
+  <section class="section" id="s5" data-title="The fit gate">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>05</b> The honesty check on effort</p>
       <h2 class="reveal" style="margin-bottom:28px;">It won't dress up a bad match.</h2>
       <div class="gate-wrap">
         <div>
@@ -656,9 +807,9 @@
   </section>
 
   <!-- 6 · TWO WAYS IN -->
-  <section class="slide" id="s6" data-title="Two ways in">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>05</b> Two ways to reach out</p>
+  <section class="section" id="s6" data-title="Two ways in">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>06</b> Two ways to reach out</p>
       <h2 class="reveal" style="margin-bottom:26px;">Answering an ad — or knocking on a door.</h2>
       <div class="ways">
         <div class="way reveal d1">
@@ -686,9 +837,9 @@
   </section>
 
   <!-- 7 · DELIVERABLES -->
-  <section class="slide" id="s7" data-title="What you get">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>06</b> What lands in your folder</p>
+  <section class="section" id="s7" data-title="What you get">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>07</b> What lands in your folder</p>
       <h2 class="reveal" style="margin-bottom:26px;">Everything you need to actually apply.</h2>
       <div class="deliverables">
         <div class="deliv reveal d1"><div class="fmt">Word · PDF</div><h3>Tailored CV</h3><p>Your CV, re-emphasised for this specific role — same facts, better aimed.</p></div>
@@ -703,9 +854,9 @@
   </section>
 
   <!-- 8 · TRACKER / FUNNEL -->
-  <section class="slide" id="s8" data-title="The tracker">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>07</b> Never lose track</p>
+  <section class="section" id="s8" data-title="The tracker">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>08</b> Never lose track</p>
       <h2 class="reveal" style="margin-bottom:12px;">Every application, tracked from draft to offer.</h2>
       <p class="kicker-note reveal d1" style="margin-bottom:30px;">Each pack is logged in a personal history. You move it along as things happen, and ask for reports any time — “how many did I send this month?”, “which skills keep coming up that I should learn?”</p>
       <div class="funnel">
@@ -722,9 +873,9 @@
   </section>
 
   <!-- 9 · TRUTHFULNESS -->
-  <section class="slide" id="s9" data-title="The guardrail">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>08</b> The guardrail that makes it trustworthy</p>
+  <section class="section" id="s9" data-title="The guardrail">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>09</b> The guardrail that makes it trustworthy</p>
       <h2 class="reveal" style="margin-bottom:16px;">Every sentence traces back to a fact.</h2>
       <p class="kicker-note reveal d1" style="margin-bottom:22px;">Those facts come from your CV — plus an optional <span class="amber">addendum</span> for true things it doesn't mention. They're combined fresh on every run, and the verified CV extract is never overwritten.</p>
       <div class="mergeflow reveal d1" style="margin-bottom:30px;">
@@ -753,9 +904,9 @@
   </section>
 
   <!-- 10 · NUMBERS -->
-  <section class="slide" id="s10" data-title="By the numbers">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>09</b> At a glance</p>
+  <section class="section" id="s10" data-title="By the numbers">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>10</b> At a glance</p>
       <h2 class="reveal" style="margin-bottom:28px;">The toolkit, by the numbers.</h2>
       <div class="stats">
         <div class="stat reveal d1"><div class="num">5</div><div class="lbl">assistants — 4 you use, 1 working behind the scenes</div></div>
@@ -771,9 +922,9 @@
   </section>
 
   <!-- 11 · GETTING STARTED · INSTALL -->
-  <section class="slide" id="s-install" data-title="Install">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>10</b> Getting started · install</p>
+  <section class="section" id="s-install" data-title="Install">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>11</b> Getting started · install</p>
       <h2 class="reveal" style="margin-bottom:14px;">Getting it running.</h2>
       <p class="kicker-note reveal d1" style="margin-bottom:26px;">It's a plug-in for <strong>Claude Code</strong>, plus <strong>Python 3.10+</strong> for the document engine. Pick whichever install suits you:</p>
       <div class="install-grid reveal d2">
@@ -802,9 +953,9 @@
   </section>
 
   <!-- 12 · GETTING STARTED · SET UP & RUN -->
-  <section class="slide" id="s-run" data-title="Set up & run">
-    <div class="slide__inner">
-      <p class="eyebrow reveal"><b>11</b> Getting started · set up &amp; run</p>
+  <section class="section" id="s-run" data-title="Set up & run">
+    <div class="section__inner">
+      <p class="eyebrow reveal"><b>12</b> Getting started · set up &amp; run</p>
       <h2 class="reveal" style="margin-bottom:26px;">Add your CV, then just ask.</h2>
       <div class="run-grid">
         <div class="run-col reveal d1">
@@ -831,8 +982,8 @@
   </section>
 
   <!-- 13 · CLOSE -->
-  <section class="slide close" id="s11" data-title="In one line">
-    <div class="slide__inner close__inner">
+  <section class="section close" id="s11" data-title="In one line">
+    <div class="section__inner close__inner">
       <p class="eyebrow reveal" style="justify-content:center;">The takeaway</p>
       <h2 class="reveal d1">So, in one sentence.</h2>
       <p class="takeaway reveal d2">It applies to jobs the way you would on your best day — faster, and without ever bending the truth.</p>
@@ -840,78 +991,98 @@
     </div>
   </section>
 
-</main>
+    </div>
+  </main>
+</div>
 
 <script>
 (function(){
-  var deck = document.getElementById('deck');
-  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
-  var progress = document.getElementById('progress');
-  var dotsNav = document.getElementById('dots');
-  var hint = document.getElementById('hint');
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var progress  = document.getElementById('progress');
+  var links     = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections  = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  var sidebar   = document.getElementById('sidebar');
+  var navtoggle = document.getElementById('navtoggle');
+  var scrim     = document.getElementById('scrim');
 
-  // build dot nav
-  slides.forEach(function(s, i){
-    var b = document.createElement('button');
-    b.setAttribute('aria-label', s.getAttribute('data-title') || ('Slide ' + (i+1)));
-    b.addEventListener('click', function(){
-      s.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
-    });
-    dotsNav.appendChild(b);
-  });
-  var dots = Array.prototype.slice.call(dotsNav.children);
-
-  // progress bar
   function onScroll(){
-    var max = deck.scrollHeight - deck.clientHeight;
-    var pct = max > 0 ? (deck.scrollTop / max) * 100 : 0;
-    progress.style.width = pct + '%';
-    if(deck.scrollTop > 40){ hint.classList.add('gone'); }
+    var st  = window.scrollY || document.documentElement.scrollTop;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.width = (max > 0 ? (st/max)*100 : 0) + '%';
   }
-  deck.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('scroll', onScroll, {passive:true});
   onScroll();
 
-  // active dot + reveal via IntersectionObserver
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(e){
-      var idx = slides.indexOf(e.target);
       if(e.isIntersecting){
-        // reveal children
-        e.target.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
-        if(e.intersectionRatio > 0.5){
-          dots.forEach(function(d){ d.removeAttribute('aria-current'); });
-          if(dots[idx]) dots[idx].setAttribute('aria-current','true');
-        }
+        var id = e.target.id;
+        links.forEach(function(a){
+          a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+        });
       }
     });
-  }, {root: deck, threshold:[0.15, 0.55]});
-  slides.forEach(function(s){ io.observe(s); });
+  }, {rootMargin:'-15% 0px -70% 0px', threshold:0});
+  sections.forEach(function(s){ if(s) io.observe(s); });
 
-  // keyboard nav
-  function current(){
-    var best = 0, bestDist = Infinity;
-    slides.forEach(function(s, i){
-      var d = Math.abs(s.getBoundingClientRect().top);
-      if(d < bestDist){ bestDist = d; best = i; }
-    });
-    return best;
-  }
-  document.addEventListener('keydown', function(ev){
-    var k = ev.key;
-    if(k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'ArrowRight'){
-      ev.preventDefault();
-      var n = Math.min(current()+1, slides.length-1);
-      slides[n].scrollIntoView({behavior: reduce ? 'auto':'smooth'});
-    } else if(k === 'ArrowUp' || k === 'PageUp' || k === 'ArrowLeft'){
-      ev.preventDefault();
-      var p = Math.max(current()-1, 0);
-      slides[p].scrollIntoView({behavior: reduce ? 'auto':'smooth'});
-    } else if(k === 'Home'){
-      ev.preventDefault(); slides[0].scrollIntoView({behavior:reduce?'auto':'smooth'});
-    } else if(k === 'End'){
-      ev.preventDefault(); slides[slides.length-1].scrollIntoView({behavior:reduce?'auto':'smooth'});
+  function closeNav(){ sidebar.classList.remove('open'); scrim.classList.remove('show'); }
+  function openNav(){ sidebar.classList.add('open'); scrim.classList.add('show'); }
+  navtoggle.addEventListener('click', function(){
+    sidebar.classList.contains('open') ? closeNav() : openNav();
+  });
+  scrim.addEventListener('click', closeNav);
+  links.forEach(function(a){ a.addEventListener('click', closeNav); });
+})();
+</script>
+
+<script>
+/* The language switch carries your place across: both language versions use
+   the same section ids, so the section you are reading becomes the hash on
+   the target URL. Without this, switching language drops you at the top of a
+   long document and you have to find your spot again. */
+(function(){
+  var group = document.querySelector('.docbar__lang');
+  if(!group) return;
+  var sections = document.querySelectorAll('section[id]');
+
+  function currentId(){
+    var id = null;
+    for(var i=0;i<sections.length;i++){
+      var el = sections[i];
+      if(!el.id) continue;
+      if(el.getBoundingClientRect().top <= 140) id = el.id; else break;
     }
+    return id || (sections[0] ? sections[0].id : null);
+  }
+
+  /* Land on the section named in the hash. The browser's own fragment jump
+     happens before the page has settled, so it lands short -- measured at
+     8115px off on this document -- and a shared or switched-language link
+     arrives in the wrong place. Re-assert the position once loaded, then
+     again after a beat. */
+  function landOnHash(){
+    var id = decodeURIComponent(location.hash.slice(1));
+    if(!id) return;
+    var el = document.getElementById(id);
+    // 'instant', not 'auto': per spec 'auto' defers to the CSS scroll-behavior,
+    // which is smooth here -- so the jump would animate and can be interrupted.
+    if(el) el.scrollIntoView({behavior:'instant', block:'start'});
+  }
+  if(location.hash){
+    landOnHash();
+    window.addEventListener('load', function(){
+      landOnHash();
+      setTimeout(landOnHash, 150);
+      setTimeout(landOnHash, 500);
+    });
+  }
+
+  group.addEventListener('click', function(ev){
+    var a = ev.target.closest ? ev.target.closest('a[hreflang]') : null;
+    if(!a || a.getAttribute('aria-current') === 'true') return;
+    var id = currentId();
+    if(id) a.href = a.href.split('#')[0] + '#' + id;
   });
 })();
 </script>
+</body>
+</html>

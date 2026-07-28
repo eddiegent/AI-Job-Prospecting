@@ -95,7 +95,7 @@ job-application-tailor/
 │   ├── common.py               # Shared utilities (caching, naming, fit levels)
 │   ├── job_history_db.py       # SQLite database for application tracking
 │   ├── backfill_history.py     # Import existing output folders into database
-│   ├── cli.py                  # Operational CLI (list, update-status, stats, record-application, …)
+│   ├── cli.py                  # Operational CLI (list, update-status, stats, funnel, follow-up, record-application, …)
 │   ├── gen_cli_reference.py    # Auto-generates references/cli.md from cli.py argparse
 │   ├── lint_cli_usage.py       # Lints markdown for stale cli.py invocations
 │   └── run_skill.py            # CLI runner (scaffolding)

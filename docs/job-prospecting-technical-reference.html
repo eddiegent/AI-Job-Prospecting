@@ -1,4 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Job Prospecting — Technical Reference</title>
+
 
 <style>
   /* ---------- Tokens (shared identity with the overview deck) ---------- */
@@ -67,6 +73,9 @@
 
   /* ---------- Sidebar ---------- */
   .side-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .side-brand{text-decoration:none;}
+  .side-brand:hover b{color:var(--accent-2);}
+  .side-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:5px;}
   .side-brand .seal{width:18px;height:18px;border:1.5px solid var(--accent);border-radius:5px;display:grid;place-items:center;flex:none;}
   .side-brand .seal::after{content:"";width:6px;height:6px;background:var(--accent);border-radius:1px;}
   .side-brand b{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);}
@@ -90,7 +99,7 @@
   .scrim{display:none;}
 
   /* ---------- Hero ---------- */
-  .doc-hero{padding:64px 0 36px;border-bottom:1px solid var(--line-soft);margin-bottom:8px;}
+  .doc-hero{padding:64px 0 36px;border-bottom:2px solid var(--line);margin-bottom:8px;}
   .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:12px;margin:0 0 20px;}
   .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent);display:inline-block;flex:none;}
   h1{font-family:var(--font-display);font-weight:600;font-size:clamp(2.1rem,4.2vw,3.1rem);line-height:1.08;letter-spacing:-.01em;margin:0 0 16px;text-wrap:balance;}
@@ -100,7 +109,7 @@
   .metabar .m b{color:var(--accent-2);}
 
   /* ---------- Sections ---------- */
-  .section{padding:44px 0;border-top:1px solid var(--line-soft);scroll-margin-top:20px;}
+  .section{padding:44px 0;border-top:2px solid var(--line);scroll-margin-top:20px;}
   .sec-kick{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);margin:0 0 8px;}
   h2{font-family:var(--font-display);font-weight:600;font-size:1.7rem;line-height:1.15;margin:0 0 8px;letter-spacing:-.005em;text-wrap:balance;}
   h3{font-family:var(--font-body);font-weight:600;font-size:1.02rem;margin:26px 0 10px;color:var(--ink);}
@@ -199,15 +208,148 @@
     .content{padding:0 22px 100px;}
     .doc-hero{padding-top:70px;}
   }
+
+  /* ---------- Doc bar: route home + language, always reachable ---------- */
+  .docbar{
+    position:fixed;top:12px;right:12px;z-index:62;
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;
+  }
+  .docbar a{text-decoration:none;}
+  .docbar__home{
+    display:flex;align-items:center;gap:7px;
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    padding:7px 11px;color:var(--ink-soft);box-shadow:var(--shadow);
+    transition:color .15s,border-color .15s;
+  }
+  .docbar__home:hover{color:var(--accent-2);border-color:var(--accent);}
+  .docbar__seal{
+    width:13px;height:13px;border:1.5px solid var(--accent);border-radius:4px;
+    display:grid;place-items:center;flex:none;
+  }
+  .docbar__seal::after{content:"";width:4px;height:4px;background:var(--accent);border-radius:1px;}
+  .docbar__lang{
+    display:flex;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden;box-shadow:var(--shadow);
+  }
+  .docbar__lang a{padding:7px 10px;color:var(--ink-faint);transition:background .15s,color .15s;}
+  .docbar__lang a + a{border-left:1px solid var(--line);}
+  .docbar__lang a:hover{color:var(--ink);background:var(--surface-2);}
+  .docbar__lang a[aria-current="true"]{background:var(--accent-quiet);color:var(--accent-2);font-weight:600;}
+  .docbar a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media (max-width:560px){ .docbar__label{display:none;} .docbar{top:10px;right:10px;} }
+
+  /* ---------- Heading anchors + back to top ---------- */
+  .anchor{
+    opacity:0;margin-left:.2em;text-decoration:none;color:var(--ink-faint);
+    font-family:var(--font-mono);font-size:.66em;font-weight:400;vertical-align:middle;
+    transition:opacity .15s,color .15s;
+    /* inline-block + padding: the glyph is ~6px wide, which is far too small to
+       aim at. This keeps it visually small but gives it a real hit area. */
+    display:inline-block;padding:.1em .34em;min-width:1.5em;text-align:center;
+  }
+  h2:hover > .anchor, h3:hover > .anchor{opacity:1;}
+  .anchor:hover{color:var(--accent-2);}
+  .anchor:focus-visible{opacity:1;outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;}
+  /* No hover on touch devices, so keep them faintly present rather than unreachable. */
+  @media (hover:none){ .anchor{opacity:.4;padding:.3em .5em;} }
+
+  .toast{
+    position:fixed;bottom:26px;left:50%;transform:translate(-50%,8px);z-index:80;
+    background:var(--surface);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:8px 14px;box-shadow:var(--shadow);
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;
+    opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  .totop{
+    position:fixed;right:16px;bottom:18px;z-index:61;
+    display:flex;align-items:center;gap:7px;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;
+    background:var(--surface);color:var(--ink-soft);border:1px solid var(--line);
+    border-radius:8px;padding:8px 12px;cursor:pointer;box-shadow:var(--shadow);
+    opacity:0;pointer-events:none;transition:opacity .2s,color .15s,border-color .15s;
+  }
+  .totop.show{opacity:1;pointer-events:auto;}
+  .totop:hover{color:var(--accent-2);border-color:var(--accent);}
+  .totop:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media (max-width:560px){ .totop__label{display:none;} }
+  @media print{ .anchor,.toast,.totop{display:none !important;} }
+
+  /* ---------- Print ---------- */
+  @media print{
+    /* Print on white with dark ink whatever the screen theme is: the dark
+       palette arrives via prefers-color-scheme / [data-theme] and would
+       otherwise carry straight onto the page. */
+    :root, :root[data-theme="dark"], :root[data-theme="light"]{
+      --ground:#fff; --surface:#fff; --surface-2:#f1f3f6;
+      --ink:#111; --ink-soft:#333; --ink-faint:#666;
+      --line:#b4b9c0; --line-soft:#d8dce1;
+      --accent:#8a5410; --accent-2:#7a4a0c;
+      --accent-quiet:#f6efe4; --accent-line:#c9a97a;
+      --shadow:none;
+    }
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    html,body{background:#fff;}
+    /* Fixed chrome is navigation; paper has none. */
+    .progress,.docbar,.navtoggle,.scrim,.toast,.totop,.anchor,.hint,.dots,.brandmark{
+      display:none !important;
+    }
+    a{color:inherit;text-decoration:none;}
+  }
+
+  @media print{
+    @page{ margin:16mm 14mm; }
+    body{font-size:10.5pt;line-height:1.45;}
+    /* The sticky TOC is a scroll aid; on paper it would overprint the text. */
+    .sidebar{display:none !important;}
+    .layout{display:block;}
+    .content{padding:0;}
+    .content__col{max-width:none;margin:0;}
+    .doc-hero{padding:0 0 14px;}
+
+    /* On screen a wide table scrolls inside its wrapper. On paper there is
+       nowhere to scroll to, so the overflow has to be released or columns
+       are silently cut off. */
+    .tbl-wrap{overflow:visible !important;box-shadow:none;}
+    .tbl{width:100%;font-size:8.6pt;}
+    /* On screen these stay on one line and the wrapper scrolls. A sheet of
+       paper cannot scroll, so anything that refuses to wrap gets cut off --
+       three tables (worst: a 928px flag list into a 688px column) did. */
+    table.tbl th{white-space:normal;}
+    table.tbl td code, table.tbl th code{white-space:normal;overflow-wrap:anywhere;}
+    table.tbl td, table.tbl th{overflow-wrap:anywhere;}
+    thead{display:table-header-group;}
+    tr{break-inside:avoid;}
+
+    h1,h2,h3,h4{break-after:avoid;}
+    .sec-kick{break-after:avoid;}
+    .icard,.callout,.step,.art,.tbl-wrap{break-inside:avoid;}
+    .section{padding-top:10px;}
+  }
 </style>
+</head>
+<body>
 
 <div class="progress" id="progress"></div>
 <button class="navtoggle" id="navtoggle" aria-label="Toggle table of contents">☰ Contents</button>
 <div class="scrim" id="scrim"></div>
 
+<nav class="docbar" aria-label="Documentation">
+  <a class="docbar__home" href="index.html" title="All documentation" aria-label="All documentation">
+    <span class="docbar__seal" aria-hidden="true"></span><span class="docbar__label">Docs</span>
+  </a>
+  <span class="docbar__lang" role="group" aria-label="Language">
+    <a href="job-prospecting-technical-reference.fr.html" hreflang="fr" lang="fr">FR</a>
+    <a href="job-prospecting-technical-reference.html" hreflang="en" lang="en" aria-current="true">EN</a>
+  </span>
+</nav>
+
+
 <div class="layout">
   <aside class="sidebar" id="sidebar">
-    <div class="side-brand"><span class="seal"></span><b>Technical Reference</b></div>
+    <a class="side-brand" href="index.html"><span class="seal" aria-hidden="true"></span><b>Technical Reference</b></a>
     <p class="side-sub">Job Prospecting · plugin v1.0.0</p>
     <nav class="toc" id="toc">
       <a href="#architecture"><span class="tn">1</span> Architecture</a>
@@ -234,9 +376,9 @@
         <p>The internals of the toolkit: how the five skills delegate and interact, the end-to-end generation pipeline, the CLI and script layer, the SQLite schema, and the truthfulness guardrails that keep every generated claim traceable to the source CV.</p>
         <div class="metabar">
           <span class="m"><b>5</b> skills</span>
-          <span class="m"><b>19</b> CLI subcommands</span>
+          <span class="m">SQLite-backed <b>CLI</b></span>
           <span class="m"><b>25+</b> scripts</span>
-          <span class="m">schema <b>v3</b></span>
+          <span class="m">schema <b>v4</b></span>
           <span class="m"><b>3</b>-layer dup detection</span>
           <span class="m"><b>4</b> guardrails</span>
           <span class="m">Python <b>3.10+</b></span>
@@ -246,7 +388,7 @@
       <!-- 1 · ARCHITECTURE -->
       <section class="section" id="architecture">
         <p class="sec-kick">01 · System shape</p>
-        <h2>Architecture &amp; data flow</h2>
+        <h2>Architecture &amp; data flow<a class="anchor" href="#architecture" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Two <b>orchestrator</b> skills (offer and cold) share a single infrastructure and both delegate their CV-preparation preamble to one internal <b>sub-skill</b>. Two <b>satellite</b> skills operate over the shared SQLite database — one writes, one reads. All shared code (<code>scripts/</code>, <code>schemas/</code>, <code>config/</code>, <code>references/</code>) physically lives inside <code>job-application-tailor</code>; every other skill points at it via <code>SKILL_BASE_TAILOR</code> rather than copying.</p>
 
         <div class="arch">
@@ -265,7 +407,7 @@
           </div>
           <div class="arch-conn">▼</div>
           <div class="arch-row">
-            <div class="node db"><div class="nt">resources/job_history.db</div><div class="ns">SQLite · schema v3 · git-ignored</div></div>
+            <div class="node db"><div class="nt">resources/job_history.db</div><div class="ns">SQLite · schema v4 · git-ignored</div></div>
           </div>
           <div class="arch-sats">
             <div class="sat"><span class="sn">job-status</span> <span class="badge write">writes</span><br><span style="font-size:.78rem;color:var(--ink-faint);">status &amp; company-list mutations</span></div>
@@ -280,7 +422,7 @@
       <!-- 2 · SKILLS -->
       <section class="section" id="skills">
         <p class="sec-kick">02 · Composition</p>
-        <h2>The five skills</h2>
+        <h2>The five skills<a class="anchor" href="#skills" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Each skill is a <code>SKILL.md</code> with YAML frontmatter under <code>.claude/skills/&lt;name&gt;/</code> (or <code>skills/&lt;name&gt;/</code> when installed as a plugin — the setup blocks resolve both layouts via <code>$CLAUDE_PLUGIN_ROOT</code>). Roles split cleanly into orchestrators, one internal sub-skill, and two DB satellites.</p>
         <div class="tbl-wrap">
           <table class="tbl">
@@ -294,14 +436,14 @@
             </tbody>
           </table>
         </div>
-        <h3>Delegation contract</h3>
+        <h3 id="skills-delegation-contract">Delegation contract<a class="anchor" href="#skills-delegation-contract" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <p>Both orchestrators <code>Read</code> <code>job-prep-cv/SKILL.md</code> for Steps 0–2.5, passing <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code>, and <code>$EARLY_BLACKLIST_NAME</code>. The sub-skill runs <code>scripts/preflight.py</code> and hands back resolved paths (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), the loaded <code>$CUSTOMIZATION</code>, and a verified <code>$PREP_DIR/cv_fact_base.json</code>. Control returns to the orchestrator at Step 3.</p>
       </section>
 
       <!-- 3 · PIPELINE -->
       <section class="section" id="pipeline">
         <p class="sec-kick">03 · Offer flow</p>
-        <h2>End-to-end pipeline</h2>
+        <h2>End-to-end pipeline<a class="anchor" href="#pipeline" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>The offer flow (<code>job-application-tailor/SKILL.md</code>) runs ~10 steps. Steps 6 &amp; 7 execute as two parallel <code>Agent</code> subagents; the fit gate at Step 4 can halt the run before any document is generated.</p>
         <div class="steps">
           <div class="step"><div class="step__n">0–2.5</div><div class="step__b"><h4>CV preparation (delegated)</h4><p>Handed to <code>job-prep-cv</code>: dependency &amp; master-CV checks, folder creation, customization load, and the cache-hot path of fact-base extraction/verification.</p><div class="art"><b>→ cv_fact_base.json</b> (cached, hash-keyed)</div></div></div>
@@ -320,7 +462,7 @@
       <!-- 4 · COLD -->
       <section class="section" id="cold">
         <p class="sec-kick">04 · Speculative flow</p>
-        <h2>How the cold flow differs</h2>
+        <h2>How the cold flow differs<a class="anchor" href="#cold" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Steps 0–2.5 are identical (delegated). The middle of the pipeline diverges — there's no job description, so there's nothing to score.</p>
         <div class="cardgrid">
           <div class="icard"><div class="k">Replaces Step 3</div><h4>Company research</h4><p>Builds <code>company_profile.json</code> from the site, Indeed MCP, LinkedIn, and news. Defaults to French. Canonicalises the folder slug.</p></div>
@@ -335,11 +477,11 @@
       <!-- 5 · CLI -->
       <section class="section" id="cli">
         <p class="sec-kick">05 · Command surface</p>
-        <h2>The CLI — <code>cli.py</code></h2>
-        <p>Single entry point: <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. The history database is resolved automatically (<code>JOB_TAILOR_HOME</code> → legacy repo <code>resources/</code> → OS app-data dir); <code>--db &lt;path&gt;</code> overrides it. Besides the DB commands, the CLI carries the pipeline-support subcommands the skills call between steps (<code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>check-forbidden-labels</code>, <code>save-cv-cache</code>) and a <code>timeline</code> trend report. Subcommands are defined declaratively in the <code>scripts/commands/</code> registry (one module per domain) — the parser, the dispatch table, and the pre-mutation backup set all derive from it, so they cannot drift apart. <code>build_parser()</code> is the canonical source of truth — the reference at <code>references/cli.md</code> is auto-generated from it and drift-checked by a pre-commit hook.</p>
+        <h2>The CLI — <code>cli.py</code><a class="anchor" href="#cli" aria-label="Link to this section" title="Link to this section">#</a></h2>
+        <p>Single entry point: <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. The history database is resolved automatically (<code>JOB_TAILOR_HOME</code> → legacy repo <code>resources/</code> → OS app-data dir); <code>--db &lt;path&gt;</code> overrides it. Besides the DB commands, the CLI carries the pipeline-support subcommands the skills call between steps (<code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>check-forbidden-labels</code>, <code>save-cv-cache</code>) and a <code>timeline</code> trend report (bucketed by pack-generation date, or by when applications were actually sent with <code>--basis applied</code>). Subcommands are defined declaratively in the <code>scripts/commands/</code> registry (one module per domain) — the parser, the dispatch table, and the pre-mutation backup set all derive from it, so they cannot drift apart. <code>build_parser()</code> is the canonical source of truth — the reference at <code>references/cli.md</code> is auto-generated from it and drift-checked by a pre-commit hook.</p>
         <div class="codeblock"><span class="p">$ </span><span class="c">python scripts/cli.py list --status applied --limit 100</span></div>
 
-        <h3>Querying &amp; reporting <span class="badge read">read-only</span></h3>
+        <h3 id="cli-querying-reporting-read-only">Querying &amp; reporting <span class="badge read">read-only</span><a class="anchor" href="#cli-querying-reporting-read-only" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Subcommand</th><th>Purpose</th><th>Key args / flags</th></tr></thead>
           <tbody>
@@ -349,21 +491,25 @@
             <tr><td><code>skills</code></td><td>Skill-gap trends</td><td><code>--limit --since --source --org-type --json</code></td></tr>
             <tr><td><code>count</code></td><td>Total count</td><td><code>--since --source --org-type</code></td></tr>
             <tr><td><code>export-csv</code></td><td>Export to CSV</td><td><code>--output</code> (stdout if omitted)</td></tr>
+            <tr><td><code>history</code> <span class="chip on">v4</span></td><td>One application's status timeline</td><td><code>id</code> · <code>--json</code></td></tr>
+            <tr><td><code>funnel</code> <span class="chip on">v4</span></td><td>Applications that <em>ever reached</em> each stage, with conversion rates</td><td><code>--since --source --org-type --json</code></td></tr>
+            <tr><td><code>response-time</code> <span class="chip on">v4</span></td><td>Days from applying to the first employer response</td><td><code>--since --source --org-type --json</code></td></tr>
+            <tr><td><code>follow-up</code> <span class="chip on">v4</span></td><td>Applications whose latest event is <code>applied</code> and that have gone quiet</td><td><code>--days</code> (default 21) <code>--source --org-type --json</code></td></tr>
           </tbody>
         </table></div>
 
-        <h3>Status &amp; field mutation <span class="badge write">writes</span></h3>
+        <h3 id="cli-status-field-mutation-writes">Status &amp; field mutation <span class="badge write">writes</span><a class="anchor" href="#cli-status-field-mutation-writes" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Subcommand</th><th>Purpose</th><th>Key args / flags</th></tr></thead>
           <tbody>
-            <tr><td><code>update-status</code></td><td>Change one status</td><td><code>id status</code> · <code>--expect-company</code> (guard)</td></tr>
-            <tr><td><code>bulk-status</code></td><td>Batch status (one backup)</td><td><code>ids…</code> · <code>--status</code></td></tr>
+            <tr><td><code>update-status</code></td><td>Change one status</td><td><code>id status</code> · <code>--expect-company</code> (guard) · <code>--at --note</code></td></tr>
+            <tr><td><code>bulk-status</code></td><td>Batch status (one backup)</td><td><code>ids…</code> · <code>--status</code> · <code>--at --note</code></td></tr>
             <tr><td><code>update-company</code></td><td>Rename company</td><td><code>id name</code> · <code>--expect-company</code></td></tr>
             <tr><td><code>update-output-folder</code></td><td>Repoint output folder</td><td><code>id path</code></td></tr>
           </tbody>
         </table></div>
 
-        <h3>Company lists · duplicate · health</h3>
+        <h3 id="cli-company-lists-duplicate-health">Company lists · duplicate · health<a class="anchor" href="#cli-company-lists-duplicate-health" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Subcommand</th><th>Purpose</th><th>Key args / flags</th></tr></thead>
           <tbody>
@@ -376,7 +522,7 @@
           </tbody>
         </table></div>
 
-        <h3>Lifecycle — folder / DB / artefact management</h3>
+        <h3 id="cli-lifecycle-folder-db-artefact-management">Lifecycle — folder / DB / artefact management<a class="anchor" href="#cli-lifecycle-folder-db-artefact-management" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Subcommand</th><th>Purpose</th><th>Key args / flags</th></tr></thead>
           <tbody>
@@ -391,10 +537,10 @@
       <!-- 6 · SCRIPTS -->
       <section class="section" id="scripts">
         <p class="sec-kick">06 · Module map</p>
-        <h2>Scripts inventory</h2>
+        <h2>Scripts inventory<a class="anchor" href="#scripts" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>All under <code>.claude/skills/job-application-tailor/scripts/</code>. <code>cli.py</code> is a thin assembler over the <code>commands/</code> registry package (reporting / status / companies / records / admin / pipeline). <code>common.py</code> is the shared utility hub imported almost everywhere; two grounding checks share <code>_grounding_common.py</code> so their synonym maps can't drift.</p>
 
-        <h3>DB &amp; paths</h3>
+        <h3 id="scripts-db-paths">DB &amp; paths<a class="anchor" href="#scripts-db-paths" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
@@ -404,7 +550,7 @@
           </tbody>
         </table></div>
 
-        <h3>Preflight &amp; pipeline</h3>
+        <h3 id="scripts-preflight-pipeline">Preflight &amp; pipeline<a class="anchor" href="#scripts-preflight-pipeline" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
@@ -415,7 +561,7 @@
           </tbody>
         </table></div>
 
-        <h3>Generation &amp; rendering</h3>
+        <h3 id="scripts-generation-rendering">Generation &amp; rendering<a class="anchor" href="#scripts-generation-rendering" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
@@ -427,7 +573,7 @@
           </tbody>
         </table></div>
 
-        <h3>Packaging · migration · onboarding</h3>
+        <h3 id="scripts-packaging-migration-onboarding">Packaging · migration · onboarding<a class="anchor" href="#scripts-packaging-migration-onboarding" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
@@ -438,7 +584,7 @@
           </tbody>
         </table></div>
 
-        <h3>Guardrails &amp; verification</h3>
+        <h3 id="scripts-guardrails-verification">Guardrails &amp; verification<a class="anchor" href="#scripts-guardrails-verification" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
@@ -453,7 +599,7 @@
           </tbody>
         </table></div>
 
-        <h3>Dev tooling</h3>
+        <h3 id="scripts-dev-tooling">Dev tooling<a class="anchor" href="#scripts-dev-tooling" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
@@ -466,10 +612,10 @@
       <!-- 7 · DATABASE -->
       <section class="section" id="database">
         <p class="sec-kick">07 · Persistence</p>
-        <h2>The job-history database</h2>
-        <p>A single SQLite file — <code>resources/job_history.db</code> (git-ignored), schema <b>v3</b>. All access is funnelled through <code>JobHistoryDB</code>, which never edits the canonical file live (see the resilience note below).</p>
+        <h2>The job-history database<a class="anchor" href="#database" aria-label="Link to this section" title="Link to this section">#</a></h2>
+        <p>A single SQLite file — <code>resources/job_history.db</code> (git-ignored), schema <b>v4</b>. All access is funnelled through <code>JobHistoryDB</code>, which never edits the canonical file live (see the resilience note below).</p>
 
-        <h3><code>applications</code> — one row per pack</h3>
+        <h3 id="database-applications-one-row-per-pack"><code>applications</code> — one row per pack<a class="anchor" href="#database-applications-one-row-per-pack" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
           <tbody>
@@ -489,22 +635,37 @@
             <tr><td><code>created_at · updated_at</code></td><td>TEXT</td><td>NOT NULL · ISO-8601</td></tr>
           </tbody>
         </table></div>
+
+        <h3 id="database-application-events-one-row-per-status-change-v4"><code>application_events</code> — one row per status change <span class="chip on">v4</span><a class="anchor" href="#database-application-events-one-row-per-status-change-v4" aria-label="Link to this section" title="Link to this section">#</a></h3>
+        <p style="font-size:.86rem;">Before v4 a status change overwrote <code>applications.status</code> and bumped <code>updated_at</code>, so only the <em>latest</em> transition survived — an application at <code>interview</code> could not say when it was applied to. This table is append-only; <code>applications.status</code> remains the cached current value, so every pre-v4 query and index keeps working unchanged.</p>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td>INTEGER</td><td>PK AUTOINCREMENT</td></tr>
+            <tr><td><code>application_id</code></td><td>INTEGER</td><td>NOT NULL · FK → <code>applications(id)</code> ON DELETE CASCADE</td></tr>
+            <tr><td><code>status</code></td><td>TEXT</td><td>NOT NULL · same vocabulary as <code>applications.status</code></td></tr>
+            <tr><td><code>occurred_at</code></td><td>TEXT</td><td>NOT NULL · ISO-8601 · when it <em>happened</em>, not when it was recorded</td></tr>
+            <tr><td><code>note</code></td><td>TEXT</td><td>nullable · free text</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:.86rem;">Indexed on <code>(application_id, occurred_at)</code> for one application's timeline and <code>(status, occurred_at)</code> for funnel/volume counting. <code>--at</code> on <code>update-status</code> / <code>bulk-status</code> sets <code>occurred_at</code>; without it a Friday catch-up stamps four Monday applications as same-day and inflates every response-time figure. Dates before the row's <code>created_at</code> or in the future are refused — the out-of-order case would leave <code>generated</code> as the newest event, silently removing the row from <code>follow-up</code> and <code>response-time</code> rather than reporting anything visibly wrong.</p>
         <p style="font-size:.86rem;">Companion tables: <code>job_skills</code> (FK → <code>applications(id)</code> ON DELETE CASCADE; <code>skill_type</code> CHECK in <code>required</code>/<code>preferred</code>), <code>company_lists</code> (PK <code>company_norm</code>; <code>list_type</code> CHECK in <code>blacklist</code>/<code>whitelist</code>), and a single-row <code>schema_version</code>.</p>
 
-        <h3>Controlled values</h3>
+        <h3 id="database-controlled-values">Controlled values<a class="anchor" href="#database-controlled-values" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="chips"><span class="chip">status:</span><span class="chip on">generated</span><span class="chip on">applied</span><span class="chip on">interview</span><span class="chip on">offer</span><span class="chip on">rejected</span><span class="chip on">dropped</span></div>
         <div class="chips"><span class="chip">source:</span><span class="chip on">offer</span><span class="chip on">cold</span></div>
         <div class="chips"><span class="chip">org_type:</span><span class="chip on">end_employer</span><span class="chip on">esn</span><span class="chip on">staffing_agency</span><span class="chip on">recruitment_agency</span><span class="chip on">unknown</span></div>
-        <p style="font-size:.86rem;margin-top:10px;">Enum enforcement is application-level (Python <code>ValueError</code>), except <code>skill_type</code> / <code>list_type</code> which carry SQL <code>CHECK</code> constraints. <code>dropped</code> rows are excluded from all duplicate checks.</p>
+        <p style="font-size:.86rem;margin-top:10px;">Enum enforcement is application-level (Python <code>ValueError</code>), except <code>skill_type</code> / <code>list_type</code> which carry SQL <code>CHECK</code> constraints. <code>dropped</code> rows are excluded from all duplicate checks. Transitions are not ordered — any status may follow any other, because correcting a mis-recorded status requires moving backwards, and <code>dropped</code> can follow anything. Since v4 each transition is appended to <code>application_events</code>, so the sequence is preserved rather than overwritten.</p>
 
-        <h3>Migrations — automatic, idempotent</h3>
+        <h3 id="database-migrations-automatic-idempotent">Migrations — automatic, idempotent<a class="anchor" href="#database-migrations-automatic-idempotent" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <ul class="tight">
           <li><b>v1 → v2:</b> adds <code>source</code> (DEFAULT <code>'offer'</code> backfills existing rows) and <code>company_profile_snapshot</code>.</li>
           <li><b>v2 → v3:</b> adds nullable <code>org_type</code> — legacy/offer rows stay NULL; only the cold flow populates it.</li>
+          <li><b>v3 → v4:</b> adds <code>application_events</code> and reconstructs what pre-v4 rows can still support: a <code>generated</code> event at <code>created_at</code>; the current status at <code>updated_at</code> for anything that moved; and an inferred <code>applied</code> event for rows past it (<code>rejected</code>/<code>interview</code>/<code>offer</code>), which demonstrably were applied to even though that event was overwritten — without it the funnel undercounts badly (on the first real migration "ever applied" read 49 against a true 77). <code>dropped</code> is excluded: deciding not to pursue a role does not imply applying. Every reconstructed row carries a bracketed <code>[backfill]</code> marker in <code>note</code>, and <code>response-time</code> filters them out — their dates were inferred from generation dates, so a duration measured against one describes how long a pack sat around, not how fast anyone replied. Guarded on an empty table, so reopening never double-inserts.</li>
           <li>Runs on every open: <code>_init_schema</code> reads <code>MAX(version)</code> and only <code>ALTER TABLE ADD COLUMN</code> for absent columns. Uses its own <code>schema_version</code> table, not <code>PRAGMA user_version</code>.</li>
         </ul>
 
-        <h3>3-layer duplicate detection</h3>
+        <h3 id="database-3-layer-duplicate-detection">3-layer duplicate detection<a class="anchor" href="#database-3-layer-duplicate-detection" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Layer</th><th>Match on</th><th>Reason string</th></tr></thead>
           <tbody>
@@ -521,9 +682,9 @@
       <!-- 8 · FACT BASE -->
       <section class="section" id="factbase">
         <p class="sec-kick">08 · Source of truth</p>
-        <h2>The CV fact base</h2>
+        <h2>The CV fact base<a class="anchor" href="#factbase" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>A structured extraction of everything true about the candidate — <code>resources/cv_fact_base.json</code>, validated against <code>schemas/cv_fact_base.schema.json</code> (Draft 2020-12). Every downstream artefact must ground in this file.</p>
-        <h3>Top-level fields</h3>
+        <h3 id="factbase-top-level-fields">Top-level fields<a class="anchor" href="#factbase-top-level-fields" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="chips">
           <span class="chip">candidate_name*</span><span class="chip">headline</span><span class="chip">contact</span><span class="chip">candidate_location</span>
           <span class="chip">summary</span><span class="chip">skills</span><span class="chip">technologies</span><span class="chip">technologies_to_deepen</span>
@@ -531,7 +692,7 @@
           <span class="chip">languages</span><span class="chip">constraints</span><span class="chip">transition_signals</span>
         </div>
         <p style="font-size:.84rem;margin-top:10px;">* required. <code>experience[]</code> items carry <code>type</code> (<code>role</code>|<code>training</code>), <code>details</code>, and <code>metrics</code>. <code>technologies_to_deepen</code> is kept separate so tailoring never lists still-being-learned tech as a core skill.</p>
-        <h3>Cache keyed on the CV hash</h3>
+        <h3 id="factbase-cache-keyed-on-the-cv-hash">Cache keyed on the CV hash<a class="anchor" href="#factbase-cache-keyed-on-the-cv-hash" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="codeblock"><span class="cm"># .cv_hash holds the SHA-256 of MASTER_CV.docx (8192-byte chunked)</span>
 cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
                                AND stored_hash == file_hash(cv_path)</div>
@@ -541,7 +702,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
       <!-- 9 · GUARDRAILS -->
       <section class="section" id="guardrails">
         <p class="sec-kick">09 · Truthfulness</p>
-        <h2>The guardrail system</h2>
+        <h2>The guardrail system<a class="anchor" href="#guardrails" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Four checks, wired into preflight, a pre-commit hook, and the cache-write path — defense-in-depth against shipping a claim the CV doesn't support.</p>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Check</th><th>What it enforces</th><th>Severity</th></tr></thead>
@@ -559,7 +720,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
       <!-- 10 · CUSTOMIZATION -->
       <section class="section" id="customization">
         <p class="sec-kick">10 · User layer</p>
-        <h2>Customization — addendum &amp; prefs</h2>
+        <h2>Customization — addendum &amp; prefs<a class="anchor" href="#customization" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Two optional user-owned files (both git-ignored) let the toolkit know true-but-off-CV facts and personal preferences, without ever mutating the verified cache.</p>
         <div class="cardgrid">
           <div class="icard"><div class="k">cv_addendum.md</div><h4>Three recognised sections</h4>
@@ -585,9 +746,9 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
       <!-- 11 · OUTPUTS -->
       <section class="section" id="outputs">
         <p class="sec-kick">11 · Deliverables</p>
-        <h2>Output generation</h2>
+        <h2>Output generation<a class="anchor" href="#outputs" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Each run writes to <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offer) or <code>output/cold-[date]-[company-slug]/</code> (cold). Intermediate JSON/MD lives in a <code>_prep/</code> subfolder so any step can be re-run in isolation.</p>
-        <h3><code>_prep/</code> artefacts</h3>
+        <h3 id="outputs-prep-artefacts"><code>_prep/</code> artefacts<a class="anchor" href="#outputs-prep-artefacts" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="chips">
           <span class="chip">cv_fact_base.json</span><span class="chip">job_offer_analysis.json</span><span class="chip">match_analysis.json</span>
           <span class="chip">company_research.md</span><span class="chip">tailored_cv.json</span><span class="chip">letter.json</span>
@@ -595,7 +756,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
           <span class="chip">company_dossier.md</span>
         </div>
         <p style="font-size:.84rem;margin-top:8px;"><code>run_summary.json</code> is written at the folder root (not in <code>_prep/</code>).</p>
-        <h3>Formats</h3>
+        <h3 id="outputs-formats">Formats<a class="anchor" href="#outputs-formats" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Deliverable</th><th>Format</th></tr></thead>
           <tbody>
@@ -608,7 +769,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
           </tbody>
         </table></div>
         <p>Filenames are language-keyed via <code>config/naming_rules.yaml</code> (FR <code>Lettre_de_motivation_…</code>, EN <code>Cover_letter_…</code>); slugs are ASCII-folded and capped at 60 chars.</p>
-        <h3>PDF fallback chain</h3>
+        <h3 id="outputs-pdf-fallback-chain">PDF fallback chain<a class="anchor" href="#outputs-pdf-fallback-chain" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="codeblock"><span class="c">convert_docx_to_pdf()</span>  <span class="cm"># stops at first success</span>
    1. docx2pdf      <span class="cm"># needs MS Word</span>
    2. LibreOffice   <span class="cm"># soffice --headless --convert-to pdf</span>
@@ -619,7 +780,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
       <!-- 12 · SCORING -->
       <section class="section" id="scoring">
         <p class="sec-kick">12 · The fit gate</p>
-        <h2>Fit scoring</h2>
+        <h2>Fit scoring<a class="anchor" href="#scoring" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Each offer requirement is classified, then a single percentage decides whether the pipeline proceeds.</p>
         <div class="chips" style="margin-bottom:14px;">
           <span class="chip on" style="border-color:var(--st-offer);color:var(--st-offer);">direct</span>
@@ -685,3 +846,106 @@ overall_fit_pct = round( (direct + transferable * 0.5) / total * 100 )
   links.forEach(function(a){ a.addEventListener('click', closeNav); });
 })();
 </script>
+
+<script>
+/* The language switch carries your place across: both language versions use
+   the same section ids, so the section you are reading becomes the hash on
+   the target URL. Without this, switching language drops you at the top of a
+   long document and you have to find your spot again. */
+(function(){
+  var group = document.querySelector('.docbar__lang');
+  if(!group) return;
+  var sections = document.querySelectorAll('section[id]');
+
+  function currentId(){
+    var id = null;
+    for(var i=0;i<sections.length;i++){
+      var el = sections[i];
+      if(!el.id) continue;
+      if(el.getBoundingClientRect().top <= 140) id = el.id; else break;
+    }
+    return id || (sections[0] ? sections[0].id : null);
+  }
+
+  /* Land on the section named in the hash. The browser's own fragment jump
+     happens before the page has settled, so it lands short -- measured at
+     8115px off on this document -- and a shared or switched-language link
+     arrives in the wrong place. Re-assert the position once loaded, then
+     again after a beat. */
+  function landOnHash(){
+    var id = decodeURIComponent(location.hash.slice(1));
+    if(!id) return;
+    var el = document.getElementById(id);
+    // 'instant', not 'auto': per spec 'auto' defers to the CSS scroll-behavior,
+    // which is smooth here -- so the jump would animate and can be interrupted.
+    if(el) el.scrollIntoView({behavior:'instant', block:'start'});
+  }
+  if(location.hash){
+    landOnHash();
+    window.addEventListener('load', function(){
+      landOnHash();
+      setTimeout(landOnHash, 150);
+      setTimeout(landOnHash, 500);
+    });
+  }
+
+  group.addEventListener('click', function(ev){
+    var a = ev.target.closest ? ev.target.closest('a[hreflang]') : null;
+    if(!a || a.getAttribute('aria-current') === 'true') return;
+    var id = currentId();
+    if(id) a.href = a.href.split('#')[0] + '#' + id;
+  });
+})();
+</script>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<button class="totop" id="totop" aria-label="Back to top">
+  <span aria-hidden="true">&uarr;</span><span class="totop__label">Top</span>
+</button>
+
+<script>
+/* Heading anchors and back-to-top.
+
+   Clicking an anchor copies the full URL rather than only jumping -- you are
+   already looking at the heading you clicked, so a jump is not the useful
+   part; having the link on your clipboard is. If the clipboard is refused
+   (it needs a secure context, and these pages are often opened from disk)
+   the link behaves like an ordinary anchor instead of failing silently. */
+(function(){
+  var toastEl = document.getElementById('toast');
+  var timer;
+  function toast(msg){
+    if(!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(timer);
+    timer = setTimeout(function(){ toastEl.classList.remove('show'); }, 1600);
+  }
+
+  document.addEventListener('click', function(ev){
+    var a = ev.target.closest ? ev.target.closest('a.anchor') : null;
+    if(!a) return;
+    var hash = a.getAttribute('href');
+    if(!(navigator.clipboard && navigator.clipboard.writeText)) return; // plain anchor
+    ev.preventDefault();
+    navigator.clipboard.writeText(location.href.split('#')[0] + hash).then(function(){
+      history.replaceState(null, '', hash);
+      toast('Link copied');
+    }, function(){
+      location.hash = hash.slice(1);
+    });
+  });
+
+  var btn = document.getElementById('totop');
+  if(btn){
+    var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+    addEventListener('scroll', function(){
+      btn.classList.toggle('show', scrollY > innerHeight * 0.9);
+    }, {passive:true});
+    btn.addEventListener('click', function(){
+      scrollTo({top:0, behavior: reduce ? 'instant' : 'smooth'});
+    });
+  }
+})();
+</script>
+</body>
+</html>

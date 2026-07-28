@@ -27,7 +27,7 @@ except ImportError:        # Windows
         _msvcrt = None
 else:
     _msvcrt = None
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -92,12 +92,27 @@ def skill_overlap(skills_a: list[str], skills_b: list[str]) -> float:
 # Database class
 # ---------------------------------------------------------------------------
 
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
+
+# Marker prefix on notes written by the v4 backfill. The backfill reconstructs
+# events from `created_at`/`updated_at`, so its dates are approximations — the
+# real transition times were overwritten before the events table existed. Any
+# report whose meaning depends on WHEN something happened (response time) must
+# exclude these rows; reports that only count WHETHER it happened (funnel,
+# follow-up) can use them safely. The prefix is bracketed so a hand-typed
+# `--note` can't collide with it and silently drop a real measurement.
+_BACKFILL_NOTE = "[backfill]"
 
 # Organisation types recorded on cold-flow rows. Offer-flow rows leave org_type
 # NULL (there is no employer-vs-intermediary distinction to make from a JD). The
 # set mirrors company_profile.schema.json's `org_type` enum.
 _VALID_ORG_TYPES = ("end_employer", "esn", "staffing_agency", "recruitment_agency", "unknown")
+
+# The application lifecycle. `_FUNNEL_STAGES` is the subset that represents
+# forward progress — 'rejected' and 'dropped' are exits, not stages, so the
+# funnel reports them separately rather than as a step everyone fails.
+_VALID_STATUSES = ("generated", "applied", "rejected", "interview", "offer", "dropped")
+_FUNNEL_STAGES = ("generated", "applied", "interview", "offer")
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -149,6 +164,17 @@ CREATE TABLE IF NOT EXISTS company_lists (
     reason          TEXT,
     created_at      TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS application_events (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id  INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    status          TEXT NOT NULL,
+    occurred_at     TEXT NOT NULL,
+    note            TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_app    ON application_events(application_id, occurred_at);
+CREATE INDEX IF NOT EXISTS idx_events_status ON application_events(status, occurred_at);
 """
 
 
@@ -507,6 +533,51 @@ class JobHistoryDB:
             # cold flow populates it from the researched company profile.
             if "org_type" not in existing_cols:
                 cur.execute("ALTER TABLE applications ADD COLUMN org_type TEXT")
+        if from_version < 4:
+            self._backfill_events(cur)
+
+    def _backfill_events(self, cur: sqlite3.Cursor) -> None:
+        """Seed `application_events` from the pre-v4 single-status rows.
+
+        Before v4 a status change overwrote `applications.status` and bumped
+        `updated_at`, so only the LATEST transition survived. This reconstructs
+        what can still be known, and nothing more:
+
+        1. Every row was generated once -> a `generated` event at `created_at`.
+        2. A row whose status moved on -> its current status at `updated_at`.
+        3. A row now past `applied` (rejected/interview/offer) must have been
+           applied at some point, even though that event was overwritten. We
+           know it HAPPENED but not WHEN, so the event is anchored to
+           `created_at` (the earliest possible moment) and marked. Without it
+           the funnel undercounts badly — on the first real migration, 'ever
+           applied' read 49 when the true figure was 77.
+
+        Every row written here carries the `_BACKFILL_NOTE` marker, because
+        (3) in particular carries a date we invented. `response_times()`
+        filters on that marker so a fabricated duration can never reach a
+        report; counting reports keep using the rows.
+
+        Guarded on an empty table so re-running can't double up.
+        """
+        if cur.execute("SELECT COUNT(*) FROM application_events").fetchone()[0]:
+            return
+        cur.execute(
+            """INSERT INTO application_events (application_id, status, occurred_at, note)
+               SELECT id, 'generated', created_at, ? FROM applications""",
+            (f"{_BACKFILL_NOTE} generated date from created_at",),
+        )
+        cur.execute(
+            """INSERT INTO application_events (application_id, status, occurred_at, note)
+               SELECT id, 'applied', created_at, ? FROM applications
+                WHERE status IN ('rejected', 'interview', 'offer')""",
+            (f"{_BACKFILL_NOTE} applied date unknown, anchored to created_at",),
+        )
+        cur.execute(
+            """INSERT INTO application_events (application_id, status, occurred_at, note)
+               SELECT id, status, updated_at, ? FROM applications
+                WHERE status != 'generated'""",
+            (f"{_BACKFILL_NOTE} status date from updated_at",),
+        )
 
     def close(self) -> None:
         if getattr(self, "_closed", False):
@@ -584,6 +655,10 @@ class JobHistoryDB:
                 "INSERT INTO job_skills(application_id, skill, skill_norm, skill_type) VALUES(?,?,?,?)",
                 (app_id, skill, normalise_skill(skill), "preferred"),
             )
+        # Open the history with the birth event, timestamped the same as the row
+        # so a backdated `created_at` (used when replaying an old run) keeps the
+        # event and the application in step.
+        self.add_event(app_id, status, occurred_at=now, cur=cur)
         self._conn.commit()
         return app_id
 
@@ -678,16 +753,105 @@ class JobHistoryDB:
 
     # -- status updates ------------------------------------------------------
 
-    def update_status(self, app_id: int, status: str) -> bool:
-        valid = ("generated", "applied", "rejected", "interview", "offer", "dropped")
-        if status not in valid:
-            raise ValueError(f"Invalid status '{status}'. Must be one of: {', '.join(valid)}")
-        cur = self._conn.execute(
+    def add_event(
+        self,
+        app_id: int,
+        status: str,
+        *,
+        occurred_at: str | None = None,
+        note: str | None = None,
+        cur: sqlite3.Cursor | None = None,
+    ) -> None:
+        """Append one entry to an application's status history.
+
+        Pass `cur` to enlist in a caller's transaction — `update_status` does
+        this so the cached `applications.status` and its event can never end up
+        disagreeing after a crash between the two writes.
+        """
+        if status not in _VALID_STATUSES:
+            raise ValueError(
+                f"Invalid status '{status}'. Must be one of: {', '.join(_VALID_STATUSES)}"
+            )
+        conn = cur or self._conn
+        if occurred_at:
+            self._validate_occurred_at(conn, app_id, occurred_at)
+        conn.execute(
+            "INSERT INTO application_events (application_id, status, occurred_at, note) "
+            "VALUES (?,?,?,?)",
+            (app_id, status, occurred_at or datetime.now().isoformat(), note),
+        )
+
+    @staticmethod
+    def _validate_occurred_at(conn, app_id: int, occurred_at: str) -> None:
+        """Reject backdates that land outside the application's lifetime.
+
+        Both directions are silent corruptions rather than loud ones, which is
+        why they're checked here instead of trusted:
+
+        - Before `created_at`: nothing can happen to an application that doesn't
+          exist yet, and the out-of-order event leaves `generated` as the newest
+          entry — so `follow-up` and `response-time` skip the row entirely
+          instead of reporting anything wrong.
+        - Far in the future: a mistyped year ('2062-07-14') would sit in the
+          data producing negative waits and absurd durations forever. A day of
+          slack absorbs timezone and clock skew.
+        """
+        row = conn.execute(
+            "SELECT created_at FROM applications WHERE id = ?", (app_id,)
+        ).fetchone()
+        if row is None:
+            return                                  # caller handles missing ids
+        created_at = row["created_at"] if not isinstance(row, tuple) else row[0]
+        if occurred_at < created_at:
+            raise ValueError(
+                f"--at {occurred_at[:16]} is before application #{app_id} existed "
+                f"({created_at[:16]}). Check the date."
+            )
+        horizon = (datetime.now() + timedelta(days=1)).isoformat()
+        if occurred_at > horizon:
+            raise ValueError(
+                f"--at {occurred_at[:16]} is in the future. Check the date."
+            )
+
+    def update_status(
+        self,
+        app_id: int,
+        status: str,
+        *,
+        occurred_at: str | None = None,
+        note: str | None = None,
+    ) -> bool:
+        """Move an application to `status` and record the transition.
+
+        `applications.status` stays the authoritative *current* value — every
+        existing query and index keeps working untouched — while the event row
+        preserves the history that used to be overwritten. `occurred_at` lets
+        the caller backdate: you apply on Monday and tell the tool on Friday,
+        and without it every response-time metric inherits that bookkeeping lag.
+        """
+        if status not in _VALID_STATUSES:
+            raise ValueError(
+                f"Invalid status '{status}'. Must be one of: {', '.join(_VALID_STATUSES)}"
+            )
+        cur = self._conn.cursor()
+        cur.execute(
             "UPDATE applications SET status = ?, updated_at = ? WHERE id = ?",
             (status, datetime.now().isoformat(), app_id),
         )
+        if cur.rowcount <= 0:
+            self._conn.rollback()
+            return False
+        try:
+            self.add_event(app_id, status, occurred_at=occurred_at, note=note, cur=cur)
+        except Exception:
+            # The UPDATE above is already in this transaction. Without the
+            # rollback a rejected `--at` would leave the new status staged, and
+            # the next commit from anywhere would persist a change the caller
+            # was told had failed.
+            self._conn.rollback()
+            raise
         self._conn.commit()
-        return cur.rowcount > 0
+        return True
 
     def update_company(self, app_id: int, new_name: str) -> bool:
         new_name = new_name.strip()
@@ -936,8 +1100,13 @@ class JobHistoryDB:
         since: str | None = None,
         source: str | None = None,
         org_type: str | None = None,
+        basis: str = "generated",
     ) -> list[dict]:
         """Per-week / per-month application trend, newest period first.
+
+        `basis` picks which date defines the bucket: 'generated' (default,
+        `created_at`) or 'applied' (the first `applied` event). The default is
+        unchanged so existing callers keep their behaviour.
 
         One row per period: total applications, average fit % (offer rows
         only — cold rows carry no score), and per-status counts. This is the
@@ -947,22 +1116,175 @@ class JobHistoryDB:
         fmts = {"week": "%Y-W%W", "month": "%Y-%m"}
         if group_by not in fmts:
             raise ValueError(f"group_by must be one of {sorted(fmts)}")
-        conds, params = _segment_filters(since=since, source=source, org_type=org_type)
+        if basis not in ("generated", "applied"):
+            raise ValueError("basis must be 'generated' or 'applied'")
+        conds, params = _segment_filters(prefix="a.", since=since, source=source, org_type=org_type)
+        if basis == "applied":
+            # Bucket by when the application was actually SENT rather than when
+            # the pack was generated. Rows never applied to drop out entirely,
+            # which is the point: "packs I produced in week W" and "applications
+            # I sent in week W" are different questions, and the second is
+            # usually the one being asked.
+            source_sql = """
+            FROM applications a
+            JOIN (SELECT application_id, MIN(occurred_at) AS bucket_at
+                    FROM application_events WHERE status = 'applied'
+                   GROUP BY application_id) ev ON ev.application_id = a.id
+            """
+            bucket = "ev.bucket_at"
+        else:
+            source_sql = " FROM applications a "
+            bucket = "a.created_at"
         where = (" WHERE " + " AND ".join(conds)) if conds else ""
         rows = self._conn.execute(
             f"""
-            SELECT strftime('{fmts[group_by]}', created_at) AS period,
+            SELECT strftime('{fmts[group_by]}', {bucket}) AS period,
                    COUNT(*) AS applications,
-                   ROUND(AVG(CASE WHEN source = 'offer' THEN fit_pct END), 1) AS avg_fit_pct,
-                   SUM(CASE WHEN status = 'generated' THEN 1 ELSE 0 END) AS generated,
-                   SUM(CASE WHEN status = 'applied'   THEN 1 ELSE 0 END) AS applied,
-                   SUM(CASE WHEN status = 'interview' THEN 1 ELSE 0 END) AS interview,
-                   SUM(CASE WHEN status = 'rejected'  THEN 1 ELSE 0 END) AS rejected,
-                   SUM(CASE WHEN status = 'offer'     THEN 1 ELSE 0 END) AS offer,
-                   SUM(CASE WHEN status = 'dropped'   THEN 1 ELSE 0 END) AS dropped
-            FROM applications{where}
+                   ROUND(AVG(CASE WHEN a.source = 'offer' THEN a.fit_pct END), 1) AS avg_fit_pct,
+                   SUM(CASE WHEN a.status = 'generated' THEN 1 ELSE 0 END) AS generated,
+                   SUM(CASE WHEN a.status = 'applied'   THEN 1 ELSE 0 END) AS applied,
+                   SUM(CASE WHEN a.status = 'interview' THEN 1 ELSE 0 END) AS interview,
+                   SUM(CASE WHEN a.status = 'rejected'  THEN 1 ELSE 0 END) AS rejected,
+                   SUM(CASE WHEN a.status = 'offer'     THEN 1 ELSE 0 END) AS offer,
+                   SUM(CASE WHEN a.status = 'dropped'   THEN 1 ELSE 0 END) AS dropped
+            {source_sql}{where}
             GROUP BY period ORDER BY period DESC
             """,
             params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # -- event-sourced reports -----------------------------------------------
+
+    def application_events(self, app_id: int) -> list[dict]:
+        """One application's status history, oldest first."""
+        rows = self._conn.execute(
+            "SELECT id, status, occurred_at, note FROM application_events "
+            "WHERE application_id = ? ORDER BY occurred_at, id",
+            (app_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def response_times(
+        self,
+        *,
+        since: str | None = None,
+        source: str | None = None,
+        org_type: str | None = None,
+    ) -> list[dict]:
+        """Days between applying and the employer's first move, per application.
+
+        Backfilled `applied` events are excluded: their dates were reconstructed
+        from `created_at`, so a duration measured against them says more about
+        when the pack was generated than about how fast anyone replied. That
+        makes this report start out empty on a migrated database and fill in as
+        real transitions get recorded — which is the honest behaviour. Rows
+        still awaiting a reply come back with `days = None` so callers can show
+        the wait alongside the completed measurements.
+        """
+        conds, params = _segment_filters(
+            prefix="a.", since=since, source=source, org_type=org_type
+        )
+        conds.append("e.status = 'applied'")
+        conds.append("(e.note IS NULL OR e.note NOT LIKE ?)")
+        params.append(f"{_BACKFILL_NOTE}%")
+        rows = self._conn.execute(
+            f"""
+            SELECT a.id, a.company_name, a.job_title, a.source, a.org_type,
+                   e.occurred_at AS applied_at,
+                   nxt.status     AS next_status,
+                   nxt.occurred_at AS next_at,
+                   CASE WHEN nxt.occurred_at IS NULL THEN NULL
+                        ELSE ROUND(julianday(nxt.occurred_at) - julianday(e.occurred_at), 1)
+                   END AS days
+              FROM application_events e
+              JOIN applications a ON a.id = e.application_id
+              LEFT JOIN application_events nxt ON nxt.id = (
+                   SELECT x.id FROM application_events x
+                    WHERE x.application_id = e.application_id
+                      AND x.occurred_at > e.occurred_at
+                    ORDER BY x.occurred_at, x.id LIMIT 1)
+             WHERE {' AND '.join(conds)}
+             ORDER BY e.occurred_at DESC
+            """,
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def funnel(
+        self,
+        *,
+        since: str | None = None,
+        source: str | None = None,
+        org_type: str | None = None,
+    ) -> dict:
+        """How many applications EVER reached each stage, plus the exits.
+
+        Counting current status can't answer this: an application sitting at
+        'rejected' today still passed through 'applied', and often 'interview'
+        too. Only the event history preserves that, which is why the stage
+        counts here are larger than the equivalent `stats --type status` rows.
+        """
+        conds, params = _segment_filters(
+            prefix="a.", since=since, source=source, org_type=org_type
+        )
+        where = (" AND " + " AND ".join(conds)) if conds else ""
+        stages: list[dict] = []
+        prev: int | None = None
+        for stage in _FUNNEL_STAGES:
+            n = self._conn.execute(
+                f"""SELECT COUNT(DISTINCT e.application_id) FROM application_events e
+                      JOIN applications a ON a.id = e.application_id
+                     WHERE e.status = ?{where}""",
+                [stage, *params],
+            ).fetchone()[0]
+            stages.append({
+                "stage": stage,
+                "count": n,
+                "pct_of_previous": round(n / prev * 100, 1) if prev else None,
+            })
+            if n:
+                prev = n
+        exits = {}
+        for status in ("rejected", "dropped"):
+            exits[status] = self._conn.execute(
+                f"""SELECT COUNT(DISTINCT e.application_id) FROM application_events e
+                      JOIN applications a ON a.id = e.application_id
+                     WHERE e.status = ?{where}""",
+                [status, *params],
+            ).fetchone()[0]
+        return {"stages": stages, "exits": exits}
+
+    def follow_ups(
+        self,
+        *,
+        days: int = 21,
+        source: str | None = None,
+        org_type: str | None = None,
+    ) -> list[dict]:
+        """Applications whose LATEST event is 'applied' and has gone quiet.
+
+        Deliberately keyed on the latest event rather than `updated_at`: an
+        unrelated edit (a folder rename, a company correction) bumps
+        `updated_at` and would reset the clock on a silence that is still
+        running.
+        """
+        conds, params = _segment_filters(prefix="a.", source=source, org_type=org_type)
+        where = (" AND " + " AND ".join(conds)) if conds else ""
+        rows = self._conn.execute(
+            f"""
+            SELECT a.id, a.company_name, a.job_title, a.source, a.org_type,
+                   e.occurred_at AS applied_at,
+                   CAST(julianday('now') - julianday(e.occurred_at) AS INTEGER) AS days_waiting
+              FROM applications a
+              JOIN application_events e ON e.id = (
+                   SELECT x.id FROM application_events x
+                    WHERE x.application_id = a.id
+                    ORDER BY x.occurred_at DESC, x.id DESC LIMIT 1)
+             WHERE e.status = 'applied'
+               AND julianday('now') - julianday(e.occurred_at) >= ?{where}
+             ORDER BY days_waiting DESC
+            """,
+            [days, *params],
         ).fetchall()
         return [dict(r) for r in rows]

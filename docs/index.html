@@ -1,4 +1,10 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Job Prospecting — Documentation</title>
+
 
 <style>
   :root{
@@ -102,7 +108,40 @@
 
   /* i18n: show only active language for elements holding both */
   ::selection{background:var(--accent-quiet);}
+
+  /* ---------- Print ---------- */
+  @media print{
+    /* Print on white with dark ink whatever the screen theme is: the dark
+       palette arrives via prefers-color-scheme / [data-theme] and would
+       otherwise carry straight onto the page. */
+    :root, :root[data-theme="dark"], :root[data-theme="light"]{
+      --ground:#fff; --surface:#fff; --surface-2:#f1f3f6;
+      --ink:#111; --ink-soft:#333; --ink-faint:#666;
+      --line:#b4b9c0; --line-soft:#d8dce1;
+      --accent:#8a5410; --accent-2:#7a4a0c;
+      --accent-quiet:#f6efe4; --accent-line:#c9a97a;
+      --shadow:none;
+    }
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    html,body{background:#fff;}
+    /* Fixed chrome is navigation; paper has none. */
+    .progress,.docbar,.navtoggle,.scrim,.toast,.totop,.anchor,.hint,.dots,.brandmark{
+      display:none !important;
+    }
+    a{color:inherit;text-decoration:none;}
+  }
+
+  @media print{
+    @page{ margin:16mm; }
+    .langtoggle{display:none !important;}
+    .page{padding:0;}
+    .doc{break-inside:avoid;border:1px solid var(--line);}
+    /* The cards are links; on paper the destination has to be written out. */
+    .cta[href]::after{content:" (" attr(href) ")";font-family:var(--font-mono);font-size:.8em;color:#555;}
+  }
 </style>
+</head>
+<body>
 
 <div class="page" id="site">
 
@@ -131,8 +170,8 @@
       <div class="doc__tag" data-fr="Grand public" data-en="Non-technical">Grand public</div>
       <h2 class="doc__title" data-fr="Vue d'ensemble" data-en="Overview">Vue d'ensemble</h2>
       <p class="doc__desc"
-         data-fr="Une présentation accessible : ce que fait la boîte à outils, comment se déroule une exécution, le garde-fou de véracité et un guide de démarrage — en diapositives claires et illustrées."
-         data-en="An accessible walkthrough: what the toolkit does, how a run unfolds, the truthfulness guardrail, and a getting-started guide — as clear, illustrated slides.">Une présentation accessible : ce que fait la boîte à outils, comment se déroule une exécution, le garde-fou de véracité et un guide de démarrage — en diapositives claires et illustrées.</p>
+         data-fr="Une présentation accessible : ce que fait la boîte à outils, comment se déroule une exécution, le garde-fou de véracité et un guide de démarrage — en sections claires et illustrées."
+         data-en="An accessible walkthrough: what the toolkit does, how a run unfolds, the truthfulness guardrail, and a getting-started guide — in clear, illustrated sections.">Une présentation accessible : ce que fait la boîte à outils, comment se déroule une exécution, le garde-fou de véracité et un guide de démarrage — en sections claires et illustrées.</p>
       <div class="doc__foot">
         <a class="cta" id="cta-overview" target="_blank" rel="noopener noreferrer"
            data-href-fr="job-prospecting-with-ai.fr.html"
@@ -178,7 +217,10 @@
   <footer class="footer">
     <span data-fr="Job Prospecting · plugin Claude Code v1.0.0" data-en="Job Prospecting · Claude Code plugin v1.0.0">Job Prospecting · plugin Claude Code v1.0.0</span>
     <span class="meta">
-      <span data-fr="4 skills" data-en="4 skills">4 skills</span>
+      <!-- Five skills ship; four are invocable. The bare "4" read as a
+           contradiction against the technical reference's "5 skills" badge,
+           so each now says what it counts. -->
+      <span data-fr="4 skills invocables" data-en="4 user-facing skills">4 skills invocables</span>
       <span data-fr="FR · EN" data-en="FR · EN">FR · EN</span>
       <span data-fr="MIT" data-en="MIT">MIT</span>
     </span>
@@ -225,3 +267,5 @@
   apply(pref);
 })();
 </script>
+</body>
+</html>
