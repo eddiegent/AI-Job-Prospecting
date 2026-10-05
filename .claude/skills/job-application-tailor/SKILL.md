@@ -180,7 +180,7 @@ Read `prompts/generate_linkedin_message.md`. Use the CV fact base, job offer ana
 
 Wait for both subagents to complete before proceeding to Step 8.
 
-**Write permission note:** subagents need to write JSON into `$PREP_DIR`. The project's tracked `.claude/settings.json` pre-approves `Write(output/**)` for exactly this reason, so the rule ships with the repo. If you ever see a subagent report "Write permission denied" for `output/**/_prep/*.json`:
+**Write permission note:** subagents need to write JSON into `$PREP_DIR`. The project's tracked `.claude/settings.json` pre-approves `Edit(output/**)` for exactly this reason, so the rule ships with the repo. It must be an `Edit()` rule: Claude Code does not match `Write()` permission rules, and `Edit()` rules cover the Write tool too. If you ever see a subagent report "Write permission denied" for `output/**/_prep/*.json`:
 1. Confirm the allow rule is still present in `.claude/settings.json`.
 2. If a subagent returned the generated JSON in its final message instead of saving it, save it yourself from the main context and continue — don't re-run the subagent.
 

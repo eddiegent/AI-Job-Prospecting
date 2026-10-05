@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed — subagent write-permission note named the wrong rule (2026-10-05)
+- `SKILL.md`'s Steps 6/7 note said the tracked `.claude/settings.json` pre-approves `Write(output/**)`. The rule has been `Edit(output/**)` since `ad8478e`: Claude Code accepts `Write()` path rules but never consults them, while `Edit()` rules cover every built-in file-writing tool. Someone troubleshooting a denied subagent write by "confirming the rule is present" would have looked for, or re-added, a rule that does nothing. Verified with a headless run on project settings only, in default permission mode: writes under `output/**/_prep/` from both the main agent and a subagent were allowed without a prompt, and a control write outside `output/` was denied.
+
 ### Added — claims guard against over-claimed skills and wording (2026-10-05)
 - **Why.** A run skipped the user's addendum and over-claimed: skills the master CV lists as "Familier / à approfondir" appeared as strengths, letters said "pratique quotidienne" of tools no source described as daily, and technologies from the job posting leaked into the skills table. The existing checks (`verify_fact_base.py`, `check_match_grounding.py`) guard the fact base and match matrix, not the generated prose.
 - **`scripts/claims_guard.py merge <prep_dir>` — mandatory Step 3.9.** Writes `$PREP_DIR/cv_fact_base_merged.json`: cached fact base + addendum bullets (via the existing `merge_addendum_into_fact_base()`, so the hash-keyed cache is never mutated) + `addendum_skill_calibration` + `familiar_only_skills` parsed from the master CV. Runs before Step 4 so match analysis, tailoring, letters, LinkedIn and interview prep all read the same file.
