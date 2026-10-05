@@ -39,7 +39,7 @@ The skill runs a 10-step pipeline:
 5. **Duplicate & history check** — query SQLite database (URL match, company+title match, 80% skill overlap)
 6. **Research company** — web search for size, culture, tech stack, key contacts
 7. **Match/gap analysis** — requirement-by-requirement matrix, fit score. Below 50% = stop
-8. **Tailor CV** — restructure emphasis based on match analysis and company size
+8. **Tailor CV** — restructure emphasis based on match analysis and company size, from a per-run merged fact base (CV + addendum); `claims_guard.py check` then blocks over-claimed skills and unsourced wording in the CV, letters and LinkedIn messages
 9. **Generate letter, short letter, LinkedIn messages, interview prep** (parallel)
 10. **Generate output files** — CV rendered from a DOCX template via `docxtpl`; letters, LinkedIn, interview prep via Python scripts
 11. **Record in database** — store for future duplicate detection and reporting
@@ -92,6 +92,7 @@ job-application-tailor/
 │   ├── docx_generator.py       # CV (template-based) and letter DOCX generation
 │   ├── create_cv_template.py   # Generates the CV .docx templates (run once or to refresh design)
 │   ├── validate.py             # JSON schema validation
+│   ├── claims_guard.py         # Per-run merged fact base + anti-exaggeration check on generated material
 │   ├── common.py               # Shared utilities (caching, naming, fit levels)
 │   ├── job_history_db.py       # SQLite database for application tracking
 │   ├── backfill_history.py     # Import existing output folders into database

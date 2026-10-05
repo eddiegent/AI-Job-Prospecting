@@ -7,6 +7,18 @@ within each section.
 
 ## Unreleased
 
+- **Claims guard (2026-10-05)** — a new `claims_guard.py` stops the offer flow
+  from over-claiming. `merge` (mandatory Step 3.9, before match analysis)
+  writes a per-run `cv_fact_base_merged.json` combining the cached fact base,
+  the addendum, its skill-calibration notes and the master CV's
+  "Familier / à approfondir" skills, so the addendum can't be skipped silently.
+  `check` (mandatory Step 5.5, before any DOCX/PDF) blocks unsourced intensity
+  wording ("au quotidien"), familiar-only skills sold as strengths, skills
+  absent from CV/addendum, dropped qualifiers, job-posting technologies leaking
+  into the output, and an earlier-experience line that blends technologies
+  across employers. Full detail in
+  `.claude/skills/job-application-tailor/CHANGELOG.md`.
+
 - **Status history — schema v4 (2026-07-28)** — status changes are now appended
   to an `application_events` table instead of overwriting a single column, so an
   application's path through the pipeline survives. `update-status` /
