@@ -450,8 +450,10 @@
           <div class="step"><div class="step__n">3</div><div class="step__b"><h4>Analyse the job offer</h4><p>URL HEAD-probe → WebFetch (with a "preserve original language, do NOT translate" guard) → LLM extraction. Detects language; runs the platform-vs-client (aggregator) check.</p><div class="art"><b>→ job_offer_analysis.json</b>, raw_offer.md</div></div></div>
           <div class="step"><div class="step__n">3.5</div><div class="step__b"><h4>Duplicate &amp; history check</h4><p>One-shot <code>check-duplicate</code> wrapping the 3 duplicate layers (exact-URL, company+title, fuzzy &gt;80% skill overlap), same-company context, and a blacklist lookup. Exit 1 stops.</p></div></div>
           <div class="step"><div class="step__n">3.6</div><div class="step__b"><h4>Research the company</h4><p>Foreground WebSearch for size, news, culture, tech-stack, and key contacts (with LinkedIn URLs). Skippable via <code>behaviour.skip_company_research</code>.</p><div class="art"><b>→ company_research.md</b> (with <code>## Contacts</code>)</div></div></div>
+          <div class="step"><div class="step__n">3.9</div><div class="step__b"><h4>Build the merged fact base</h4><p><code>claims_guard.py merge</code>: cached fact base + addendum bullets + skill-calibration notes + the master CV's familiar-only skills. Mandatory — Steps 4–8 read this file, so the addendum can't be silently skipped.</p><div class="art"><b>→ cv_fact_base_merged.json</b></div></div></div>
           <div class="step gate"><div class="step__n">4</div><div class="step__b"><h4>Match / gap analysis + fit gate</h4><p>Per-requirement direct / transferable / gap matrix → <code>overall_fit_pct</code>. Deterministic recount, schema-validate, grounding check, fit-level folder rename. <b>Halts if fit &lt; 50%.</b></p><div class="art"><b>→ match_analysis.json</b></div></div></div>
           <div class="step"><div class="step__n">5</div><div class="step__b"><h4>Tailor the CV</h4><p>Company-size-aware re-emphasis with an earlier-experience compression cutoff; the addendum is merged <b>in-memory only</b>. Forbidden-title-label invariant enforced.</p><div class="art"><b>→ tailored_cv.json</b></div></div></div>
+          <div class="step gate"><div class="step__n">5.5</div><div class="step__b"><h4>Claims check</h4><p><code>claims_guard.py check</code> after the CV and again after the letters &amp; LinkedIn: unsourced intensity wording, familiar-only skills used as strengths, skills absent from CV/addendum, dropped qualifiers, job-posting tech leakage. <b>No DOCX/PDF until it passes.</b></p></div></div>
           <div class="step"><div class="step__n">6·7</div><div class="step__b"><h4>Letters &amp; LinkedIn (parallel agents)</h4><p>Subagent 1: motivation letter → short letter. Subagent 2: LinkedIn messages using real contact names. All schema-validated; orchestrator waits for both.</p><div class="art"><b>→ letter.json · short_letter.json · linkedin.json</b></div></div></div>
           <div class="step"><div class="step__n">8</div><div class="step__b"><h4>Interview prep (foreground)</h4><p>Likely questions, talking points, company context, and a fit-score banner — generated in the foreground (no background agent).</p><div class="art"><b>→ interview_prep.md</b></div></div></div>
           <div class="step"><div class="step__n">9</div><div class="step__b"><h4>Generate output files</h4><p><code>generate_outputs.py</code>: schema-validate → DOCX/PDF/TXT + responsive interview-prep HTML + run summary.</p><div class="art"><b>→ *.docx / *.pdf / *.txt / *.html · run_summary.json</b></div></div></div>
@@ -593,6 +595,7 @@
             <tr><td><code>verify_fact_base.py</code></td><td>Every technology/methodology/metric must appear in the raw CV</td></tr>
             <tr><td><code>_grounding_common.py</code></td><td>Shared synonym map + tokenizer for both grounding checks</td></tr>
             <tr><td><code>check_match_grounding.py</code></td><td>Offer flow — flags false "direct" match claims</td></tr>
+            <tr><td><code>claims_guard.py</code></td><td>Offer flow — <code>merge</code> builds the per-run merged fact base; <code>check</code> flags over-claimed skills and wording in generated material</td></tr>
             <tr><td><code>check_role_grounding.py</code></td><td>Cold flow — flags company tech leaking into candidate emphasis</td></tr>
             <tr><td><code>tailor_invariants.py</code></td><td>Post-hoc validators for the rules in <code>tailor_cv.md</code></td></tr>
             <tr><td><code>user_customization.py</code></td><td>Parse addendum + prefs; in-memory merge into the fact base</td></tr>
@@ -703,13 +706,14 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
       <section class="section" id="guardrails">
         <p class="sec-kick">09 · Truthfulness</p>
         <h2>The guardrail system<a class="anchor" href="#guardrails" aria-label="Link to this section" title="Link to this section">#</a></h2>
-        <p>Four checks, wired into preflight, a pre-commit hook, and the cache-write path — defense-in-depth against shipping a claim the CV doesn't support.</p>
+        <p>Five checks, wired into preflight, a pre-commit hook, the cache-write path, and the offer-flow pipeline — defense-in-depth against shipping a claim the CV doesn't support.</p>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Check</th><th>What it enforces</th><th>Severity</th></tr></thead>
           <tbody>
             <tr><td><code>factbase_consistency.py</code></td><td>Every <b>salient metric</b> (a number carrying <code>+</code>, <code>%</code>, or <code>PB/TB/GB</code>) in the fact base still appears in the CV. Bare ints &amp; years ignored. <code>--check-hash</code> compares <code>.cv_hash</code>.</td><td>blocks (exit 1)</td></tr>
             <tr><td><code>verify_fact_base.py</code></td><td><code>technologies</code> &amp; <code>methodologies</code> must appear literally in the CV; <code>skills</code> are warnings; metrics reuse the drift check.</td><td>blocks / warns</td></tr>
             <tr><td><code>check_match_grounding.py</code></td><td>A <code>direct</code> match whose tech token isn't in the fact base is a false-direct (inflates fit). Tech tokens block; soft-skill phrases warn.</td><td>blocks / warns</td></tr>
+            <tr><td><code>claims_guard.py check</code></td><td>Generated CV, letters &amp; LinkedIn: no unsourced intensity wording ("au quotidien"), familiar-only skills only under "Familier / à approfondir", no skills absent from CV/addendum, master-CV qualifiers kept, no job-posting tech absent from CV/addendum.</td><td>blocks (exit 1)</td></tr>
             <tr><td><code>common.save_cv_fact_base()</code></td><td>Runs the drift check <b>before</b> writing <code>.cv_hash</code> and <b>raises</b> on drift — re-blessing a stale fact base by hand is impossible.</td><td>raises</td></tr>
           </tbody>
         </table></div>

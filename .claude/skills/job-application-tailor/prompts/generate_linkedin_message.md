@@ -42,3 +42,10 @@ Return valid JSON matching `schemas/linkedin.schema.json`. Read that schema file
 
 ## Length target
 500 characters max per message preferred.
+
+## Evidence discipline (added after an over-claiming incident)
+- Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
+- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé .NET Remoting/WCF par gRPC").
+- Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
+- Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
+- `python scripts/claims_guard.py check "$PREP_DIR"` must pass before outputs are generated.

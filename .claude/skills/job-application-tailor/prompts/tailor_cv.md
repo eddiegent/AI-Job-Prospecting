@@ -234,3 +234,18 @@ Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema f
 
 ## Style
 ATS-friendly, clear, professional, concise, realistic — no inflated language.
+
+## Evidence ledger — no claim without a source (added after an over-claiming incident)
+
+Read `$PREP_DIR/cv_fact_base_merged.json` (produced by `scripts/claims_guard.py merge`), NOT the plain fact base. It contains the user's addendum bullets, `addendum_skill_calibration` and `familiar_only_skills`.
+
+- **Every skill, tool, claim and bullet must trace to the master CV or the addendum.** Never add a technology to `skills_sections` because the job posting lists it or because it "feels adjacent". Do not add skills that are absent from the master CV's skills table (e.g. Oracle, Assembleur, Notion, plain "Git") unless the addendum states them.
+- **Copy the master skills table as written, then only reorder.** Keep qualifiers verbatim: `Python (lecture/adaptation de scripts)`, `Clean Architecture (usage pragmatique)`.
+- **`familiar_only_skills` (the master's "Familier / à approfondir" row) may appear ONLY in a trailing section headed "Familier / à approfondir"** — never in a core skills section, tagline, title or summary.
+- **No intensity / frequency / duration wording unless a source states it.** Forbidden unless sourced: "pratique quotidienne", "au quotidien", "tous les jours", "depuis N ans" attached to a specific technology, "expert", "maîtrise". The only durations allowed are those in the master CV (e.g. "15+ ans en C#/.NET").
+- **Describe what was done, not how often.** "Remplacement de .NET Remoting / WCF par gRPC" is a fact; "pratique de WCF" is an invention. A technology that only appears in a skills table without a described use is listed as a skill — it is not described as practised.
+- **Respect `addendum_skill_calibration`**: it records the real scope of each skill (employer, team vs solo, tuning vs design). Wording must stay inside it.
+- **Use the addendum.** Pick the bullets that support this job's real requirements (support, production follow-up, documentation, migrations, team context) and phrase them as written there.
+- **Tagline/summary come from the master CV's own profile text**, lightly reordered. Do not copy job-posting vocabulary into them.
+
+After writing `tailored_cv.json`, run `python scripts/claims_guard.py check "$PREP_DIR"` (see SKILL.md Step 5.5). Exit 1 = fix the wording and re-run. Never "fix" a failure by editing the master CV or the addendum.

@@ -110,9 +110,19 @@ If a company name was found and research is enabled, use **WebSearch in the fore
 
 Save as `$PREP_DIR/company_research.md` with a `## Contacts` section. If the research reveals company size that the job offer didn't mention, update the `company_size` field in `job_offer_analysis.json` — this feeds into CV tailoring (small companies value versatility, large ones value depth).
 
+### Step 3.9 — Build the merged fact base (mandatory, never skip)
+
+Run:
+
+```bash
+cd "$SKILL_BASE" && python scripts/claims_guard.py merge "$PREP_DIR"
+```
+
+This writes `$PREP_DIR/cv_fact_base_merged.json` (cached fact base + addendum bullets + skill-calibration notes + the master CV's familiar-only skills). Steps 4–8 must read THIS file. An earlier run skipped the addendum and over-claimed skills; this step makes that impossible to do silently.
+
 ### Step 4 — Match/gap analysis
 
-Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (direct / transferable / gap).
+Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (direct / transferable / gap). Read `cv_fact_base_merged.json` from Step 3.9.
 
 **Always run `scripts/recount_match_summary.py` against the produced JSON before validating.** The LLM authors both `matches[]` and `match_summary` and the two regularly drift (counts and `overall_fit_pct` are easy to miscount). The recount script overwrites `match_summary` with the deterministically computed value so downstream steps (folder rename, fit gate, history record) operate on correct figures. See `references/commands.md` § Recount Match Summary.
 
@@ -147,6 +157,16 @@ cd "$SKILL_BASE" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/tail
 ```
 
 Exit 1 lists the violations — surface them and regenerate.
+
+### Step 5.5 — Claims check (mandatory gate)
+
+After the tailored CV, and again after the letters and LinkedIn messages exist, run:
+
+```bash
+cd "$SKILL_BASE" && python scripts/claims_guard.py check "$PREP_DIR"
+```
+
+Exit 1 lists unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, lost qualifiers (Python), and job-posting technologies leaking into the output. Fix the wording and re-run; do NOT edit the master CV or addendum to make it pass, and do not generate DOCX/PDF until it passes.
 
 ### Steps 6, 7 — Letter and LinkedIn (parallel agents)
 

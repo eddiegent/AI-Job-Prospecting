@@ -24,3 +24,10 @@ Create a punchy, short version of the motivation letter suitable for online appl
 
 ## Output format
 Return valid JSON matching `schemas/letter.schema.json`. Omit `sender_address`, `recipient_name`, `recipient_address`, `date_line`, and `subject_line` (or set them to empty) — this letter is body-only.
+
+## Evidence discipline (added after an over-claiming incident)
+- Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
+- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé .NET Remoting/WCF par gRPC").
+- Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
+- Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
+- `python scripts/claims_guard.py check "$PREP_DIR"` must pass before outputs are generated.

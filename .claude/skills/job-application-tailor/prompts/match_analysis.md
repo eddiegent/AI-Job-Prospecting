@@ -57,3 +57,10 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
   ]
 }
 ```
+
+## Evidence discipline (added after an over-claiming incident)
+- Read `cv_fact_base_merged.json` (addendum + `addendum_skill_calibration` + `familiar_only_skills`).
+- A skill that sits in the master CV's "Familier / à approfondir" row (`familiar_only_skills`) is at most `transferable`, never `direct`. Same for anything a calibration note says is limited (e.g. SQL Server = schemas and queries, no tuning; WPF = team work).
+- A technology that is merely listed in a skills table, with no described use, may be `direct` only for that exact tool name — never for a wider practice ("documentation", "CI/CD pipelines", "support") built on it.
+- Do not rename a requirement to make it pass the grounding check (e.g. calling CI/CD "GitLab/GitHub pipelines"). If the master calls it familiar, it is transferable.
+- Prefer a lower honest `overall_fit_pct` to an inflated one.
