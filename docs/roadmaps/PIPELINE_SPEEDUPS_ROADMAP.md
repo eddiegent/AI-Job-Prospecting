@@ -1,6 +1,8 @@
 # Pipeline Speedups Roadmap
 
-> **Status: not started.** Drafted 2026-07-28. Two independent changes to the
+> **Status: not started.** Drafted 2026-07-28; re-verified 2026-10-05 against
+> the current SKILL.md and prompts (line numbers, figures and the permission
+> rule corrected; claims-guard interactions added). Two independent changes to the
 > `job-application-tailor` run order. Either can ship alone.
 
 Both items came out of the schema-v4 session. Neither is a correctness fix —
@@ -22,7 +24,7 @@ needs a guard built first — do it second.
 ## 1. Move company research to after the fit gate
 
 **Where:** `.claude/skills/job-application-tailor/SKILL.md` — Step 3.6 (~line
-103) moves to sit between Step 4 (~line 113) and Step 5 (~line 129).
+103) moves to sit between Step 4 (~line 123) and Step 5 (~line 139).
 
 **Current behaviour.** Step 3.6 runs foreground `WebSearch` for company size,
 recent news, culture signals, tech stack and key contact names. Step 4 then
@@ -40,7 +42,7 @@ already been paid for is discarded.
 
 So Step 3.6 can slot in after the gate with nothing losing an input.
 
-**Sizing — be honest about this.** Only **7 of 112 scored runs (6%)** fall
+**Sizing — be honest about this.** Only **7 of 118 scored runs (6%, as of 2026-10-05)** fall
 below the 50% gate, so the "wasted research on rejected offers" saving is
 real but small.
 
@@ -55,11 +57,16 @@ volume, and the one where this change would actually be felt.
 it. Moving the step *after* Step 4 but *before* Step 5 preserves this;
 moving it any later does not.
 
+**Leave Step 3.9 where it is.** The claims-guard merge (Step 3.9,
+`claims_guard.py merge`) must still run before Step 4, which reads
+`cv_fact_base_merged.json`. It does not consume company research, so the
+move does not affect it — the new order is 3.5 → 3.9 → 4 → 3.6 → 5.
+
 ---
 
 ## 2. Run interview prep alongside the letter and LinkedIn
 
-**Where:** `SKILL.md` — Steps 6/7 (~line 151) and Step 8 (~line 167).
+**Where:** `SKILL.md` — Steps 6/7 (~line 171) and Step 8 (~line 187).
 
 **Current behaviour.** Steps 6 and 7 run as two parallel subagents; the
 pipeline waits for both, then Step 8 generates interview prep serially in the
@@ -74,9 +81,11 @@ for, so it can be a third agent in the same batch.
 
 **Why the existing blocker is stale.** SKILL.md says *"Do not use a background
 agent for this step"* because subagents hit permission problems. That note
-predates the `Write(output/**)` rule now shipping in the **tracked**
+predates the `Edit(output/**)` rule now shipping in the **tracked**
 `.claude/settings.json` — which is precisely what the Step 6/7 subagents rely
-on to write into `_prep/`.
+on to write into `_prep/`. (It is an `Edit()` rule, not `Write()`: Claude Code
+does not match `Write()` permission rules — see commit `ad8478e`. Edit rules
+cover writes too.)
 
 **Why it is still not just "delete the note".** The note gives a second
 reason that has *not* gone away: interview prep is markdown-only, with no
@@ -90,6 +99,13 @@ completes, assert `$PREP_DIR/interview_prep.md` exists and is non-trivially
 sized, and fail loudly if not. Then verify on a real end-to-end run rather
 than by reasoning — the failure mode being designed against is precisely one
 that produces no error.
+
+**Keep the claims check after the whole batch.** Step 5.5
+(`claims_guard.py check`) runs once after the tailored CV and again after the
+letters and LinkedIn. With Step 8 in the batch, that second run must wait for
+all three agents, not just Steps 6/7. Note that `check` does not currently
+read `interview_prep.md`, so parallelising Step 8 neither adds nor removes
+claims coverage.
 
 ---
 
