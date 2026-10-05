@@ -23,7 +23,10 @@ Two subcommands:
        master CV or the addendum - no invented skills.
     4. A skill the master CV qualifies (e.g. "Python (lecture/adaptation de
        scripts)") must keep its qualifier.
-    5. JD contagion: a technology from job_offer_analysis.technologies that is
+    5. Earlier-experience line: one clause ("Employer : ...") per company named in
+       its metadata_line, in the same order, and a company name that also appears in
+       a full entry must be disambiguated.
+    6. JD contagion: a technology from job_offer_analysis.technologies that is
        absent from master CV + addendum must not appear anywhere in the output.
 """
 from __future__ import annotations
@@ -131,6 +134,36 @@ def _strings(obj: Any):
             yield from _strings(v)
 
 
+def check_earlier_line(cv: dict[str, Any]) -> list[str]:
+    errs: list[str] = []
+    entries = cv.get("experience", [])
+    for e in entries:
+        if _norm(e.get("role_line", "")) not in ("experiences anterieures", "earlier experience"):
+            continue
+        companies = [c.strip() for c in e.get("metadata_line", "").split("|") if c.strip()]
+        text = _norm(" ".join(e.get("bullets", [])))
+        pos = -1
+        for c in companies:
+            short = _norm(re.sub(r"\s*\(.*?\)", "", c))
+            short = short.split(" informatique")[0].split(" computers")[0].split(" sas")[0].strip()
+            m = re.search(re.escape(short) + r"(?: [^\s:.]+){0,2} :", text) if short else None
+            i = m.start() if m else -1
+            if i == -1:
+                errs.append(f"[earlier-line] no clause 'Employeur :' for '{c}' in the Expériences antérieures bullet")
+            elif i < pos:
+                errs.append(f"[earlier-line] clause for '{c}' is out of order versus the heading line")
+            else:
+                pos = i
+            base = _norm(re.sub(r"\s*\(.*?\)", "", c))
+            if "(" not in c:
+                for other in entries:
+                    other_company = _norm(re.sub(r"\s*\(.*?\)", "", other.get("metadata_line", "").split("|")[0]))
+                    if other is not e and base and base == other_company:
+                        errs.append(f"[earlier-line] '{c}' also appears in a full entry; add a disambiguator such as '(Asnières)'")
+                        break
+    return errs
+
+
 def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
           docs: dict[str, Any], offer: dict[str, Any]) -> list[str]:
     errors: list[str] = []
@@ -146,6 +179,7 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
                 errors.append(f"[intensity] {name}: '{m.group(0)}' is not supported by any source: {s[:110]!r}")
 
     cv = docs.get("tailored_cv.json", {})
+    errors.extend(check_earlier_line(cv))
     familiar_norm = [_norm(f) for f in familiar]
     for sec in cv.get("skills_sections", []):
         heading = _norm(sec.get("heading", ""))
@@ -174,7 +208,7 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
             if len(f) > 2 and _tok_in(f, _norm(text)):
                 errors.append(f"[familiar] {where}: mentions familiar-only skill '{f}' - keep it out of headline/summary/letters")
 
-    neg = re.compile(r"\b(pas|aucun(?:e)?|sans|jamais|no|not|never|without|ne connais|n'ai pas)\b")
+    neg = re.compile(r"\b(pas|aucun(?:e)?|sans|jamais|no|not|never|without|ne connais|n'ai pas|a apprendre|reste a|a developper|se developper|novice|to learn)\b")
     for d in docs.values():
         for text in _strings(d):
             for sent in re.split(r"(?<=[.!?])\s+", _norm(text)):

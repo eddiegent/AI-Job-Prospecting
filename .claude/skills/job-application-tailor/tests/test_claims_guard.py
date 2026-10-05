@@ -61,3 +61,38 @@ def test_calibration_bullets_parsed():
 def test_jd_tech_named_as_an_admitted_gap_is_allowed():
     letter = {"paragraphs": ["Je n'ai pas d'expérience Azure DevOps."]}
     assert run(letter=letter, offer={"technologies": ["Azure DevOps"]}) == []
+
+
+def _earlier(meta, bullet, extra=None):
+    exp = [{"role_line": "Expériences antérieures", "metadata_line": meta, "bullets": [bullet]}]
+    if extra:
+        exp.insert(0, extra)
+    return {"experience": exp}
+
+
+def test_earlier_line_with_one_clause_per_employer_passes():
+    cv = _earlier("Peaktime SAS | JFC Informatique & Média (Asnières) | ROCC Computers Ltd",
+                  "Parcours en C et C++. Peaktime : logiciel TV. JFC : radio. ROCC : OS propriétaire.",
+                  {"role_line": "X", "metadata_line": "JFC Informatique & Média (Kantar) | Paris | 2002", "bullets": []})
+    assert run(cv=cv) == []
+
+
+def test_earlier_line_missing_clause_flagged():
+    cv = _earlier("Peaktime SAS | ROCC Computers Ltd", "Développement C++ et C sous Unix, assembleur.")
+    assert any(e.startswith("[earlier-line]") for e in run(cv=cv))
+
+
+def test_earlier_line_same_name_as_full_entry_must_be_disambiguated():
+    cv = _earlier("JFC Informatique & Média", "JFC : radio.",
+                  {"role_line": "X", "metadata_line": "JFC Informatique & Média (Kantar) | Paris | 2002", "bullets": []})
+    assert any("disambiguator" in e for e in run(cv=cv))
+
+
+def test_jd_tech_named_as_something_to_learn_is_allowed():
+    letter = {"paragraphs": ["La cryptographie reste à apprendre."]}
+    assert run(letter=letter, offer={"technologies": ["Cryptographie"]}) == []
+
+
+def test_jd_tech_in_a_sentence_with_nouveau_is_still_flagged():
+    letter = {"paragraphs": ["J'ai déployé Kubernetes sur un nouveau projet."]}
+    assert any(e.startswith("[jd-contagion]") for e in run(letter=letter, offer={"technologies": ["Kubernetes"]}))

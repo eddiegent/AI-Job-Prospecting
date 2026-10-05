@@ -249,3 +249,13 @@ Read `$PREP_DIR/cv_fact_base_merged.json` (produced by `scripts/claims_guard.py 
 - **Tagline/summary come from the master CV's own profile text**, lightly reordered. Do not copy job-posting vocabulary into them.
 
 After writing `tailored_cv.json`, run `python scripts/claims_guard.py check "$PREP_DIR"` (see SKILL.md Step 5.5). Exit 1 = fix the wording and re-run. Never "fix" a failure by editing the master CV or the addendum.
+
+## Earlier-experience line — wording rules (added after a blended-line incident)
+
+The single bullet of the consolidated "Expériences antérieures" / "Earlier experience" entry must read as a short, natural sentence, never as a keyword list.
+
+- **One clause per employer, in the same order as the company names in `metadata_line`** (reverse-chronological), each introduced by the employer's short name and a colon.
+- **Attach each language, tool and system only to the employer(s) where the fact base / addendum says it was used.** Read the per-employer notes in the merged fact base (`experience[*].details`) and `addendum_skill_calibration` first. Never write a combined phrase like "C++ (MFC) et C sous Unix" that spreads a technology across several employers. An opening phrase may name only technologies that the listed employers genuinely share.
+- **Disambiguate same-name employers.** If the same company name also appears as a full entry elsewhere in the CV (e.g. "JFC Informatique & Média (Kantar)" vs the Asnières role), add the location in the heading line: "JFC Informatique & Média (Asnières)".
+- Keep it dateless (company names only in `metadata_line`) and keep it to one bullet of about three lines.
+- Template: `<Parcours général, une phrase>. <Employeur 1> : <ce qui y a été fait>. <Employeur 2> : <…>. <Employeur 3> : <…>.`

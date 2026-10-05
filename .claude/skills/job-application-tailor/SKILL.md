@@ -166,7 +166,7 @@ After the tailored CV, and again after the letters and LinkedIn messages exist, 
 cd "$SKILL_BASE" && python scripts/claims_guard.py check "$PREP_DIR"
 ```
 
-Exit 1 lists unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, lost qualifiers (Python), and job-posting technologies leaking into the output. Fix the wording and re-run; do NOT edit the master CV or addendum to make it pass, and do not generate DOCX/PDF until it passes.
+Exit 1 lists unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, lost qualifiers (Python), an "Expériences antérieures" line without one ordered "Employeur :" clause per company (or with an undisambiguated same-name employer), and job-posting technologies leaking into the output. Fix the wording and re-run; do NOT edit the master CV or addendum to make it pass, and do not generate DOCX/PDF until it passes.
 
 ### Steps 6, 7 — Letter and LinkedIn (parallel agents)
 
