@@ -285,6 +285,24 @@ def test_list_applications_filters(seeded_db) -> None:
     assert [a["company_name"] for a in esn] == ["EsnCo"]
 
 
+def test_list_applications_company_matches_partial_name(seeded_db) -> None:
+    seeded_db.add_application(company_name="Opus Recruitment Solutions", job_title="Builder")
+    seeded_db.add_application(company_name="CANAL+ Group (CANAL+ TECH)", job_title="AI Builder")
+    assert [a["company_name"] for a in seeded_db.list_applications(company="opus")] == [
+        "Opus Recruitment Solutions"
+    ]
+    assert [a["company_name"] for a in seeded_db.list_applications(company="Canal+")] == [
+        "CANAL+ Group (CANAL+ TECH)"
+    ]
+    assert {a["company_name"] for a in seeded_db.list_applications(company="co")} == {
+        "OfferCo", "EsnCo"
+    }
+    # LIKE wildcards in the query are literal, not patterns.
+    assert seeded_db.list_applications(company="%") == []
+    assert seeded_db.list_applications(company="offer_o") == []
+    assert seeded_db.list_applications(company="_") == []
+
+
 def test_stats_by_org_type_buckets_null_as_unset(seeded_db) -> None:
     rows = {r["org_type"]: r["count"] for r in seeded_db.stats_by_org_type()}
     assert rows == {"esn": 1, "end_employer": 1, "(unset)": 1}

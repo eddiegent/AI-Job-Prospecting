@@ -51,7 +51,8 @@ Filter by status (e.g. only rejected, only applied):
 cd "$SKILL_BASE" && python scripts/cli.py list --status rejected
 ```
 
-Filter by company:
+Filter by company — a partial, case-insensitive match, so `--company "opus"` finds
+"Opus Recruitment Solutions" (and a short query can match several companies):
 ```bash
 cd "$SKILL_BASE" && python scripts/cli.py list --company "Cegid"
 ```

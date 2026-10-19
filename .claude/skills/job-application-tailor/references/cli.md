@@ -265,7 +265,7 @@ list [--status <status>] [--company <company>] [--limit <limit>] [--since <since
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `--status` | optional | Filter by status (generated/applied/rejected/interview/offer/dropped) |
-| `--company` | optional | Filter by company name |
+| `--company` | optional | Filter by company name (partial, case-insensitive match) |
 | `--limit` | optional | Max results (default: 50) (default: `50`) |
 | `--since` | optional | Only include apps since date (7d/30d/this-week/this-month/ISO) |
 | `--source` | optional | Only include applications from this flow (offer vs cold/speculative) — choices: `offer`, `cold` |

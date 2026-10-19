@@ -7,6 +7,12 @@ within each section.
 
 ## Unreleased
 
+- **Partial company search (2026-10-19)** — `list --company` now matches part
+  of a company name, case-insensitively: `--company opus` finds "Opus
+  Recruitment Solutions" and `--company canal+` finds "CANAL+ Group". It used
+  to require the full normalised name and silently returned nothing otherwise.
+  Full detail in `.claude/skills/job-application-tailor/CHANGELOG.md`.
+
 - **Claims guard (2026-10-05)** — a new `claims_guard.py` stops the offer flow
   from over-claiming. `merge` (mandatory Step 3.9, before match analysis)
   writes a per-run `cv_fact_base_merged.json` combining the cached fact base,

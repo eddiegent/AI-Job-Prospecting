@@ -146,7 +146,7 @@ def cmd_count(db: JobHistoryDB, args: argparse.Namespace) -> None:
 
 def _configure_list(p: argparse.ArgumentParser) -> None:
     p.add_argument("--status", help="Filter by status (generated/applied/rejected/interview/offer/dropped)")
-    p.add_argument("--company", help="Filter by company name")
+    p.add_argument("--company", help="Filter by company name (partial, case-insensitive match)")
     p.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
     p.add_argument("--since", help="Only include apps since date (7d/30d/this-week/this-month/ISO)")
     _add_segment_filters(p)

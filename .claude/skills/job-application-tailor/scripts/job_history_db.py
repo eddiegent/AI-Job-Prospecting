@@ -896,8 +896,13 @@ class JobHistoryDB:
             conds.append("status = ?")
             params.append(status)
         if company:
-            conds.append("company_norm = ?")
-            params.append(normalise_company(company))
+            # Substring match, so "opus" finds "Opus Recruitment Solutions".
+            # LIKE wildcards in the user's text are escaped to match literally.
+            # A name that normalises to "" (e.g. "_") matches nothing, not all.
+            needle = re.sub(r"([\\%_])", r"\\\1", normalise_company(company))
+            conds.append("company_norm LIKE ? ESCAPE '\\'" if needle else "0")
+            if needle:
+                params.append(f"%{needle}%")
         where = (" WHERE " + " AND ".join(conds)) if conds else ""
         query = f"SELECT * FROM applications{where} ORDER BY created_at DESC LIMIT ?"
         params.append(limit)

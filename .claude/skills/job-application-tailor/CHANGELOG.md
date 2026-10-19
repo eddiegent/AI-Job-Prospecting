@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed — `list --company` required the full company name (2026-10-19)
+- `JobHistoryDB.list_applications(company=...)` compared `company_norm` with `=`, so `list --company "opus"` returned "No applications found." while "Opus Recruitment Solutions" was in the DB. Resolving an application by company before a status change (the `job-status` workflow) then fell back to scanning the whole list. It is now a substring `LIKE` on the normalised name. `%` and `_` in the query are escaped and match literally; a query that normalises to an empty string (e.g. `_`) still matches nothing rather than every row. A short query can now return several companies — `job-status` already asks the user to pick when a lookup is ambiguous.
+- **Tests** — `test_list_applications_company_matches_partial_name` in `tests/test_job_history_db_v3.py`.
+
 ### Fixed — subagent write-permission note named the wrong rule (2026-10-05)
 - `SKILL.md`'s Steps 6/7 note said the tracked `.claude/settings.json` pre-approves `Write(output/**)`. The rule has been `Edit(output/**)` since `ad8478e`: Claude Code accepts `Write()` path rules but never consults them, while `Edit()` rules cover every built-in file-writing tool. Someone troubleshooting a denied subagent write by "confirming the rule is present" would have looked for, or re-added, a rule that does nothing. Verified with a headless run on project settings only, in default permission mode: writes under `output/**/_prep/` from both the main agent and a subagent were allowed without a prompt, and a control write outside `output/` was denied.
 
