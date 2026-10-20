@@ -19,7 +19,12 @@ folder was since cleaned would be lost silently.
 3. Re-record today's runs from their output folders
    (`cli.py record-application <folder>`).
 
-Delete-and-backfill is a last resort, only when no rows are recoverable.
+Delete-and-backfill is a last resort, only when no rows are recoverable. It
+rebuilds the DB from the output folders that still exist:
+
+```bash
+cd "$SKILL_BASE" && python scripts/backfill_history.py --output-dir "$PROJECT_ROOT/output" --db-path "<path to job_history.db>"
+```
 
 ### Why corruption is rare now (network/mounted filesystems)
 
@@ -71,8 +76,9 @@ not match `Write()` permission rules, and `Edit()` rules cover the Write tool to
 
 1. Confirm the allow rule is still present in `.claude/settings.json`.
 2. If a subagent returned the generated JSON in its final message instead of
-   saving it, save it yourself from the main context and continue — don't
-   re-run the subagent.
+   saving it, save it yourself from the main context — don't re-run the
+   subagent — then run that file's gate (`gate letters` / `gate linkedin`) and
+   fix it until it passes before continuing.
 
 ## Fact base verification fails
 

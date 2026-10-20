@@ -53,10 +53,19 @@ class Ctx:
     def path(self, name: str) -> Path:
         return self.prep / name
 
-    def grounding_fact_base(self) -> Path:
-        """Merged fact base (CV + addendum) when `claims_guard merge` ran, else the plain one."""
-        merged = self.prep / MERGED_FACT_BASE
-        return merged if merged.exists() else self.prep / PLAIN_FACT_BASE
+    def merged_fact_base(self) -> Path:
+        """The merged fact base (CV + addendum) that every grounding check uses."""
+        return self.prep / MERGED_FACT_BASE
+
+
+def _need_merged(ctx: Ctx) -> list[str]:
+    """Error when `claims_guard.py merge` has not run: grounding against the
+    plain fact base would silently ignore the addendum (hidden skills,
+    off-CV facts) and the familiar-only cap."""
+    if ctx.merged_fact_base().exists():
+        return []
+    return [f"{MERGED_FACT_BASE} not found in {ctx.prep} - run "
+            f'`python scripts/claims_guard.py merge "{ctx.prep}"` first (Step 3.9), then re-run this gate']
 
 
 def _clean(lines: list[str]) -> list[str]:
@@ -142,9 +151,9 @@ def _recount_match(ctx: Ctx) -> Result:
 def _match_grounding(ctx: Ctx) -> Result:
     from scripts.check_match_grounding import check
 
-    fb = ctx.grounding_fact_base()
+    fb = ctx.merged_fact_base()
     r = Result(f"match grounding (vs {fb.name})")
-    r.errors = _missing(ctx, "job_offer_analysis.json", fb.name)
+    r.errors = _need_merged(ctx) + _missing(ctx, "job_offer_analysis.json")
     if r.errors:
         return r
     errors, warnings = check(ctx.path("match_analysis.json"), ctx.path("job_offer_analysis.json"), fb)
@@ -164,24 +173,31 @@ def _forbidden_labels(filename: str) -> Callable[[Ctx], Result]:
     return run
 
 
-def _claims(ctx: Ctx) -> Result:
-    from scripts.claims_guard import run_check
+def _claims(*filenames: str) -> Callable[[Ctx], Result]:
+    """Claims check scoped to this stage's own files, so a gate never fails on
+    another stage's output (the CV and letter subagents run in parallel)."""
+    label = f"claims check ({', '.join(filenames)})"
 
-    r = Result("claims check")
-    if not ctx.cv.exists():
-        r.errors.append(f"master CV not found: {ctx.cv}")
+    def run(ctx: Ctx) -> Result:
+        from scripts.claims_guard import run_check
+
+        r = Result(label)
+        if not ctx.cv.exists():
+            r.errors.append(f"master CV not found: {ctx.cv}")
+            return r
+        r.errors = run_check(ctx.prep, master=ctx.cv, only=filenames)
         return r
-    r.errors = run_check(ctx.prep, master=ctx.cv)
-    return r
+    run.label = label
+    return run
 
 
 def _role_grounding(filename: str, kind: str) -> Callable[[Ctx], Result]:
     def run(ctx: Ctx) -> Result:
         from scripts.check_role_grounding import check
 
-        fb = ctx.grounding_fact_base()
+        fb = ctx.merged_fact_base()
         r = Result(f"role grounding --kind {kind} (vs {fb.name})")
-        r.errors = _missing(ctx, "company_profile.json", fb.name)
+        r.errors = _need_merged(ctx) + _missing(ctx, "company_profile.json")
         if r.errors:
             return r
         r.errors = _clean(check(ctx.path(filename), kind, ctx.path("company_profile.json"), fb))
@@ -209,16 +225,16 @@ STAGES: dict[str, list[Step]] = {
     "cv": [
         (_schema("tailored_cv.json", TAILOR_SCHEMAS / "tailored_cv.schema.json"), True),
         (_forbidden_labels("tailored_cv.json"), False),
-        (_claims, False),
+        (_claims("tailored_cv.json"), False),
     ],
     "letters": [
         (_schema("letter.json", TAILOR_SCHEMAS / "letter.schema.json"), True),
         (_schema("short_letter.json", TAILOR_SCHEMAS / "letter.schema.json"), True),
-        (_claims, False),
+        (_claims("letter.json", "short_letter.json"), False),
     ],
     "linkedin": [
         (_schema("linkedin.json", TAILOR_SCHEMAS / "linkedin.schema.json"), True),
-        (_claims, False),
+        (_claims("linkedin.json"), False),
     ],
     "profile": [
         (_schema("company_profile.json", COLD_SCHEMAS / "company_profile.schema.json"), True),
@@ -283,11 +299,13 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "Run every deterministic check for one pipeline stage. Stages: "
         "factbase (schema + verify vs master CV), offer (schema), "
         "match (recount in place + schema + grounding), "
-        "cv (schema + forbidden labels + claims), letters (letter + short_letter "
-        "schemas + claims), linkedin (schema + claims), profile (cold schema), "
+        "cv (schema + forbidden labels + claims on tailored_cv.json), letters "
+        "(letter + short_letter schemas + claims on those two), linkedin (schema + "
+        "claims on linkedin.json), profile (cold schema), "
         "roles (cold schema + forbidden labels + role grounding), "
-        "selected-role (cold schema + role grounding). Grounding uses "
-        "cv_fact_base_merged.json when present, else cv_fact_base.json. "
+        "selected-role (cold schema + role grounding). Grounding (match, roles, "
+        "selected-role) requires cv_fact_base_merged.json - run "
+        "`claims_guard.py merge` first. "
         "Exit 0 = all pass, 1 = a check failed, 2 = bad usage."
     )
     p.add_argument("stage", choices=list(STAGES), help="Pipeline stage to check")

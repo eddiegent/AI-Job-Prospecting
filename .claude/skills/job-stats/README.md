@@ -3,7 +3,7 @@
 Show job application statistics, reports, and trends from the history database.
 Invoke with `/job-stats` or `/job-stats [report-type]` (e.g. `/job-stats fit`, `/job-stats skills`).
 
-> Requires `job-application-tailor` to have been run at least once -- the reports read from `resources/job_history.db`.
+> Requires `job-application-tailor` to have been run at least once -- the reports read its history database, `job_history.db` (in your user data directory; the CLI finds it).
 
 ## Example: Overview Dashboard
 
@@ -23,9 +23,10 @@ Invoke with `/job-stats` or `/job-stats [report-type]` (e.g. `/job-stats fit`, `
 
 | Fit Level | Count | Avg Fit % |
 |-----------|-------|-----------|
-| Strong | 8 | 82% |
-| Moderate | 11 | 67% |
-| Weak | 4 | 48% |
+| very_good | 3 | 88% |
+| good | 5 | 76% |
+| medium | 11 | 61% |
+| low | 4 | 42% |
 
 ### By Company
 

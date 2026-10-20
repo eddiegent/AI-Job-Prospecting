@@ -14,7 +14,7 @@
           "title": {
             "type": "string",
             "minLength": 1,
-            "description": "Plain-language role title the user would recognise, e.g. 'Tech Lead .NET — Desktop & Services'."
+            "description": "Plain-language role title the user would recognise, e.g. 'Senior Java — Platform & APIs'."
           },
           "rationale": {
             "type": "string",
@@ -27,7 +27,7 @@
           "emphasis_areas": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Which parts of the CV this angle elevates (e.g. 'WPF Desktop', 'service architecture', 'team mentoring')."
+            "description": "Which parts of the CV this angle elevates (e.g. 'API design', 'service architecture', 'team mentoring')."
           },
           "risk_notes": {
             "type": "array",

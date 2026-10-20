@@ -7,7 +7,7 @@ You will receive:
 4. the tailored CV JSON (for evidence-backed talking points)
 5. the speculative motivation letter JSON (so openers, hooks, and objection answers stay aligned)
 6. the LinkedIn outreach JSON (so contact recommendations align with actual messages)
-7. the **user prefs** dict — honour `tone_directives`, `team_context_companies`, `default_language`
+7. the **user prefs** dict — honour `tone_directives`, `team_context_companies` (the output language is `selected_role.language`)
 
 ## Goal
 
@@ -136,7 +136,7 @@ Honest, short, list-format. Copy every entry from `company_profile.research_gaps
 - **No solo-work phrasing** for `user_prefs.team_context_companies` — applies to § Interview prep and § Transition narrative especially.
 - **Respect `forbidden_title_labels`.** If `selected_role.title` contains a forbidden label (only possible via `user_override`), paraphrase around it throughout the dossier.
 - **Alignment across artefacts.** The hook in the motivation letter, the opening sentence in the LinkedIn connection-request, and § 3 of this dossier must reference the same company fact. Inconsistency between artefacts is the single most preventable cold-flow mistake.
-- **Language.** Write in `user_prefs.default_language` (default `fr` for the cold flow). All section headings localised.
+- **Language.** Write in `selected_role.language` (`fr` or `en`, set in Step 4 from the user's request or `user_prefs.default_language`). All section headings localised.
 
 ## Output format
 

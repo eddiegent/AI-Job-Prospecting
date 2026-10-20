@@ -5,7 +5,7 @@ You will receive:
 2. `company_profile.json`
 3. `selected_role.json`
 4. the full speculative motivation letter (already generated) — **distill it, don't start from scratch**
-5. the **user prefs** dict (honour `tone_directives`, `team_context_companies`, `default_language` — same rules as the full cold letter)
+5. the **user prefs** dict (honour `tone_directives`, `team_context_companies` — same rules as the full cold letter; language = `selected_role.language`)
 
 ## Goal
 

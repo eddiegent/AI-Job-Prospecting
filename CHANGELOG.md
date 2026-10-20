@@ -7,6 +7,40 @@ within each section.
 
 ## Unreleased
 
+- **Skill simplification: one gate per stage (2026-10-20)** — a new
+  `cli.py gate <stage> <folder>` runs every deterministic check for a pipeline
+  stage in one call and reports all failures at once. Stages: `factbase`,
+  `offer`, `match`, `cv`, `letters`, `linkedin` and, for the cold flow,
+  `profile`, `roles`, `selected-role`. It replaces the separate validate /
+  recount / grounding / forbidden-label / claims-check calls in the skills (the
+  standalone scripts still work, for debugging), so the tailor's separate
+  Step 5.5 claims check is gone — it now runs inside `gate cv`, `gate letters`
+  and `gate linkedin`. The **cold flow now runs the claims guard** too: a new
+  Step 3.9 builds the merged fact base, and with no job offer the contagion
+  rule blocks `company_profile.tech_stack_hints` technologies absent from the
+  CV and addendum. Cold Step 4 is now 4a (candidates + `gate roles`), 4b (ask
+  the user), 4c (save the selection + `gate selected-role`). Claims guard: the
+  hard-coded Python qualifier rule becomes "keep any qualifier the master CV
+  puts on a skill", and addendum sentences that forbid or negate a skill no
+  longer count as a source for it. Match grounding reads the merged fact base
+  and refuses a `direct` on a familiar-only skill. Review fixes before merge: `match` / `roles` / `selected-role` fail when the merged fact base is missing instead of silently falling back; negated addendum lines ("Pas de X à ce poste") no longer ground X; negation is detected per clause ("no-code" is not a negation, `## Hidden skills` is never filtered); each gate checks only its own files and every claims message names its file; the earlier-experience check accepts English "Employer: …" typography; the offer flow re-runs `gate letters` / `gate linkedin` in the main context after the subagents return. `regenerate-outputs` is now
+  the first-build command for both flows (cold-aware: title and language from
+  `selected_role.json`, dossier instead of interview prep; new `--language` /
+  `--job-title` overrides); `selected_role.json` gains a required `language`;
+  new `read-cv` prints the master CV for extraction. A shared
+  `prompts/cv_rules.md` holds the CV rules for both flows (the cold flow had
+  drifted: it lacked the evidence ledger and the earlier-experience wording
+  rules), and `tailor_cv.md` / `tailor_cv_cold.md` keep only their
+  flow-specific parts. The SKILL.md files were rewritten around the gates
+  (1207 → 615 lines); maintainer notes (DB durability, PDF converters,
+  permissions) moved to `references/troubleshooting.md`. Also: the `job-status`
+  frontmatter was invalid YAML, so the skill never auto-triggered — fixed; dead
+  keys removed from `config/settings.default.yaml` (`paths.*`, `outputs.*`,
+  `cv_filename_keyword`, `keep_*_roles_*`, top-level language keys) along with
+  a duplicate Lesjeudis platform entry; `commands.md` reads the master CV from
+  preflight's `master_cv_path` instead of a hard-coded
+  `resources/MASTER_CV.docx`.
+
 - **Partial company search (2026-10-19)** — `list --company` now matches part
   of a company name, case-insensitively: `--company opus` finds "Opus
   Recruitment Solutions" and `--company canal+` finds "CANAL+ Group". It used

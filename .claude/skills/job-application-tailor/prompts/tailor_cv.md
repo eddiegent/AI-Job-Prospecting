@@ -8,7 +8,7 @@ You will receive:
 3. the match analysis (direct/transferable/gap for each requirement)
 4. company research (if available) — use this to confirm company size and understand what the company values
 5. the **experience compression cutoff year** from layered settings (`config/settings.default.yaml` merged with `<user-data-dir>/settings.yaml`) → `behaviour.experience_compression_cutoff_year` (may be `null` to disable compression)
-6. the **user prefs** dict from `resources/user_prefs.yaml` (may be empty). Honour these keys:
+6. the **user prefs** dict from `user_prefs.yaml` in the user data dir (may be empty). Honour these keys:
    - `preferred_title_labels` — prefer these labels when writing the CV `title` and tagline. They represent how the candidate actually describes themselves.
    - `forbidden_title_labels` — never apply these labels to the CV `title`, even if the job offer uses that exact wording. Pick a neutral alternative grounded in the fact base.
    - `default_language` — if set to `fr` or `en`, override auto-detection. If `auto` (or unset), follow the job-offer language as usual.

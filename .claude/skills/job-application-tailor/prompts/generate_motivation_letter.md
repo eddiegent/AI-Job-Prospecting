@@ -3,7 +3,7 @@ Write a short, concise motivation letter based on:
 2. a structured job offer analysis (includes `location` and `work_mode`)
 3. the match analysis (includes `location_analysis` with commute assessment)
 4. company research (if available) — use company context to make the letter feel targeted, not generic
-5. the **user prefs** dict from `resources/user_prefs.yaml` (may be empty). Honour these keys:
+5. the **user prefs** dict from `user_prefs.yaml` in the user data dir (may be empty). Honour these keys:
    - `tone_directives` — a list of short free-form style notes. Read them verbatim and apply them. Examples of what a user might put here: "natural and conversational, not formal", "no corporate buzzwords", "first person, active voice". These override the generic defaults below when they conflict.
    - `team_context_companies` — a list of companies where the candidate was part of a team. When writing about any of these companies, the letter must never use solo-work phrasing (no "seul développeur", "single-handedly", "as the only developer", "j'ai développé seul", "by myself"). Frame contributions as part of a team even if the specific achievement was the candidate's own.
    - `default_language` — if `fr` or `en`, override auto-detection; if `auto` (or unset), follow the job-offer language.
@@ -57,4 +57,4 @@ Key fields: `sender_name`, `sender_address` (array), `recipient_name`, `recipien
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- The CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — schema + forbidden title labels + claims check) must pass before outputs are generated.
+- After writing `letter.json`, run the letters gate (`python scripts/cli.py gate letters "$PREP_DIR"` — schema + claims check) once `short_letter.json` exists too, and fix the wording until it passes.

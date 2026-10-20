@@ -29,7 +29,7 @@ Statuses: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` (`
 |---|---|
 | recent applications | `list` (default limit 50; `--limit N`) |
 | one status only | `list --status rejected` |
-| one company | `list --company "Cegid"` — partial, case-insensitive (`"opus"` finds "Opus Recruitment Solutions"; a short query may match several) |
+| one company | `list --company "Acme"` — partial, case-insensitive (`"acme"` finds "Acme Robotics SAS"; a short query may match several) |
 | a time window | `list --since 30d` (`7d`, `30d`, `this-week`, `this-month`, or an ISO date) |
 | one flow / organisation type | `list --source cold` · `list --org-type esn` |
 | one application's details | `get <id>` |
@@ -49,10 +49,10 @@ Filters combine. Show lists as a table: ID, Status, Fit Level, Fit %, Company, J
 4. Once confirmed, pass `--expect-company` so a stale id fails (exit 2, nothing changed) instead of silently updating the wrong record:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py update-status <id> <new_status> --expect-company "<company>" --at <date> --note "<context>"
+cd "$SKILL_BASE" && python scripts/cli.py update-status <id> <new_status> --expect-company "<company>" [--at <date>] [--note "<context>"]
 ```
 
-**`--at` — record when it happened.** Whenever the user mentions a day ("I applied to Cegid on Tuesday", "I sent that one last week"), convert it and pass `--at` (`2026-07-14`, `2026-07-14T09:30`, `today`, `yesterday`). Without it the change is stamped now — and a Friday catch-up session makes four applications sent on Monday look same-day, which quietly inflates every response-time figure. Dates before the application existed, or in the future, are refused as typos.
+**`--at` — record when it happened.** Whenever the user mentions a day ("I applied to Acme on Tuesday", "I sent that one last week"), convert it and pass `--at` (`2026-07-14`, `2026-07-14T09:30`, `today`, `yesterday`). Without it the change is stamped now — and a Friday catch-up session makes four applications sent on Monday look same-day, which quietly inflates every response-time figure. Dates before the application existed, or in the future, are refused as typos.
 
 **`--note`** is optional free text worth keeping ("no answer after 3 weeks", "rejected after technical round").
 

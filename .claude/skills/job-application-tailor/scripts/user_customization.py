@@ -43,6 +43,42 @@ EMPTY_ADDENDUM: dict[str, Any] = {
 
 # --- Parsing ---------------------------------------------------------------
 
+def addendum_section_kind(heading: str) -> str | None:
+    """Classify a ``## `` heading of the addendum (text after the ``## ``).
+
+    Returns ``additional_experience``, ``hidden_skills``, ``off_cv_facts``,
+    ``skill_calibration`` or None (unknown section). The single place that
+    decides which section a line belongs to — ``parse_addendum_md`` and
+    ``claims_guard`` both use it.
+    """
+    h = heading.strip().lower()
+    if "additional" in h and "experience" in h:
+        return "additional_experience"
+    if "hidden skill" in h:
+        return "hidden_skills"
+    if "off-cv" in h or "off cv" in h:
+        return "off_cv_facts"
+    if "skill calibration" in h:
+        return "skill_calibration"
+    return None
+
+
+def addendum_lines(text: str):
+    """Yield ``(section_kind, stripped_line)`` for every non-heading line.
+
+    ``section_kind`` is ``addendum_section_kind`` of the enclosing ``## ``
+    heading (None before the first heading or under an unknown one).
+    """
+    section: str | None = None
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("## "):
+            section = addendum_section_kind(stripped[3:])
+            continue
+        if stripped:
+            yield section, stripped
+
+
 def parse_addendum_md(text: str) -> dict[str, Any]:
     """Parse the markdown addendum into a structured dict.
 
@@ -68,15 +104,7 @@ def parse_addendum_md(text: str) -> dict[str, Any]:
         line = raw.rstrip()
         stripped = line.strip()
         if stripped.startswith("## "):
-            heading = stripped[3:].strip().lower()
-            if "additional" in heading and "experience" in heading:
-                current_section = "additional_experience"
-            elif "hidden skill" in heading:
-                current_section = "hidden_skills"
-            elif "off-cv" in heading or "off cv" in heading:
-                current_section = "off_cv_facts"
-            else:
-                current_section = None
+            current_section = addendum_section_kind(stripped[3:])
             current_entry = None
             continue
         if stripped.startswith("### ") and current_section == "additional_experience":

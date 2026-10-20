@@ -20,22 +20,26 @@ Two subcommands:
        CI/CD, Entity Framework) may appear in the skills section ONLY under the
        "Familier / a approfondir" heading, and never in tagline/summary/letters.
     3. Every item in a (non-familiar) skills section must appear literally in the
-       master CV or the addendum - no invented skills. Addendum sentences that are
-       prohibitions/negations ("jamais Entity Framework", "ne sont pas dans le
-       fact base") are not a source (``addendum_source_text``); this also applies
-       to rules 1 and 6.
+       master CV or the addendum - no invented skills. Negated addendum clauses
+       ("never Hibernate", "no Go in this role") are not a source
+       (``addendum_source_text``, negation semantics in ``scripts/_negation.py``);
+       this also applies to rules 1 and 6.
     4. Calibration: any skill the master CV's skills table writes as
        ``Name (qualifier)`` must keep its qualifier - a tailored skills item equal
        to the bare ``Name`` is an error (qualified skills are derived from the
        master CV's table rows, see ``qualified_skills_from_rows``).
-    5. Earlier-experience line: one clause ("Employer : ...") per company named in
-       its metadata_line, in the same order, and a company name that also appears in
-       a full entry must be disambiguated.
+    5. Earlier-experience line: one clause ("Employer: ..." / "Employer : ...")
+       per company named in its metadata_line, in the same order, and a company
+       name that also appears in a full entry must be disambiguated.
     6. JD / stack contagion: a technology from job_offer_analysis.technologies
        (offer flow, ``[jd-contagion]``) - or, when there is no
        job_offer_analysis.json, from company_profile.tech_stack_hints (cold flow,
        ``[stack-contagion]``) - that is absent from master CV + addendum must not
        appear anywhere in the output, unless the sentence admits the gap.
+
+Every message is ``[rule] <file>: ...`` so a gate can tell whose file failed.
+``run_check(..., only=...)`` restricts the check to some of the four files
+(``cli.py gate cv|letters|linkedin`` each check only their own stage's files).
 """
 from __future__ import annotations
 
@@ -55,11 +59,15 @@ INTENSITY_RE = re.compile(
     re.IGNORECASE,
 )
 FAMILIAR_HEADINGS = ("familier", "familiar")
-# Gap admissions / negations, matched on _norm()-ed text (accents folded).
-# Rule 6 exempts a sentence that admits the gap; the addendum filter drops
-# prohibition sentences so a tech the addendum FORBIDS never counts as sourced.
-NEG_RE = re.compile(r"\b(pas|aucun(?:e)?|sans|jamais|no|not|never|without|ne connais|n'ai pas|a apprendre|reste a|a developper|se developper|novice|to learn)\b")
-PROHIBITION_RE = re.compile(NEG_RE.pattern + r"|\bni\b|\bne\b")
+DOC_NAMES = ("tailored_cv.json", "letter.json", "short_letter.json", "linkedin.json")
+# Legal-form suffixes dropped from a company name before looking for its
+# earlier-experience clause ("Globex SA" -> "Globex").
+LEGAL_SUFFIXES = (
+    "sa", "sas", "sasu", "sarl", "eurl", "sca", "scop", "snc", "ltd", "limited",
+    "inc", "llc", "llp", "plc", "corp", "co", "gmbh", "ag", "kg", "bv", "nv",
+    "srl", "spa", "sl", "ab", "as", "oy",
+)
+_LEGAL_SUFFIX_RE = re.compile(r"(?:[\s,]+(?:" + "|".join(LEGAL_SUFFIXES) + r")\.?)+$")
 
 
 def _norm(s: str) -> str:
@@ -77,29 +85,60 @@ def _tok_in(token: str, haystack_norm: str) -> bool:
     return re.search(r"(?<![a-z0-9#+.])" + re.escape(t) + r"(?![a-z0-9#+])", haystack_norm) is not None
 
 
+def _is_familiar_row(cells: list[str]) -> bool:
+    return bool(cells) and _norm(cells[0]).startswith(FAMILIAR_HEADINGS)
+
+
+def familiar_items(rows: list[list[str]]) -> list[str]:
+    """Familiar-only skills from the master CV's "Familier / Familiar" row(s).
+
+    Items are split on commas, then on " / ". A leading word (or words) that
+    the master CV lists as a regular skill in another row is a tool qualifier,
+    not a familiar skill: with "GitHub" and "GitLab" in a tools row,
+    "GitHub / GitLab CI/CD" yields only "CI/CD"; with neither listed
+    elsewhere, "RabbitMQ / Kafka" yields both.
+    """
+    regular: set[str] = set()
+    for cells in rows:
+        if _is_familiar_row(cells):
+            continue
+        for item in re.split(r"[,\n]", ",".join(cells[1:])):
+            name = _norm(re.sub(r"\s*\(.*?\)", "", item))
+            if name:
+                regular.add(name)
+
+    familiar: list[str] = []
+    for cells in rows:
+        if not _is_familiar_row(cells):
+            continue
+        for chunk in re.split(r"[,\n]", " ".join(cells[1:])):
+            chunk = re.sub(r"^\s*(backend et api|frontend)\s+", "", chunk.strip(), flags=re.I)
+            for part in chunk.split(" / "):
+                words = part.split()
+                # drop the longest leading run of words that is a regular skill
+                for k in range(len(words), 0, -1):
+                    if _norm(" ".join(words[:k])) in regular:
+                        words = words[k:]
+                        break
+                item = " ".join(words).strip()
+                if item and item not in familiar:
+                    familiar.append(item)
+    return familiar
+
+
 def _master_cv_parts(master_path: Path) -> tuple[str, list[str], list[list[str]]]:
     """Return (full normalised text, familiar-only items, raw table rows)."""
     from docx import Document
 
     doc = Document(str(master_path))
     parts: list[str] = [p.text for p in doc.paragraphs]
-    familiar: list[str] = []
     rows: list[list[str]] = []
     for table in doc.tables:
         for row in table.rows:
             cells = [c.text.strip() for c in row.cells]
             rows.append(cells)
             parts.append(" | ".join(cells))
-            if cells and _norm(cells[0]).startswith(FAMILIAR_HEADINGS):
-                for chunk in " ".join(cells[1:]).split(","):
-                    chunk = re.sub(r"^\s*(backend et api|frontend)\s+", "", chunk.strip(), flags=re.I)
-                    if not chunk:
-                        continue
-                    if "ci/cd" in chunk.lower():
-                        familiar.append("CI/CD")  # "Github / GitLab CI/CD": only CI/CD is familiar
-                    else:
-                        familiar.extend(x.strip() for x in chunk.split(" / ") if x.strip())
-    return _norm("\n".join(parts)), familiar, rows
+    return _norm("\n".join(parts)), familiar_items(rows), rows
 
 
 def master_cv_text(master_path: Path) -> tuple[str, list[str]]:
@@ -150,19 +189,32 @@ def stack_hint_techs(profile: dict[str, Any]) -> list[str]:
 def addendum_source_text(addendum_text: str) -> str:
     """Normalised addendum text usable as a SOURCE of truth.
 
-    The addendum mixes facts ("WinForms - logiciels Telmar") with prohibitions
-    ("Ecrire SQL Server, jamais Entity Framework", "Razor ... ne sont pas dans
-    le fact base"). Naming a tech in a prohibition must not make it sourced, so
-    every sentence (split on lines, sentence ends and ';') that carries a
-    negation / prohibition (pas, jamais, ne, ni, aucun, sans, never, not,
-    no, without, ...) is dropped; the rest of the addendum stays a source.
+    The addendum mixes facts ("Spring Boot - billing services") with
+    prohibitions ("write JDBC, never Hibernate"; "No Go in this role").
+    Naming a tech in a negated clause must not make it sourced
+    (``scripts/_negation.py`` defines the clause split and negation words):
+
+    - "Hidden skills" bullets are kept whole - positive by definition, even
+      when the justification says "without" / "sans".
+    - "Skill calibration" is rule text: a sentence carrying any negation is
+      dropped whole, because a rule names its subject several clauses away
+      from the negation ("Kafka - evaluated, not adopted").
+    - Everything else: only the negated clauses are dropped.
+
+    Each kept piece is normalised on its own, so pieces never glue together.
     """
+    from scripts._negation import affirmative_clauses, affirmative_sentences
+    from scripts.user_customization import addendum_lines
+
     kept: list[str] = []
-    for line in addendum_text.splitlines():
-        for sent in re.split(r"\s*;\s*|(?<=[.!?])[*_)\]'\"]*\s+", _norm(line)):
-            if sent and not PROHIBITION_RE.search(sent):
-                kept.append(sent)
-    return "\n".join(kept)
+    for section, line in addendum_lines(addendum_text):
+        if section == "hidden_skills" and line.startswith("- "):
+            kept.append(line[2:])
+        elif section == "skill_calibration":
+            kept.extend(affirmative_sentences(line))
+        else:
+            kept.extend(affirmative_clauses(line))
+    return "\n".join(n for n in (_norm(k) for k in kept) if n)
 
 
 def calibration_bullets(addendum_text: str) -> list[str]:
@@ -212,7 +264,28 @@ def _strings(obj: Any):
             yield from _strings(v)
 
 
-def check_earlier_line(cv: dict[str, Any]) -> list[str]:
+def _clause_position(company: str, text_norm: str) -> int:
+    """Start of the "<Employer>: ..." clause for ``company`` in the bullet text, or -1.
+
+    The clause may name the company in full or by its leading word(s)
+    ("Globex: ..." for "Globex Industries SA"); a bracketed disambiguator and
+    a trailing legal form (SA, SAS, Ltd, GmbH, ... - ``LEGAL_SUFFIXES``) are
+    ignored. Up to two extra words may sit between the name and the colon,
+    with or without a space before it (French "Globex :" / English "Globex:").
+    """
+    name = _norm(re.sub(r"\s*\(.*?\)", "", company))
+    name = _LEGAL_SUFFIX_RE.sub("", name).strip()
+    words = name.split()
+    starts = []
+    for k in range(len(words), 0, -1):
+        prefix = " ".join(words[:k])
+        m = re.search(r"(?<![a-z0-9])" + re.escape(prefix) + r"(?: [^\s:.]+){0,2}\s?:", text_norm)
+        if m:
+            starts.append(m.start())
+    return min(starts) if starts else -1
+
+
+def check_earlier_line(cv: dict[str, Any], name: str = "tailored_cv.json") -> list[str]:
     errs: list[str] = []
     entries = cv.get("experience", [])
     for e in entries:
@@ -222,14 +295,12 @@ def check_earlier_line(cv: dict[str, Any]) -> list[str]:
         text = _norm(" ".join(e.get("bullets", [])))
         pos = -1
         for c in companies:
-            short = _norm(re.sub(r"\s*\(.*?\)", "", c))
-            short = short.split(" informatique")[0].split(" computers")[0].split(" sas")[0].strip()
-            m = re.search(re.escape(short) + r"(?: [^\s:.]+){0,2} :", text) if short else None
-            i = m.start() if m else -1
+            i = _clause_position(c, text)
             if i == -1:
-                errs.append(f"[earlier-line] no clause 'Employeur :' for '{c}' in the Expériences antérieures bullet")
+                errs.append(f"[earlier-line] {name}: no 'Employer: ...' clause for '{c}' "
+                            f"in the earlier-experience bullet")
             elif i < pos:
-                errs.append(f"[earlier-line] clause for '{c}' is out of order versus the heading line")
+                errs.append(f"[earlier-line] {name}: clause for '{c}' is out of order versus the heading line")
             else:
                 pos = i
             base = _norm(re.sub(r"\s*\(.*?\)", "", c))
@@ -237,7 +308,8 @@ def check_earlier_line(cv: dict[str, Any]) -> list[str]:
                 for other in entries:
                     other_company = _norm(re.sub(r"\s*\(.*?\)", "", other.get("metadata_line", "").split("|")[0]))
                     if other is not e and base and base == other_company:
-                        errs.append(f"[earlier-line] '{c}' also appears in a full entry; add a disambiguator such as '(Asnières)'")
+                        errs.append(f"[earlier-line] {name}: '{c}' also appears in a full entry; "
+                                    f"add a disambiguator such as '(<city>)'")
                         break
     return errs
 
@@ -261,9 +333,9 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
                     continue
                 errors.append(f"[intensity] {name}: '{m.group(0)}' is not supported by any source: {s[:110]!r}")
 
-    cv = docs.get("tailored_cv.json", {})
-    errors.extend(check_earlier_line(cv))
-    familiar_norm = [_norm(f) for f in familiar]
+    cvn = "tailored_cv.json"
+    cv = docs.get(cvn, {})
+    errors.extend(check_earlier_line(cv, cvn))
     for sec in cv.get("skills_sections", []):
         heading = _norm(sec.get("heading", ""))
         is_fam = heading.startswith(FAMILIAR_HEADINGS)
@@ -271,19 +343,20 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
             if not is_fam:
                 for f in familiar:
                     if _norm(item) == _norm(f) or _norm(f) in _norm(item).split(" / "):
-                        errors.append(f"[familiar] skills '{sec['heading']}': '{item}' is familiar-only in the master CV; move it under 'Familier / à approfondir'")
+                        errors.append(f"[familiar] {cvn}: skills '{sec['heading']}': '{item}' is familiar-only "
+                                      f"in the master CV; move it under the familiar heading ('Familier / à approfondir')")
                 if not _tok_in(re.sub(r"\s*\(.*?\)", "", item), source):
-                    errors.append(f"[unsourced-skill] skills '{sec['heading']}': '{item}' not found in master CV or addendum")
+                    errors.append(f"[unsourced-skill] {cvn}: skills '{sec['heading']}': '{item}' not found in master CV or addendum")
             hit = qualified_norm.get(_norm(item))
             if hit:
-                errors.append(f"[calibration] '{hit[0]}' must keep the master qualifier '({hit[1]})'")
+                errors.append(f"[calibration] {cvn}: '{hit[0]}' must keep the master qualifier '({hit[1]})'")
 
     narrative = []
     for k in ("title", "tagline"):
         if cv.get(k):
-            narrative.append((f"tailored_cv.{k}", cv[k]))
+            narrative.append((f"{cvn} ({k})", cv[k]))
     for s in cv.get("summary_paragraphs", []):
-        narrative.append(("tailored_cv.summary", s))
+        narrative.append((f"{cvn} (summary)", s))
     for name in ("letter.json", "short_letter.json", "linkedin.json"):
         for s in _strings(docs.get(name, {})):
             narrative.append((name, s))
@@ -292,27 +365,38 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
             if len(f) > 2 and _tok_in(f, _norm(text)):
                 errors.append(f"[familiar] {where}: mentions familiar-only skill '{f}' - keep it out of headline/summary/letters")
 
-    neg = NEG_RE
     if offer:
         techs, label, origin = offer.get("technologies", []), "jd-contagion", "the job posting"
     elif profile:
         techs, label, origin = stack_hint_techs(profile), "stack-contagion", "the company's tech_stack_hints"
     else:
         techs, label, origin = [], "", ""
-    for d in docs.values():
-        for text in _strings(d):
-            for sent in re.split(r"(?<=[.!?])\s+", _norm(text)):
-                for tech in techs:
-                    if tech and not _tok_in(tech, source) and _tok_in(tech, sent) and not neg.search(sent):
-                        errors.append(f"[{label}] '{tech}' comes from {origin} but is in neither master CV nor addendum: {sent[:90]!r}")
+    techs = [t for t in techs if t and not _tok_in(t, source)]
+    if techs:
+        from scripts._negation import affirmative_clauses
+
+        for name, d in docs.items():
+            for text in _strings(d):
+                # a mention inside a negated clause admits the gap ("no Terraform yet")
+                flagged: set[str] = set()
+                for clause in affirmative_clauses(text):
+                    cl = _norm(clause)
+                    for tech in techs:
+                        if tech not in flagged and _tok_in(tech, cl):
+                            flagged.add(tech)
+                            errors.append(f"[{label}] {name}: '{tech}' comes from {origin} but is in neither "
+                                          f"master CV nor addendum: {cl[:90]!r}")
     return errors
 
 
-def run_check(prep: Path, master: Path | None = None) -> list[str]:
+def run_check(prep: Path, master: Path | None = None,
+              only: tuple[str, ...] | list[str] | None = None) -> list[str]:
     """Load the master CV, addendum and the generated docs in ``prep``; return errors.
 
-    ``master`` overrides the default ``<user-data-dir>/MASTER_CV.docx``. Rule 6
-    reads ``job_offer_analysis.json`` (offer flow) or, when that is absent,
+    ``master`` overrides the default ``<user-data-dir>/MASTER_CV.docx``.
+    ``only`` restricts the check to those files (subset of ``DOC_NAMES``);
+    default = every one of them that exists. Rule 6 reads
+    ``job_offer_analysis.json`` (offer flow) or, when that is absent,
     ``company_profile.json`` (cold flow).
     """
     p = _paths(prep)
@@ -320,8 +404,11 @@ def run_check(prep: Path, master: Path | None = None) -> list[str]:
         p["master"] = master
     master_text, familiar, rows = _master_cv_parts(p["master"])
     add_text = p["addendum"].read_text(encoding="utf-8") if p["addendum"].exists() else ""
+    unknown = [n for n in (only or ()) if n not in DOC_NAMES]
+    if unknown:
+        raise ValueError(f"unknown claims file(s): {unknown}; expected some of {DOC_NAMES}")
     docs = {}
-    for name in ("tailored_cv.json", "letter.json", "short_letter.json", "linkedin.json"):
+    for name in (only or DOC_NAMES):
         f = prep / name
         if f.exists():
             docs[name] = json.loads(f.read_text(encoding="utf-8"))

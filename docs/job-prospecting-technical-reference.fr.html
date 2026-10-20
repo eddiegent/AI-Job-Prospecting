@@ -380,7 +380,7 @@
           <span class="m"><b>25+</b> scripts</span>
           <span class="m">schéma <b>v4</b></span>
           <span class="m">détection de doublons sur <b>3</b> couches</span>
-          <span class="m"><b>4</b> garde-fous</span>
+          <span class="m"><b>5</b> garde-fous</span>
           <span class="m">Python <b>3.10+</b></span>
         </div>
       </header>
@@ -389,7 +389,7 @@
       <section class="section" id="architecture">
         <p class="sec-kick">01 · Forme du système</p>
         <h2>Architecture &amp; flux de données<a class="anchor" href="#architecture" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Deux skills <b>orchestrateurs</b> (offre et cold) partagent une infrastructure unique et délèguent tous deux leur préambule de préparation du CV à un seul <b>sous-skill</b> interne. Deux skills <b>satellites</b> opèrent sur la base SQLite partagée — l'un écrit, l'autre lit. Tout le code partagé (<code>scripts/</code>, <code>schemas/</code>, <code>config/</code>, <code>references/</code>) réside physiquement dans <code>job-application-tailor</code> ; chaque autre skill y pointe via <code>SKILL_BASE_TAILOR</code> au lieu de le copier.</p>
+        <p>Deux skills <b>orchestrateurs</b> (offre et cold) partagent une infrastructure unique et délèguent tous deux leur préambule de préparation du CV à un seul <b>sous-skill</b> interne. Deux skills <b>satellites</b> opèrent sur la base SQLite partagée — l'un écrit, l'autre lit. Tout le code partagé (<code>scripts/</code>, <code>schemas/</code>, <code>config/</code>, <code>references/</code>, ainsi que les règles de CV que les deux flux chargent depuis <code>prompts/cv_rules.md</code>) réside physiquement dans <code>job-application-tailor</code> ; chaque autre skill y pointe via <code>SKILL_BASE_TAILOR</code> au lieu de le copier.</p>
 
         <div class="arch">
           <div class="arch-row">
@@ -437,26 +437,25 @@
           </table>
         </div>
         <h3 id="skills-delegation-contract">Contrat de délégation<a class="anchor" href="#skills-delegation-contract" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
-        <p>Les deux orchestrateurs font un <code>Read</code> de <code>job-prep-cv/SKILL.md</code> pour les étapes 0–2.5, en transmettant <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code> et <code>$EARLY_BLACKLIST_NAME</code>. Le sous-skill exécute <code>scripts/preflight.py</code> et renvoie les chemins résolus (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), la <code>$CUSTOMIZATION</code> chargée et un <code>$PREP_DIR/cv_fact_base.json</code> vérifié. Le contrôle revient à l'orchestrateur à l'étape 3.</p>
+        <p>Les deux orchestrateurs font un <code>Read</code> de <code>job-prep-cv/SKILL.md</code> pour les étapes 0–2.5, en transmettant <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code> et <code>$EARLY_BLACKLIST_NAME</code>. Le sous-skill exécute <code>scripts/preflight.py</code> et renvoie les chemins résolus (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$MASTER_CV</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), la <code>$CUSTOMIZATION</code> chargée et un <code>$PREP_DIR/cv_fact_base.json</code> vérifié. Le contrôle revient à l'orchestrateur à l'étape 3.</p>
       </section>
 
       <!-- 3 · PIPELINE -->
       <section class="section" id="pipeline">
         <p class="sec-kick">03 · Flux sur offre</p>
         <h2>Pipeline de bout en bout<a class="anchor" href="#pipeline" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Le flux sur offre (<code>job-application-tailor/SKILL.md</code>) se déroule en ~10 étapes. Les étapes 6 &amp; 7 s'exécutent comme deux sous-agents <code>Agent</code> en parallèle ; le seuil d'adéquation de l'étape 4 peut interrompre l'exécution avant qu'aucun document ne soit généré.</p>
+        <p>Le flux sur offre (<code>job-application-tailor/SKILL.md</code>) se déroule en ~10 étapes. Les étapes 6 &amp; 7 s'exécutent comme deux sous-agents <code>Agent</code> en parallèle ; le seuil d'adéquation de l'étape 4 peut interrompre l'exécution avant qu'aucun document ne soit généré. Après chaque fichier intermédiaire, le skill passe la barrière de l'étape — <code>cli.py gate &lt;stage&gt; &lt;folder&gt;</code>, qui exécute en un seul appel tous les contrôles déterministes de l'étape (§9) — et ne poursuit jamais tant qu'elle échoue.</p>
         <div class="steps">
-          <div class="step"><div class="step__n">0–2.5</div><div class="step__b"><h4>Préparation du CV (déléguée)</h4><p>Confiée à <code>job-prep-cv</code> : vérification des dépendances &amp; du CV maître, création des dossiers, chargement de la personnalisation, et le chemin en cache chaud de l'extraction/vérification de la base de faits.</p><div class="art"><b>→ cv_fact_base.json</b> (en cache, indexé par hash)</div></div></div>
-          <div class="step"><div class="step__n">3</div><div class="step__b"><h4>Analyser l'offre d'emploi</h4><p>Sonde HEAD de l'URL → WebFetch (avec un garde-fou « préserver la langue d'origine, NE PAS traduire ») → extraction par LLM. Détecte la langue ; exécute le contrôle plateforme-vs-client (agrégateur).</p><div class="art"><b>→ job_offer_analysis.json</b>, raw_offer.md</div></div></div>
+          <div class="step"><div class="step__n">0–2.5</div><div class="step__b"><h4>Préparation du CV (déléguée)</h4><p>Confiée à <code>job-prep-cv</code> : vérification des dépendances &amp; du CV maître, création des dossiers, chargement de la personnalisation, et le chemin en cache chaud de l'extraction/vérification de la base de faits. Sans cache valide : <code>read-cv</code> → extraction → <code>gate factbase</code> → <code>save-cv-cache</code>.</p><div class="art"><b>→ cv_fact_base.json</b> (en cache, indexé par hash)</div></div></div>
+          <div class="step"><div class="step__n">3</div><div class="step__b"><h4>Analyser l'offre d'emploi</h4><p>Sonde HEAD de l'URL → WebFetch (avec un garde-fou « préserver la langue d'origine, NE PAS traduire ») → extraction par LLM → <code>gate offer</code>. Détecte la langue ; exécute le contrôle plateforme-vs-client (agrégateur).</p><div class="art"><b>→ job_offer_analysis.json</b>, raw_offer.md</div></div></div>
           <div class="step"><div class="step__n">3.5</div><div class="step__b"><h4>Contrôle des doublons &amp; de l'historique</h4><p><code>check-duplicate</code> en une passe, englobant les 3 couches de doublons (URL exacte, entreprise+intitulé, recouvrement flou &gt;80% des compétences), le contexte même-entreprise et une consultation de la blacklist. Un exit 1 arrête.</p></div></div>
           <div class="step"><div class="step__n">3.6</div><div class="step__b"><h4>Rechercher l'entreprise</h4><p>WebSearch au premier plan pour la taille, l'actualité, la culture, la stack technique et les contacts clés (avec URL LinkedIn). Contournable via <code>behaviour.skip_company_research</code>.</p><div class="art"><b>→ company_research.md</b> (avec <code>## Contacts</code>)</div></div></div>
           <div class="step"><div class="step__n">3.9</div><div class="step__b"><h4>Construire la base de faits fusionnée</h4><p><code>claims_guard.py merge</code> : base de faits en cache + puces de l'addendum + notes de calibrage des compétences + compétences « familier » du CV maître. Obligatoire — les étapes 4 à 8 lisent ce fichier, l'addendum ne peut donc plus être ignoré silencieusement.</p><div class="art"><b>→ cv_fact_base_merged.json</b></div></div></div>
-          <div class="step gate"><div class="step__n">4</div><div class="step__b"><h4>Analyse d'adéquation / écarts + seuil d'adéquation</h4><p>Matrice par exigence direct / transferable / gap → <code>overall_fit_pct</code>. Recomptage déterministe, validation de schéma, contrôle d'ancrage, renommage du dossier selon le niveau d'adéquation. <b>Interrompt si l'adéquation &lt; 50%.</b></p><div class="art"><b>→ match_analysis.json</b></div></div></div>
-          <div class="step"><div class="step__n">5</div><div class="step__b"><h4>Adapter le CV</h4><p>Réaccentuation tenant compte de la taille de l'entreprise, avec un seuil de compression des expériences plus anciennes ; elle lit la base de faits fusionnée de l'étape 3.9, l'addendum ne touche donc jamais le cache. Invariant d'intitulé interdit appliqué.</p><div class="art"><b>→ tailored_cv.json</b></div></div></div>
-          <div class="step gate"><div class="step__n">5.5</div><div class="step__b"><h4>Contrôle des affirmations</h4><p><code>claims_guard.py check</code> après le CV, puis à nouveau après les lettres &amp; LinkedIn : formulations d'intensité non sourcées, compétences « familier » présentées comme des points forts, compétences absentes du CV/addendum, qualificatifs perdus, fuite de technologies de l'offre. <b>Pas de DOCX/PDF tant qu'il échoue.</b></p></div></div>
-          <div class="step"><div class="step__n">6·7</div><div class="step__b"><h4>Lettres &amp; LinkedIn (agents parallèles)</h4><p>Sous-agent 1 : lettre de motivation → lettre courte. Sous-agent 2 : messages LinkedIn utilisant de vrais noms de contacts. Tous validés par schéma ; l'orchestrateur attend les deux.</p><div class="art"><b>→ letter.json · short_letter.json · linkedin.json</b></div></div></div>
+          <div class="step gate"><div class="step__n">4</div><div class="step__b"><h4>Analyse d'adéquation / écarts + seuil d'adéquation</h4><p>Matrice par exigence direct / transferable / gap → <code>overall_fit_pct</code>. <code>gate match</code> : recomptage déterministe, schéma, ancrage dans la base de faits fusionnée (une compétence « familier » n'est jamais <code>direct</code>). Puis renommage du dossier selon le niveau d'adéquation. <b>Interrompt si l'adéquation &lt; 50%.</b></p><div class="art"><b>→ match_analysis.json</b></div></div></div>
+          <div class="step gate"><div class="step__n">5</div><div class="step__b"><h4>Adapter le CV</h4><p>Réaccentuation tenant compte de la taille de l'entreprise, avec un seuil de compression des expériences plus anciennes, selon <code>tailor_cv.md</code> + le <code>cv_rules.md</code> partagé ; elle lit la base de faits fusionnée de l'étape 3.9, l'addendum ne touche donc jamais le cache. <code>gate cv</code> : schéma, intitulés interdits, contrôle des affirmations. <b>Pas de DOCX/PDF tant qu'elle échoue.</b></p><div class="art"><b>→ tailored_cv.json</b></div></div></div>
+          <div class="step"><div class="step__n">6·7</div><div class="step__b"><h4>Lettres &amp; LinkedIn (agents parallèles)</h4><p>Sous-agent 1 : lettre de motivation → lettre courte → <code>gate letters</code>. Sous-agent 2 : messages LinkedIn utilisant de vrais noms de contacts → <code>gate linkedin</code>. Les deux barrières vérifient le schéma et les affirmations ; chaque sous-agent ne rend la main qu'une fois sa barrière franchie, et l'orchestrateur attend les deux.</p><div class="art"><b>→ letter.json · short_letter.json · linkedin.json</b></div></div></div>
           <div class="step"><div class="step__n">8</div><div class="step__b"><h4>Préparation à l'entretien (au premier plan)</h4><p>Questions probables, arguments clés, contexte de l'entreprise et bandeau de score d'adéquation — générés au premier plan (sans agent en arrière-plan).</p><div class="art"><b>→ interview_prep.md</b></div></div></div>
-          <div class="step"><div class="step__n">9</div><div class="step__b"><h4>Générer les fichiers de sortie</h4><p><code>generate_outputs.py</code> : validation de schéma → DOCX/PDF/TXT + HTML responsive de préparation à l'entretien + résumé d'exécution.</p><div class="art"><b>→ *.docx / *.pdf / *.txt / *.html · run_summary.json</b></div></div></div>
+          <div class="step"><div class="step__n">9</div><div class="step__b"><h4>Générer les fichiers de sortie</h4><p><code>cli.py regenerate-outputs</code> (qui pilote <code>generate_outputs.py</code>) : validation de schéma → DOCX/PDF/TXT + HTML responsive de préparation à l'entretien + résumé d'exécution. La même commande reconstruit le dossier plus tard.</p><div class="art"><b>→ *.docx / *.pdf / *.txt / *.html · run_summary.json</b></div></div></div>
           <div class="step"><div class="step__n">10</div><div class="step__b"><h4>Enregistrer dans l'historique</h4><p>Insertion de l'entreprise / intitulé / compétences / adéquation / dossier de sortie dans <code>job_history.db</code> pour la détection de doublons et les statistiques futures.</p></div></div>
         </div>
       </section>
@@ -467,12 +466,13 @@
         <h2>En quoi le flux cold diffère<a class="anchor" href="#cold" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
         <p>Les étapes 0–2.5 sont identiques (déléguées). Le milieu du pipeline diverge — il n'y a pas de description de poste, donc rien à noter.</p>
         <div class="cardgrid">
-          <div class="icard"><div class="k">Remplace l'étape 3</div><h4>Recherche sur l'entreprise</h4><p>Construit <code>company_profile.json</code> à partir du site, du MCP Indeed, de LinkedIn et de l'actualité. Par défaut en français. Canonise le slug du dossier.</p></div>
+          <div class="icard"><div class="k">Remplace l'étape 3</div><h4>Recherche sur l'entreprise</h4><p>Construit <code>company_profile.json</code> à partir du site, du MCP Indeed, de LinkedIn et de l'actualité → <code>gate profile</code>. Par défaut en français. Canonise le slug du dossier.</p></div>
           <div class="icard"><div class="k">Ajoute</div><h4>Classification org_type</h4><p>Étiquette l'organisation <code>end_employer</code> / <code>esn</code> / <code>staffing_agency</code> / <code>recruitment_agency</code> / <code>unknown</code>. Structurant : chaque prompt en aval se recadre pour les intermédiaires.</p></div>
-          <div class="icard"><div class="k">Remplace l'étape 4</div><h4>Inférence du poste cible</h4><p><code>infer_target_role.md</code> propose des candidats → contrôle d'ancrage sur la stack → <b>choix interactif de l'utilisateur</b> (jamais sélectionné automatiquement) → <code>selected_role.json</code>.</p></div>
+          <div class="icard"><div class="k">Remplace l'étape 4</div><h4>Inférence du poste cible</h4><p>4a : <code>infer_target_role.md</code> propose des candidats → <code>gate roles</code> (schéma, intitulés interdits, ancrage sur la stack). 4b : <b>choix interactif de l'utilisateur</b> (jamais sélectionné automatiquement). 4c : <code>selected_role.json</code>, avec la <code>language</code> du dossier → <code>gate selected-role</code>.</p></div>
           <div class="icard"><div class="k">Remplace le score d'adéquation</div><h4>Dossier entreprise</h4><p><code>company_dossier.md</code> (→ HTML). Sa section « Pourquoi vous / pourquoi eux » est un <b>angle d'approche</b> narratif plutôt qu'un score d'adéquation chiffré.</p></div>
         </div>
         <div class="callout"><span class="lbl">Le pire indice du flux cold</span>Pour un intermédiaire, vous seriez placé sur la mission d'un client ou présenté à un employeur — la candidature est donc une lettre « voici le profil que je propose », et non une lettre « votre mission me motive ». Écrire la mauvaise est la bévue que <code>org_type</code> existe pour éviter.</div>
+        <p>Le reste est commun avec le flux sur offre. Une étape 3.9, entre la recherche et l'inférence du poste, construit la même base de faits fusionnée ; le CV suit le même <code>prompts/cv_rules.md</code> (<code>tailor_cv_cold.md</code> ne garde que ce qui est propre au flux cold, comme l'ancrage sur le poste choisi) ; et le CV, les lettres et LinkedIn passent les mêmes <code>gate cv</code> / <code>gate letters</code> / <code>gate linkedin</code>, contrôle des affirmations compris. Faute d'offre, sa règle de contagion bloque à la place les technologies de <code>company_profile.tech_stack_hints</code> absentes du CV et de l'addendum. L'étape 9 est la même commande <code>regenerate-outputs</code> : le préfixe de dossier <code>cold-</code> sélectionne la génération cold (intitulé et langue tirés de <code>selected_role.json</code>, dossier entreprise au lieu de la préparation à l'entretien).</p>
         <p>Les lignes cold enregistrent <code>source='cold'</code> avec <code>org_type</code> et un <code>company_profile_snapshot</code>, laissant à NULL les colonnes de scoring propres aux offres et <code>job_skills</code> vide. <code>--supersede</code> retire une ligne active antérieure pour la même entreprise + poste lors d'une nouvelle prospection.</p>
       </section>
 
@@ -480,7 +480,7 @@
       <section class="section" id="cli">
         <p class="sec-kick">05 · Surface de commande</p>
         <h2>La CLI — <code>cli.py</code><a class="anchor" href="#cli" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Point d'entrée unique : <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. La base d'historique est résolue automatiquement (<code>JOB_TAILOR_HOME</code> → <code>resources/</code> du dépôt legacy → répertoire app-data de l'OS) ; <code>--db &lt;path&gt;</code> permet de la remplacer. Au-delà des commandes BDD, la CLI porte les sous-commandes de support du pipeline que les skills appellent entre les étapes (<code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>check-forbidden-labels</code>, <code>save-cv-cache</code>) ainsi qu'un rapport de tendance <code>timeline</code> (regroupé par date de génération du dossier, ou par date d'envoi réelle avec <code>--basis applied</code>). Les sous-commandes sont définies déclarativement dans le registre <code>scripts/commands/</code> (un module par domaine) — le parseur, la table de dispatch et l'ensemble des sauvegardes pré-mutation en dérivent tous, donc ils ne peuvent pas diverger. <code>build_parser()</code> est la source canonique de vérité — la référence dans <code>references/cli.md</code> en est auto-générée et son écart est contrôlé par un hook de pre-commit.</p>
+        <p>Point d'entrée unique : <code>python scripts/cli.py &lt;subcommand&gt; [options]</code>. La base d'historique est résolue automatiquement (<code>JOB_TAILOR_HOME</code> → <code>resources/</code> du dépôt legacy → répertoire app-data de l'OS) ; <code>--db &lt;path&gt;</code> permet de la remplacer. Au-delà des commandes BDD, la CLI porte les sous-commandes de support du pipeline que les skills appellent entre les étapes (<code>gate</code>, <code>read-cv</code>, <code>probe-url</code>, <code>cache-raw-offer</code>, <code>detect-platform</code>, <code>rename-with-fit</code>, <code>rename-cold-folder</code>, <code>save-cv-cache</code> ; <code>check-forbidden-labels</code> reste disponible seul, mais les skills y passent désormais par <code>gate</code>) ainsi qu'un rapport de tendance <code>timeline</code> (regroupé par date de génération du dossier, ou par date d'envoi réelle avec <code>--basis applied</code>). Les sous-commandes sont définies déclarativement dans le registre <code>scripts/commands/</code> (un module par domaine) — le parseur, la table de dispatch et l'ensemble des sauvegardes pré-mutation en dérivent tous, donc ils ne peuvent pas diverger. <code>build_parser()</code> est la source canonique de vérité — la référence dans <code>references/cli.md</code> en est auto-générée et son écart est contrôlé par un hook de pre-commit.</p>
         <div class="codeblock"><span class="p">$ </span><span class="c">python scripts/cli.py list --status applied --limit 100</span></div>
 
         <h3 id="cli-querying-reporting-read-only">Interrogation &amp; rapports <span class="badge read">lecture seule</span><a class="anchor" href="#cli-querying-reporting-read-only" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
@@ -529,7 +529,7 @@
           <thead><tr><th>Sous-commande</th><th>Objet</th><th>Args / flags principaux</th></tr></thead>
           <tbody>
             <tr><td><code>record-application</code></td><td>Étape 10 — insérer une ligne d'historique depuis <code>_prep/</code></td><td><code>target</code> · <code>--url --source --language --dry-run --supersede</code></td></tr>
-            <tr><td><code>regenerate-outputs</code></td><td>Reconstruction de l'étape 9 depuis les JSON</td><td><code>target</code> · <code>--check --skip-pdf</code></td></tr>
+            <tr><td><code>regenerate-outputs</code></td><td>Étape 9 — générer ou reconstruire un dossier depuis <code>_prep/</code> (offre ou cold)</td><td><code>target</code> · <code>--check --skip-pdf --language --job-title</code></td></tr>
             <tr><td><code>rename-application</code></td><td>Renommage atomique dossier+BDD+JSON</td><td><code>id</code> · <code>--new-company --new-slug --no-regenerate</code></td></tr>
           </tbody>
         </table></div>
@@ -540,7 +540,7 @@
       <section class="section" id="scripts">
         <p class="sec-kick">06 · Cartographie des modules</p>
         <h2>Inventaire des scripts<a class="anchor" href="#scripts" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Tous sous <code>.claude/skills/job-application-tailor/scripts/</code>. <code>cli.py</code> est un assembleur mince au-dessus du paquet-registre <code>commands/</code> (reporting / status / companies / records / admin / pipeline). <code>common.py</code> est le hub d'utilitaires partagés importé presque partout ; deux contrôles d'ancrage partagent <code>_grounding_common.py</code> pour que leurs tables de synonymes ne puissent pas diverger.</p>
+        <p>Tous sous <code>.claude/skills/job-application-tailor/scripts/</code>. <code>cli.py</code> est un assembleur mince au-dessus du paquet-registre <code>commands/</code> (reporting / status / companies / records / admin / pipeline / gate). <code>common.py</code> est le hub d'utilitaires partagés importé presque partout ; deux contrôles d'ancrage partagent <code>_grounding_common.py</code> pour que leurs tables de synonymes ne puissent pas diverger.</p>
 
         <h3 id="scripts-db-paths">BDD &amp; chemins<a class="anchor" href="#scripts-db-paths" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
         <div class="tbl-wrap"><table class="tbl">
@@ -557,9 +557,9 @@
           <thead><tr><th>Module</th><th>Objet</th></tr></thead>
           <tbody>
             <tr><td><code>preflight.py</code></td><td>Orchestration consolidée des étapes 0–2.5 ; émet un blob d'état JSON (<code>ok / cache_stale / first_run / blacklisted / error</code>)</td></tr>
-            <tr><td><code>generate_outputs.py</code></td><td>Étape 9 — validation → DOCX/PDF/TXT/HTML + résumé d'exécution</td></tr>
-            <tr><td><code>validate.py</code></td><td>Validateur JSON-Schema (Draft 2020-12) avec des chemins d'erreur lisibles</td></tr>
-            <tr><td><code>recount_match_summary.py</code></td><td>Recalcule de façon déterministe <code>match_summary</code> avant validation</td></tr>
+            <tr><td><code>generate_outputs.py</code></td><td>Moteur de rendu de l'étape 9, derrière <code>cli.py regenerate-outputs</code> — validation → DOCX/PDF/TXT/HTML + résumé d'exécution</td></tr>
+            <tr><td><code>validate.py</code></td><td>Validateur JSON-Schema (Draft 2020-12) avec des chemins d'erreur lisibles ; exécuté par chaque barrière</td></tr>
+            <tr><td><code>recount_match_summary.py</code></td><td>Recalcule de façon déterministe <code>match_summary</code> avant validation ; <code>gate match</code> fait de même sur place</td></tr>
           </tbody>
         </table></div>
 
@@ -594,10 +594,11 @@
             <tr><td><code>factbase_consistency.py</code></td><td>Contrôle canonique de dérive des métriques + fraîcheur du hash</td></tr>
             <tr><td><code>verify_fact_base.py</code></td><td>Chaque technologie/méthodologie/métrique doit figurer dans le CV brut</td></tr>
             <tr><td><code>_grounding_common.py</code></td><td>Table de synonymes + tokeniseur partagés pour les deux contrôles d'ancrage</td></tr>
-            <tr><td><code>check_match_grounding.py</code></td><td>Flux sur offre — signale les fausses affirmations de correspondance « direct »</td></tr>
-            <tr><td><code>claims_guard.py</code></td><td>Flux sur offre — <code>merge</code> construit la base de faits fusionnée de l'exécution ; <code>check</code> signale les compétences et formulations exagérées dans les documents générés</td></tr>
+            <tr><td><code>commands/gate.py</code></td><td><code>cli.py gate &lt;stage&gt;</code> — exécute tous les contrôles d'une étape et rapporte tous les échecs d'un coup ; importe les contrôles ci-dessous sans en réimplémenter aucun</td></tr>
+            <tr><td><code>check_match_grounding.py</code></td><td>Flux sur offre — signale les fausses affirmations de correspondance « direct », y compris sur les compétences « familier »</td></tr>
+            <tr><td><code>claims_guard.py</code></td><td>Les deux flux — <code>merge</code> construit la base de faits fusionnée de l'exécution ; <code>check</code> signale les compétences et formulations exagérées dans les documents générés</td></tr>
             <tr><td><code>check_role_grounding.py</code></td><td>Flux cold — signale la fuite de la tech de l'entreprise dans les accents du candidat</td></tr>
-            <tr><td><code>tailor_invariants.py</code></td><td>Validateurs a posteriori des règles de <code>tailor_cv.md</code></td></tr>
+            <tr><td><code>tailor_invariants.py</code></td><td>Validateurs a posteriori des règles de <code>cv_rules.md</code> / <code>tailor_cv.md</code></td></tr>
             <tr><td><code>user_customization.py</code></td><td>Parse l'addendum + préférences ; fusion en mémoire dans la base de faits</td></tr>
           </tbody>
         </table></div>
@@ -706,19 +707,36 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash existent
       <section class="section" id="guardrails">
         <p class="sec-kick">09 · Véracité</p>
         <h2>Le système de garde-fous<a class="anchor" href="#guardrails" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Cinq contrôles, câblés dans preflight, un hook de pre-commit, le chemin d'écriture du cache et le pipeline du flux sur offre — une défense en profondeur contre la livraison d'une affirmation que le CV n'étaye pas.</p>
+        <p>Cinq contrôles, câblés dans preflight, un hook de pre-commit, le chemin d'écriture du cache et les deux pipelines de génération — une défense en profondeur contre la livraison d'une affirmation que le CV n'étaye pas.</p>
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Contrôle</th><th>Ce qu'il impose</th><th>Sévérité</th></tr></thead>
           <tbody>
             <tr><td><code>factbase_consistency.py</code></td><td>Chaque <b>métrique saillante</b> (un nombre portant <code>+</code>, <code>%</code> ou <code>PB/TB/GB</code>) de la base de faits figure encore dans le CV. Les entiers nus &amp; les années sont ignorés. <code>--check-hash</code> compare <code>.cv_hash</code>.</td><td>bloque (exit 1)</td></tr>
             <tr><td><code>verify_fact_base.py</code></td><td><code>technologies</code> &amp; <code>methodologies</code> doivent figurer littéralement dans le CV ; <code>skills</code> ne donnent que des avertissements ; les métriques réutilisent le contrôle de dérive.</td><td>bloque / avertit</td></tr>
-            <tr><td><code>check_match_grounding.py</code></td><td>Une correspondance <code>direct</code> dont le token tech n'est pas dans la base de faits est un faux « direct » (gonfle l'adéquation). Les tokens tech bloquent ; les expressions de soft-skill avertissent.</td><td>bloque / avertit</td></tr>
-            <tr><td><code>claims_guard.py check</code></td><td>CV, lettres &amp; LinkedIn générés : aucune formulation d'intensité non sourcée (« au quotidien »), compétences « familier » uniquement sous « Familier / à approfondir », aucune compétence absente du CV/addendum, qualificatifs du CV maître conservés, une clause « Employeur : » par entreprise, dans l'ordre, sur la ligne des expériences antérieures, aucune technologie de l'offre absente du CV/addendum.</td><td>bloque (exit 1)</td></tr>
+            <tr><td><code>check_match_grounding.py</code></td><td>Une correspondance <code>direct</code> dont le token tech n'est pas dans la base de faits est un faux « direct » (gonfle l'adéquation), de même qu'un <code>direct</code> sur une compétence que le CV maître classe en « familier » (au mieux transferable). Ancrage dans la base de faits fusionnée. Les tokens tech bloquent ; les expressions de soft-skill avertissent.</td><td>bloque / avertit</td></tr>
+            <tr><td><code>claims_guard.py check</code></td><td>CV, lettres &amp; LinkedIn générés, dans les deux flux : aucune formulation d'intensité non sourcée (« au quotidien »), compétences « familier » uniquement sous « Familier / à approfondir », aucune compétence absente du CV/addendum (une phrase de l'addendum qui interdit ou nie une compétence ne compte pas comme source), tout qualificatif que le CV maître accole à une compétence conservé, une clause « Employeur : » par entreprise, dans l'ordre, sur la ligne des expériences antérieures, et aucune contagion — technologie de l'offre (flux sur offre) ou de <code>tech_stack_hints</code> (flux cold) absente du CV/addendum, sauf si la phrase admet le manque.</td><td>bloque (exit 1)</td></tr>
             <tr><td><code>common.save_cv_fact_base()</code></td><td>Exécute le contrôle de dérive <b>avant</b> d'écrire <code>.cv_hash</code> et <b>lève</b> en cas de dérive — re-valider à la main une base de faits périmée est impossible.</td><td>lève</td></tr>
           </tbody>
         </table></div>
         <div class="callout warn"><span class="lbl">L'incident qu'ils referment</span>Le CV maître a été mis à jour <code>40+ → 100+ applications</code> alors que la base de faits indiquait encore <code>40+</code>. La vérification de l'époque ne contrôlait que la présence des tech/méthodologies — pas les nombres — et des données périmées ont donc été livrées. Le contrôle de dérive des métriques en fait désormais un échec bloquant, câblé dans preflight, la barrière d'écriture du cache et le hook de pre-commit.</div>
         <p style="font-size:.86rem;">Les contrôles d'ancrage sur offre et cold (<code>check_match_grounding.py</code>, <code>check_role_grounding.py</code>) importent un <code>_grounding_common.py</code> partagé pour que leurs tables de synonymes et tokeniseurs ne puissent jamais diverger.</p>
+        <h3 id="guardrails-gates">Une barrière par étape<a class="anchor" href="#guardrails-gates" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
+        <p>Les skills n'appellent pas ces contrôles un par un. Après chaque fichier intermédiaire, ils exécutent <code>cli.py gate &lt;stage&gt; &lt;folder&gt;</code>, qui lance tous les contrôles de l'étape et affiche une ligne <code>[PASS]</code> / <code>[FAIL]</code> par contrôle. Un échec de schéma arrête l'étape ; sinon tous les contrôles s'exécutent et tous les échecs sont rapportés ensemble. Exit <code>0</code> = continuer, <code>1</code> = corriger le fichier et relancer, <code>2</code> = mauvais usage (pas de <code>_prep/</code>). L'ancrage exige <code>cv_fact_base_merged.json</code> : <code>match</code>, <code>roles</code> et <code>selected-role</code> échouent tant que l'étape 3.9 n'a pas tourné, et les lignes négatives de l'addendum (« Pas de X ») ne comptent jamais comme preuve. Chaque barrière ne contrôle que ses propres fichiers, et chaque message du contrôle des affirmations nomme le fichier concerné. Les scripts autonomes fonctionnent toujours, pour le débogage.</p>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Barrière</th><th>Étape</th><th>Contrôles</th></tr></thead>
+          <tbody>
+            <tr><td><code>factbase</code></td><td>2.5</td><td>schéma · base de faits vs CV maître (<code>verify_fact_base.py</code>)</td></tr>
+            <tr><td><code>offer</code></td><td>3</td><td>schéma</td></tr>
+            <tr><td><code>match</code></td><td>4</td><td>recomptage de <code>match_summary</code> (sur place) · schéma · ancrage des correspondances</td></tr>
+            <tr><td><code>cv</code></td><td>5</td><td>schéma · intitulés interdits · contrôle des affirmations</td></tr>
+            <tr><td><code>letters</code></td><td>6</td><td>schémas lettre + lettre courte · contrôle des affirmations</td></tr>
+            <tr><td><code>linkedin</code></td><td>7</td><td>schéma · contrôle des affirmations</td></tr>
+            <tr><td><code>profile</code></td><td>cold 3</td><td>schéma</td></tr>
+            <tr><td><code>roles</code></td><td>cold 4a</td><td>schéma · intitulés interdits · ancrage des postes</td></tr>
+            <tr><td><code>selected-role</code></td><td>cold 4c</td><td>schéma · ancrage des postes</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout"><span class="lbl">Corriger la sortie, jamais la source</span>Quand une barrière échoue, c'est la formulation générée qui change. Le CV maître, l'addendum et <code>.cv_hash</code> ne sont jamais modifiés pour faire passer une barrière.</div>
       </section>
 
       <!-- 10 · CUSTOMIZATION -->
@@ -744,20 +762,21 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash existent
           </div>
         </div>
         <div class="callout"><span class="lbl">L'invariant critique</span><code>merge_addendum_into_fact_base()</code> renvoie un <b>nouveau</b> dict et ne mute jamais le cache ; <code>claims_guard.py merge</code> n'écrit ce dict que dans le fichier par exécution <code>$PREP_DIR/cv_fact_base_merged.json</code>. Les puces de l'addendum se rattachent uniquement à <code>experience[].details</code> — jamais à <code>technologies</code>/<code>methodologies</code> — ce qui garde <code>verify_fact_base.py</code> honnête. L'addendum enrichit l'<i>exécution</i> sans corrompre le <i>cache indexé par hash</i>.</div>
-        <p style="font-size:.86rem;">Deux vérificateurs d'invariants étayent les préférences : <code>find_forbidden_title_label_violations</code> (correspondance de mot entier avec l'intitulé du CV adapté) et <code>find_team_context_solo_phrasing</code> (signale « solo / only developer / seul développeur » à proximité d'une mention d'entreprise en contexte d'équipe).</p>
+        <p style="font-size:.86rem;">Deux vérificateurs d'invariants étayent les préférences : <code>find_forbidden_title_label_violations</code> (correspondance de mot entier avec l'intitulé du CV adapté et les postes candidats du flux cold ; exécuté par <code>gate cv</code> / <code>gate roles</code>) et <code>find_team_context_solo_phrasing</code> (signale « solo / only developer / seul développeur » à proximité d'une mention d'entreprise en contexte d'équipe).</p>
       </section>
 
       <!-- 11 · OUTPUTS -->
       <section class="section" id="outputs">
         <p class="sec-kick">11 · Livrables</p>
         <h2>Génération des livrables<a class="anchor" href="#outputs" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Chaque exécution écrit dans <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offre) ou <code>output/cold-[date]-[company-slug]/</code> (cold). Les JSON/MD intermédiaires résident dans un sous-dossier <code>_prep/</code> afin que n'importe quelle étape puisse être ré-exécutée isolément.</p>
+        <p>Chaque exécution écrit dans <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offre) ou <code>output/cold-[date]-[company-slug]/</code> (cold). Les JSON/MD intermédiaires résident dans un sous-dossier <code>_prep/</code> afin que n'importe quelle étape puisse être ré-exécutée isolément ; <code>cli.py regenerate-outputs &lt;folder&gt;</code> en tire les fichiers à la première exécution et les reconstruit ensuite, pour l'un ou l'autre flux.</p>
         <h3 id="outputs-prep-artefacts">Artefacts <code>_prep/</code><a class="anchor" href="#outputs-prep-artefacts" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
         <div class="chips">
-          <span class="chip">cv_fact_base.json</span><span class="chip">job_offer_analysis.json</span><span class="chip">match_analysis.json</span>
+          <span class="chip">cv_fact_base.json</span><span class="chip">cv_fact_base_merged.json</span><span class="chip">job_offer_analysis.json</span><span class="chip">match_analysis.json</span>
           <span class="chip">company_research.md</span><span class="chip">tailored_cv.json</span><span class="chip">letter.json</span>
           <span class="chip">short_letter.json</span><span class="chip">linkedin.json</span><span class="chip">interview_prep.md</span>
-          <span class="chip">company_dossier.md</span>
+          <span class="chip">company_dossier.md</span><span class="chip">company_profile.json</span><span class="chip">role_candidates.json</span>
+          <span class="chip">selected_role.json</span>
         </div>
         <p style="font-size:.84rem;margin-top:8px;"><code>run_summary.json</code> est écrit à la racine du dossier (et non dans <code>_prep/</code>).</p>
         <h3 id="outputs-formats">Formats<a class="anchor" href="#outputs-formats" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
@@ -779,6 +798,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash existent
    2. LibreOffice   <span class="cm"># soffice --headless --convert-to pdf</span>
    3. pandoc        <span class="cm"># nécessite un moteur LaTeX</span>
    <span class="cm"># tous échouent → PdfConversionError ; le DOCX n'est jamais modifié</span></div>
+        <p style="font-size:.86rem;">Les notes de maintenance — récupérer une base d'historique corrompue, les problèmes de convertisseurs PDF, un sous-agent à qui l'écriture dans <code>_prep/</code> est refusée — sont dans <code>references/troubleshooting.md</code>, hors des fichiers SKILL.md.</p>
       </section>
 
       <!-- 12 · SCORING -->

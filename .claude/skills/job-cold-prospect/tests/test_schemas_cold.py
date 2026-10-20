@@ -65,11 +65,12 @@ def _role_candidates_min() -> dict:
 
 def _selected_role_min() -> dict:
     return {
-        "title": "Tech Lead .NET — Desktop & Services",
+        "title": "Tech Lead Java — Platform & APIs",
         "source": "candidate_pick",
         "seniority_band": "lead",
         "generated_at": "2026-04-20T10:00:00Z",
         "company_name": "Acme SAS",
+        "language": "fr",
     }
 
 
@@ -207,7 +208,7 @@ def test_selected_role_minimum_valid(tmp_path, cold_schemas_dir):
 def test_selected_role_accepts_generalist_path(tmp_path, cold_schemas_dir):
     data = _selected_role_min()
     data.update(
-        title="Senior .NET — Desktop & Services, open to scope",
+        title="Senior Java — Platform & APIs, open to scope",
         source="generalist",
         seniority_band="senior",
         candidate_index=None,
@@ -229,9 +230,17 @@ def test_selected_role_accepts_user_override(tmp_path, cold_schemas_dir):
 
 
 @pytest.mark.parametrize("language", ["fr", "en"])
-def test_selected_role_accepts_optional_language(tmp_path, cold_schemas_dir, language):
+def test_selected_role_accepts_language(tmp_path, cold_schemas_dir, language):
     data = {**_selected_role_min(), "language": language}
     assert _run(tmp_path, data, cold_schemas_dir / "selected_role.schema.json") == []
+
+
+def test_selected_role_requires_language(tmp_path, cold_schemas_dir):
+    """The pack language must be explicit (the cold flow has no JD to detect it from)."""
+    data = _selected_role_min()
+    del data["language"]
+    errors = _run(tmp_path, data, cold_schemas_dir / "selected_role.schema.json")
+    assert any("language" in e for e in errors), errors
 
 
 def test_selected_role_rejects_unknown_language(tmp_path, cold_schemas_dir):

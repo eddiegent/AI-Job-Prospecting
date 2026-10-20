@@ -98,7 +98,7 @@ cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
 |---|---|---|
 | `factbase` | `cv_fact_base.json` | schema → verify against the master CV (fabricated tech/methodology, metric drift; skill warnings non-blocking). `--cv` overrides the CV path |
 | `offer` | `job_offer_analysis.json` | schema |
-| `match` | `match_analysis.json` | recount `match_summary` in place → schema → grounding (a `direct` match needs evidence in the fact base) |
+| `match` | `match_analysis.json` | recount `match_summary` in place → schema → grounding against `cv_fact_base_merged.json` (a `direct` match needs evidence; familiar-only skills are at most `transferable`) |
 | `cv` | `tailored_cv.json` | schema → forbidden title labels (`user_prefs.yaml`) → claims check |
 | `letters` | `letter.json` + `short_letter.json` | schema → claims check |
 | `linkedin` | `linkedin.json` | schema → claims check |
@@ -106,7 +106,7 @@ cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
 | `roles` | `role_candidates.json` (cold) | schema → forbidden title labels → stack grounding |
 | `selected-role` | `selected_role.json` (cold) | schema → stack grounding |
 
-Exit 0 = pass, 1 = at least one check failed (each failure is listed under its check), 2 = bad folder. A failed schema check stops the stage; otherwise every check runs. The claims check flags unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, dropped skill qualifiers, a malformed "Earlier experience" line, and technologies from the job posting (offer) or the company's `tech_stack_hints` (cold) that the CV doesn't support.
+Exit 0 = pass, 1 = at least one check failed (each failure is listed under its check), 2 = bad folder. `match`, `roles` and `selected-role` fail if `cv_fact_base_merged.json` is missing — run `claims_guard.py merge` (Step 3.9) first. The claims check in `cv` / `letters` / `linkedin` covers only that stage's own files, and each message is prefixed `[rule] <file>:`. A failed schema check stops the stage; otherwise every check runs. The claims check flags unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, dropped skill qualifiers, a malformed "Earlier experience" line, and technologies from the job posting (offer) or the company's `tech_stack_hints` (cold) that the CV doesn't support.
 
 **On failure, fix the generated file and re-run.** Never edit the master CV, the addendum or `.cv_hash` to make a gate pass. Match grounding failure → downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`. Fact-base `[metric]` failure → re-extract the figure from the CV, don't delete it.
 
@@ -173,9 +173,9 @@ Accepts either a filesystem path or an integer application id (resolved via the 
 
 - `--url <url>` — populate `source_url` when the offer JSON / company profile lacks one (e.g. older runs predating the schema field).
 - `--source {offer,cold}` — override the auto-detected flow. The default is `cold` for `cold-` prefixed folders and `offer` otherwise; only pass this when the folder name disagrees with the actual flow.
-- `--language <code>` — cold-flow language code (default `fr`). Ignored for offer flow — that one reads `detected_language` from `job_offer_analysis.json`.
+- `--language <code>` — cold-flow language code (default: `selected_role.language`, else `fr`). Ignored for offer flow — that one reads `detected_language` from `job_offer_analysis.json`.
 - `--dry-run` — print the kwargs JSON that would be inserted, then exit (no DB write). Use this when verifying the wrapper is composing things correctly.
-- `--supersede` — before inserting, mark any prior **live** application to the same company + same role as `dropped`, so a re-prospect on a later date leaves one active row per role instead of a parallel duplicate (`#41` vs `#100`). Matches strictly on the natural key (company + normalised title) — a different role at the same company is left untouched. A single pre-mutation backup covers the whole operation.
+- `--supersede` — before inserting, mark any prior **live** application to the same company + same role as `dropped`, so a re-prospect on a later date leaves one active row per role instead of a parallel duplicate. Matches strictly on the natural key (company + normalised title) — a different role at the same company is left untouched. A single pre-mutation backup covers the whole operation.
 
 On success the command prints `Recorded application #<id>` on stdout, preceded by one `Superseded #<id> … -> dropped` line per row it retired. Exit codes: `0` = inserted (or dry-run completed), `1` = unknown id, `2` = missing/invalid `_prep/` artefacts.
 
@@ -196,7 +196,7 @@ Accepts either a filesystem path or an integer application id (resolved via the 
 
 ## Rename Application (post-fact)
 
-When the real client surfaces after generation (the Free-Work / Omnitech case), `rename-application` is the atomic wrapper that swaps the folder, DB row, `_prep/job_offer_analysis.json`, and `run_summary.json` in one shot, then runs `regenerate-outputs` so DOCX/PDF filenames pick up the new slug.
+When the real client surfaces after generation (a platform such as Free-Work posted on behalf of a client), `rename-application` is the atomic wrapper that swaps the folder, DB row, `_prep/job_offer_analysis.json`, and `run_summary.json` in one shot, then runs `regenerate-outputs` so DOCX/PDF filenames pick up the new slug.
 
 ```bash
 cd "$SKILL_BASE" && python scripts/cli.py rename-application <app_id> --new-company "<real client name>"

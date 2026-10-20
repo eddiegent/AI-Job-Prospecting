@@ -12,7 +12,7 @@ behaviour:
   dry_run: false  # set to true to stop after match analysis (fit score only, no CV/letter generation)
   # Roles whose end date is strictly before January of this year are consolidated
   # into a single dateless "Earlier experience" line — unless they are load-bearing
-  # for the target job (see prompts/tailor_cv.md § Earlier-experience compression).
+  # for the target job (see prompts/cv_rules.md § Earlier-experience compression).
   # Set to null to disable compression entirely.
   experience_compression_cutoff_year: 2005
 

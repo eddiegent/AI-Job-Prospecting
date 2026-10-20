@@ -2,7 +2,7 @@ Write short LinkedIn messages based on:
 1. the tailored application positioning
 2. the job offer analysis
 3. company research (if available) — especially the **Contacts** section for real names and LinkedIn profiles
-4. the **user prefs** dict from `resources/user_prefs.yaml` (may be empty). Honour these keys:
+4. the **user prefs** dict from `user_prefs.yaml` in the user data dir (may be empty). Honour these keys:
    - `tone_directives` — read verbatim and apply. Overrides the generic defaults below when they conflict.
    - `team_context_companies` — if the message mentions work at one of these companies, never use solo-work phrasing.
    - `default_language` — if `fr` or `en`, override auto-detection.
@@ -48,4 +48,4 @@ Return valid JSON matching `schemas/linkedin.schema.json`. Read that schema file
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- The CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — schema + forbidden title labels + claims check) must pass before outputs are generated.
+- After writing `linkedin.json`, run the LinkedIn gate (`python scripts/cli.py gate linkedin "$PREP_DIR"` — schema + claims check) and fix the wording until it passes.

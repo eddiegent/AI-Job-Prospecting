@@ -37,7 +37,7 @@ All hard rules from `job-application-tailor` SKILL.md apply unchanged (truthfuln
 
 ### Steps 0–2.5 — CV preparation (delegated)
 
-Read `.claude/skills/job-prep-cv/SKILL.md` and follow it with:
+Read `job-prep-cv/SKILL.md` — a sibling of this skill's folder (`.claude/skills/job-prep-cv/` in the repo, `$CLAUDE_PLUGIN_ROOT/skills/job-prep-cv/` when installed as a plugin) — and follow it with:
 
 - `$FLOW = "cold"` (folder `cold-[date]-[slug]/`)
 - `$INPUT_SEED = $ARGUMENTS` (company name or URL — seeds a placeholder slug)
@@ -138,7 +138,7 @@ Wait for the reply. Do not continue without one.
 | User reply | `source` | `title` | `candidate_index` | Other fields |
 |---|---|---|---|---|
 | A number `N` | `candidate_pick` | `candidates[N-1].title` | `N-1` | copy `seniority_band`, `emphasis_areas`, `risk_notes`, `rationale` from the candidate |
-| `generalist` (only if `allow_generalist: true`) | `generalist` | synthetic — e.g. `"Senior .NET — Desktop & Services, open to scope"` built from the CV headline + `preferred_title_labels` | `null` | `seniority_band` inferred from the fact base; `emphasis_areas` may be empty; `rationale` notes the open-to-discussion framing |
+| `generalist` (only if `allow_generalist: true`) | `generalist` | synthetic — e.g. `"Senior Java — Platform & APIs, open to scope"` built from the CV headline + `preferred_title_labels` | `null` | `seniority_band` inferred from the fact base; `emphasis_areas` may be empty; `rationale` notes the open-to-discussion framing |
 | Free-form title | `user_override` | the user's exact words | `null` | `seniority_band` inferred or `"unspecified"`; `emphasis_areas` empty unless the user gave some; `rationale` records the override |
 
 If the user picks `generalist` while `allow_generalist: false`, confirm first — small or deep-specialist shops often read "open to discussion" as lack of focus.

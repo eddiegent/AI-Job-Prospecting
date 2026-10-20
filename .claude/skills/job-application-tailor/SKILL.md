@@ -53,7 +53,7 @@ Exit 0 = continue. Exit 1 = fix the file and re-run the gate; never continue pas
 
 ### Steps 0–2.5 — CV preparation (delegated)
 
-Read `.claude/skills/job-prep-cv/SKILL.md` and follow it with:
+Read `job-prep-cv/SKILL.md` — a sibling of this skill's folder (`.claude/skills/job-prep-cv/` in the repo, `$CLAUDE_PLUGIN_ROOT/skills/job-prep-cv/` when installed as a plugin) — and follow it with:
 
 - `$FLOW = "offer"` (folder `[date]-[slug]/`; Step 4 adds the fit-level prefix)
 - `$INPUT_SEED = $ARGUMENTS` (the offer text, URL, or title hint — seeds a placeholder slug)
@@ -127,7 +127,7 @@ Once the CV passes its gate these two are independent. **Spawn two Agent subagen
 - **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters). Run **`gate letters`**.
 - **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Run **`gate linkedin`**.
 
-Each subagent returns only once its gate passes. Wait for both. If one can't write into `_prep/`, see `references/troubleshooting.md`.
+Each subagent returns only once its gate passes. Wait for both, then **run `gate letters` and `gate linkedin` yourself** — don't take a subagent's word for it, and never build files from JSON that hasn't passed its gate in this context. If a subagent couldn't write into `_prep/`, see `references/troubleshooting.md`.
 
 ### Step 8 — Interview prep (foreground)
 
@@ -166,7 +166,7 @@ Filenames are language-aware (FR: `Lettre_de_motivation_...`, EN: `Cover_letter_
 
 ## Re-running one step
 
-When the user asks to redo one output ("redo the LinkedIn messages", "regenerate the letter for Eddyfi"), don't re-run the pipeline — every step's inputs are in `_prep/`. ("Regenerate the pack" with no specific output means the full pipeline.)
+When the user asks to redo one output ("redo the LinkedIn messages", "regenerate the letter for Acme"), don't re-run the pipeline — every step's inputs are in `_prep/`. ("Regenerate the pack" with no specific output means the full pipeline.)
 
 1. Find the folder — ask, or take the most recent one in `output/` matching their description. Set `$OUTPUT_DIR` and `$PREP_DIR`.
 2. If `cv_fact_base_merged.json` is missing (older packs), run Step 3.9 first. If another input the step needs is missing, tell the user which earlier step must run.

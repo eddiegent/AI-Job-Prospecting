@@ -5,10 +5,10 @@ You will receive:
 2. `company_profile.json` — especially `leadership[]` for real contact names and LinkedIn URLs, plus `recent_news`, `mission_statement`, `products_services` for the hook
 3. `selected_role.json` — the angle the candidate has chosen to lead with
 4. the speculative motivation letter (already generated) — align the LinkedIn hook to the letter's hook so recipients see a coherent approach
-5. the **user prefs** dict from `resources/user_prefs.yaml`. Honour:
+5. the **user prefs** dict from `user_prefs.yaml` in the user data dir. Honour:
    - `tone_directives` — verbatim
    - `team_context_companies` — no solo-work phrasing for these
-   - `default_language` — fr or en; fallback `fr` for the cold flow
+   - (language: write in `selected_role.language` (`fr` or `en`, set in Step 4 from the user's request or `user_prefs.default_language`))
 
 ## Mission
 
@@ -87,7 +87,7 @@ Short paragraphs:
 - **No CV paste.** LinkedIn is the door-opener, not the delivery channel. Mention the CV only in the direct-message variant, and only as "available if useful".
 - **No flattery.** "I'm impressed by your culture" / "your impressive growth" is empty calories. If you can't point to a specific fact, cut the sentence.
 - **Respect `forbidden_title_labels`.** If `selected_role.title` contains a forbidden label (only possible via `user_override`), paraphrase around it in every message.
-- **Same language** as the motivation letter (derived from `default_language`, default `fr` for cold).
+- **Same language** as the motivation letter (`selected_role.language`).
 
 ## Output format
 

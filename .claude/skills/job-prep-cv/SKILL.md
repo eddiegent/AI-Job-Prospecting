@@ -42,11 +42,11 @@ If neither directory exists, stop: the job-application-tailor skill is not insta
 | `output_dir`, `prep_dir` | Assign to `$OUTPUT_DIR`, `$PREP_DIR` (already created) |
 | `next_steps`, `blacklist_hit`, `message`, `fact_base_verify_message` | Shown per status below |
 
-- **`ok`** — cache hit, fact base already in `$PREP_DIR` and verified. Skip Steps 1–2.5 and hand back.
+- **`ok`** — cache hit, fact base already in `$PREP_DIR` and verified. Show any warnings in `fact_base_verify_message` (non-blocking), skip Steps 1–2.5 and hand back.
 - **`cache_stale`** — the master CV changed (or there is no cache). Do Steps 1–2.5.
 - **`first_run`** — there was no `MASTER_CV.docx`; preflight seeded the user data dir with templates and an example CV. Show `next_steps` verbatim and stop. Never generate a pack from the example CV.
 - **`blacklisted`** — show `blacklist_hit` and stop unless the user explicitly overrides.
-- **`error`** — show `message` and stop.
+- **`error`** — show `message` and stop. If it reports a missing dependency, tell the user to run `pip install -r "$SKILL_BASE_TAILOR/requirements.txt"`.
 
 ## Step 1 — Read the master CV (`cache_stale` only)
 

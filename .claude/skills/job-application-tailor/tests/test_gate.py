@@ -75,12 +75,12 @@ def test_gate_match_recounts_in_place_and_passes(tmp_path, home, capsys):
     ma = load_fixture("sample_match_analysis.json")
     ma["match_summary"]["overall_fit_pct"] = 12  # LLM drift
     run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer(),
-                          "cv_fact_base.json": load_fixture("sample_fact_base.json")})
+                          "cv_fact_base_merged.json": load_fixture("sample_fact_base.json")})
     code, out = _gate("match", run, capsys)
     assert code == 0, out
     assert "[PASS] recount match_summary: updated" in out
     assert "[PASS] schema match_analysis.json" in out
-    assert "[PASS] match grounding (vs cv_fact_base.json)" in out
+    assert "[PASS] match grounding (vs cv_fact_base_merged.json)" in out
     saved = json.loads((run / "_prep" / "match_analysis.json").read_text(encoding="utf-8"))
     assert saved["match_summary"]["overall_fit_pct"] != 12
     # second run: already in sync
@@ -88,14 +88,28 @@ def test_gate_match_recounts_in_place_and_passes(tmp_path, home, capsys):
     assert "[PASS] recount match_summary: unchanged" in out
 
 
-def test_gate_match_grounds_against_merged_fact_base(tmp_path, home, capsys):
-    ma = {"match_summary": {}, "matches": [
-        {"requirement": "Kubernetes", "category": "technology", "match_type": "direct", "evidence": "x"}]}
-    fb = load_fixture("sample_fact_base.json")
-    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer(),
-                          "cv_fact_base.json": fb})
+def _direct(req: str) -> dict:
+    return {"match_summary": {}, "matches": [
+        {"requirement": req, "category": "technology", "match_type": "direct", "evidence": "x"}]}
+
+
+def test_gate_match_fails_without_merged_fact_base(tmp_path, home, capsys):
+    """No silent fallback to cv_fact_base.json: the addendum would be ignored."""
+    run = _run(tmp_path, {"match_analysis.json": _direct("C++"), "job_offer_analysis.json": _offer(),
+                          "cv_fact_base.json": load_fixture("sample_fact_base.json")})
     code, out = _gate("match", run, capsys)
-    assert code == 1 and "[FAIL] match grounding (vs cv_fact_base.json)" in out
+    assert code == 1
+    assert "[FAIL] match grounding (vs cv_fact_base_merged.json)" in out
+    assert "cv_fact_base_merged.json not found" in out
+    assert "python scripts/claims_guard.py merge" in out and "Step 3.9" in out
+
+
+def test_gate_match_grounds_against_merged_fact_base(tmp_path, home, capsys):
+    fb = load_fixture("sample_fact_base.json")
+    run = _run(tmp_path, {"match_analysis.json": _direct("Kubernetes"), "job_offer_analysis.json": _offer(),
+                          "cv_fact_base_merged.json": fb})
+    code, out = _gate("match", run, capsys)
+    assert code == 1 and "[FAIL] match grounding (vs cv_fact_base_merged.json)" in out
 
     merged = copy.deepcopy(fb)
     merged["addendum_hidden_skills"] = ["Kubernetes"]
@@ -103,6 +117,39 @@ def test_gate_match_grounds_against_merged_fact_base(tmp_path, home, capsys):
     code, out = _gate("match", run, capsys)
     assert code == 0, out
     assert "[PASS] match grounding (vs cv_fact_base_merged.json)" in out
+
+
+@pytest.mark.parametrize("detail, passes", [
+    (None, False),                                         # no evidence at all
+    ("Pas de Kubernetes à ce poste.", False),              # negated addendum line is not evidence
+    ("No Kubernetes in this role, only Docker.", False),
+    ("Déploiement des services sur Kubernetes.", True),    # positive line grounds it
+    ("Pas de Docker ; déploiement sur Kubernetes.", True),  # only the negated clause is dropped
+])
+def test_gate_match_negated_addendum_detail_does_not_ground(tmp_path, home, capsys, detail, passes):
+    merged = load_fixture("sample_fact_base.json")
+    if detail:
+        merged["experience"][0]["details"].append(detail)  # where merge_addendum_into_fact_base puts it
+    run = _run(tmp_path, {"match_analysis.json": _direct("Kubernetes"), "job_offer_analysis.json": _offer(),
+                          "cv_fact_base_merged.json": merged})
+    code, out = _gate("match", run, capsys)
+    assert (code == 0) is passes, out
+
+
+@pytest.mark.parametrize("stage, target", [("roles", "role_candidates.json"),
+                                           ("selected-role", "selected_role.json")])
+def test_gate_role_grounding_fails_without_merged_fact_base(tmp_path, home, capsys, stage, target):
+    role = {"title": "Senior Engineer", "source": "generalist", "seniority_band": "senior",
+            "generated_at": "2026-10-20T10:00:00Z", "company_name": "Acme", "language": "en",
+            "emphasis_areas": ["C++"], "rationale": "x"}
+    payload = ({"candidates": [{k: role[k] for k in ("title", "rationale", "seniority_band", "emphasis_areas")}],
+                "generated_at": role["generated_at"], "company_name": "Acme"}
+               if stage == "roles" else role)
+    run = _run(tmp_path, {target: payload, "company_profile.json": {"tech_stack_hints": ["Kubernetes"]},
+                          "cv_fact_base.json": load_fixture("sample_fact_base.json")})
+    code, out = _gate(stage, run, capsys)
+    assert code == 1, out
+    assert "cv_fact_base_merged.json not found" in out and "claims_guard.py merge" in out
 
 
 def test_gate_cv_reports_every_failure_together(tmp_path, home, capsys):
@@ -114,8 +161,8 @@ def test_gate_cv_reports_every_failure_together(tmp_path, home, capsys):
     assert code == 1
     assert "[PASS] schema tailored_cv.json" in out
     assert "[FAIL] forbidden title labels in tailored_cv.json" in out
-    assert "[FAIL] claims check" in out
-    assert "'Python' must keep the master qualifier '(scripts)'" in out
+    assert "[FAIL] claims check (tailored_cv.json)" in out
+    assert "tailored_cv.json: 'Python' must keep the master qualifier '(scripts)'" in out
     assert "gate cv: FAIL (2 check(s) failed)" in out
 
 
@@ -124,6 +171,61 @@ def test_gate_cv_schema_failure_stops_stage(tmp_path, home, capsys):
     assert code == 1
     assert "[FAIL] schema tailored_cv.json" in out
     assert "claims check" not in out
+
+
+def _clean_cv() -> dict:
+    cv = load_fixture("tailored_cv_good.json")
+    cv["experience"][-1]["bullets"] = ["TinyShop : premiers postes en développement logiciel (C++)."]
+    return cv
+
+
+def _bad_cv() -> dict:
+    cv = _clean_cv()
+    cv["skills_sections"] = [{"heading": "Langages", "items": ["C++", "Python"]}]  # loses its qualifier
+    return cv
+
+
+def _linkedin(msg: str = "Bonjour, échange possible ?") -> dict:
+    return {"variants": [{"target": "recruiter", "message": msg}]}
+
+
+def _letter(par: str) -> dict:
+    return {"greeting": "Bonjour,", "paragraphs": [par], "signoff": "Cordialement,", "name": "Alex Dupont"}
+
+
+def test_gate_linkedin_ignores_problems_in_other_stages_files(tmp_path, home, capsys):
+    run = _run(tmp_path, {"tailored_cv.json": _bad_cv(), "linkedin.json": _linkedin(),
+                          "letter.json": _letter("J'utilise Docker au travail.")})
+    code, out = _gate("linkedin", run, capsys)
+    assert code == 0, out
+    assert "[PASS] claims check (linkedin.json)" in out
+
+
+def test_gate_cv_ignores_letter_problems_and_letters_ignore_cv(tmp_path, home, capsys):
+    files = {"tailored_cv.json": _clean_cv(),
+             "letter.json": _letter("J'utilise Docker au travail."), "short_letter.json": _letter("Bonjour.")}
+    run = _run(tmp_path, files)
+    code, out = _gate("cv", run, capsys)
+    assert code == 0, out
+    assert "[PASS] claims check (tailored_cv.json)" in out
+
+    files["tailored_cv.json"] = _bad_cv()
+    files["letter.json"] = _letter("Bonjour.")
+    run2 = _run(tmp_path / "b", files)
+    code, out = _gate("letters", run2, capsys)
+    assert code == 0, out
+    assert "[PASS] claims check (letter.json, short_letter.json)" in out
+
+
+def test_gate_letters_messages_name_the_file(tmp_path, home, capsys):
+    offer = _offer()
+    run = _run(tmp_path, {"job_offer_analysis.json": offer,
+                          "letter.json": _letter("J'ai déployé Kubernetes en production."),
+                          "short_letter.json": _letter("J'utilise Docker au travail.")})
+    code, out = _gate("letters", run, capsys)
+    assert code == 1
+    assert "[jd-contagion] letter.json: 'Kubernetes'" in out
+    assert "[familiar] short_letter.json: mentions familiar-only skill 'Docker'" in out
 
 
 def test_read_cv_prints_paragraphs_then_tables(home, capsys):

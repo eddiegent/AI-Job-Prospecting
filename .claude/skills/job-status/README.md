@@ -1,9 +1,9 @@
 # job-status
 
 List, update, and manage job application statuses and company blacklist/whitelist.
-Invoke with `/job-status` to list, or `/job-status [company-or-id] [status]` to update.
+Invoke with `/job-status` to list, or `/job-status [company-or-id] [status]` to update. It also triggers on plain requests such as "I applied to Acme yesterday" or "blacklist Consulting Corp".
 
-> Requires `job-application-tailor` to have been run at least once -- reads from `resources/job_history.db`.
+> Requires `job-application-tailor` to have been run at least once -- reads its history database, `job_history.db` (in your user data directory; the CLI finds it).
 
 ## Status Workflow
 
@@ -26,10 +26,10 @@ so the sequence is preserved rather than overwritten.
 
 | ID | Status | Fit | Fit % | Company | Job Title |
 |----|-----------|----------|-------|---------------|-------------------------------|
-| 23 | applied | Strong | 82% | Dassault Sys. | Senior .NET Developer |
-| 22 | generated | Moderate | 65% | Capgemini | Desktop Application Engineer |
-| 21 | interview | Strong | 79% | Ubisoft | C# Tools Developer |
-| 20 | rejected | Weak | 52% | Sopra Steria | Full-Stack Developer |
+| 23 | applied | good | 82% | Dassault Sys. | Senior .NET Developer |
+| 22 | generated | medium | 65% | Capgemini | Desktop Application Engineer |
+| 21 | interview | good | 79% | Ubisoft | C# Tools Developer |
+| 20 | rejected | medium | 52% | Sopra Steria | Full-Stack Developer |
 
 Filter with `/job-status --status applied` or `/job-status --company Ubisoft`.
 
@@ -83,13 +83,13 @@ happened but not exactly when, so treat their dates as approximate.
 When a job is posted by an aggregator (Free-Work, Indeed, LinkedIn, ...) and the real client surfaces afterwards:
 
 ```
-> /job-status rename 23 --new-company "Omnitech SA"
+> /job-status rename 23 --new-company "Acme SA"
 
 Renamed: good-01042026-Software-Engineer-Free-Work
-     -> good-01042026-Software-Engineer-Omnitech-SA
+     -> good-01042026-Software-Engineer-Acme-SA
 Patched _prep/job_offer_analysis.json   (source_platform = "Free-Work")
 Patched run_summary.json
-#23: company "Free-Work" -> "Omnitech SA"
+#23: company "Free-Work" -> "Acme SA"
 Regenerating outputs...
 ```
 

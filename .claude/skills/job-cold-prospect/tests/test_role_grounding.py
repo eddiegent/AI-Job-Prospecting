@@ -304,3 +304,20 @@ def test_company_with_no_tech_hints_is_noop(tmp_path):
     }
     target = _write(tmp_path, "sr.json", selected)
     assert check(target, "selected", cpp, fb) == []
+
+
+@pytest.mark.parametrize("detail, flagged", [
+    ("Accès aux données via Dapper, jamais Entity Framework.", True),   # negated clause: no evidence
+    ("Entity Framework : pas utilisé à ce poste.", True),
+    ("Accès aux données via Entity Framework et Dapper.", False),       # positive line grounds it
+])
+def test_negated_fact_base_detail_does_not_ground_a_stack_hint(tmp_path, detail, flagged):
+    fact_base = _fact_base()
+    fact_base["experience"][0]["details"].append(detail)  # e.g. a merged addendum bullet
+    fb = _write(tmp_path, "fb.json", fact_base)
+    cp = _write(tmp_path, "cp.json", _company_with_ef())
+    selected = {"title": "x", "source": "candidate_pick", "seniority_band": "senior",
+                "emphasis_areas": ["Entity Framework"], "rationale": "y",
+                "generated_at": "2026-05-06T00:00:00Z", "company_name": "agap2", "language": "fr"}
+    issues = check(_write(tmp_path, "sr.json", selected), "selected", cp, fb)
+    assert bool(issues) is flagged, issues

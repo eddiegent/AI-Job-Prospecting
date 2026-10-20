@@ -118,7 +118,16 @@ def extract_candidate_vocab(fact_base: dict) -> tuple[set[str], str]:
     / addendum_hidden_skills); the prose blob covers what's only mentioned
     inside experience details, summary, and addendum off-CV facts. A claim is
     grounded if it's in either.
+
+    Prose contributes only its affirmative clauses (``scripts/_negation.py``):
+    a negated clause is never evidence, whatever its source - e.g. the merged
+    addendum bullet "No Kubernetes in this role" must not ground Kubernetes.
+    Hidden skills are positive by definition and are kept whole. (The
+    addendum's skill-calibration notes are rules, not evidence: they are not
+    read here at all.)
     """
+    from scripts._negation import affirmative_clauses
+
     vocab: set[str] = set()
     for field in ("technologies", "skills", "methodologies"):
         for item in fact_base.get(field, []) or []:
@@ -127,13 +136,16 @@ def extract_candidate_vocab(fact_base: dict) -> tuple[set[str], str]:
         vocab.add(canonical(item))
 
     prose_parts: list[str] = []
+    narrative: list[str] = []
     if fact_base.get("summary"):
-        prose_parts.append(fact_base["summary"])
+        narrative.append(fact_base["summary"])
     for exp in fact_base.get("experience", []) or []:
         for detail in exp.get("details", []) or []:
-            prose_parts.append(detail)
+            narrative.append(detail)
     for item in fact_base.get("addendum_off_cv_facts", []) or []:
-        prose_parts.append(item)
+        narrative.append(item)
+    for text in narrative:
+        prose_parts.extend(affirmative_clauses(str(text)))
     for item in fact_base.get("addendum_hidden_skills", []) or []:
         prose_parts.append(item)
     prose = " | ".join(prose_parts).lower()

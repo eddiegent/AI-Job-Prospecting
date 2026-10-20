@@ -4,10 +4,10 @@ You will receive:
 1. the merged CV fact base (`cv_fact_base_merged.json`; includes `candidate_location`; may include `addendum_off_cv_facts`)
 2. `company_profile.json` — mission, products, values, recent news, hiring signals, leadership, locations
 3. `selected_role.json` — the angle the user has chosen to lead with
-4. the **user prefs** dict from `resources/user_prefs.yaml`. Honour:
+4. the **user prefs** dict from `user_prefs.yaml` in the user data dir. Honour:
    - `tone_directives` — short free-form style notes, applied verbatim
    - `team_context_companies` — never use solo-work phrasing for any of these
-   - `default_language` — fr or en, else fallback to fr for the cold flow
+   - (language: write in `selected_role.language` (`fr` or `en`, set in Step 4 from the user's request or `user_prefs.default_language`))
 
 ## Goal
 
@@ -84,7 +84,7 @@ Apply `user_prefs.tone_directives` verbatim. They override these defaults on con
 - **Geographic proximity** — if the candidate is near `company_profile.locations[0]`, mention it naturally once (e.g. "basé à Lyon, à proximité de vos locaux"). Skip if remote-first or if the distance is large.
 - **Respect `forbidden_title_labels`** — if `selected_role.title` contains a forbidden label (only possible if it's a `user_override`), paraphrase around it in the letter using a neutral alternative.
 - Keep it short (3–4 paragraphs, 2–4 sentences each).
-- Write in `default_language` (fallback `fr` for cold flow).
+- Write in `selected_role.language`.
 
 ## Letter metadata
 

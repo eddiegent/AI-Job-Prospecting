@@ -7,7 +7,7 @@
     "title": {
       "type": "string",
       "minLength": 1,
-      "description": "Role title to anchor downstream tailoring. For the generalist path, a synthetic title like 'Senior .NET — Desktop & Services, open to scope'."
+      "description": "Role title to anchor downstream tailoring. For the generalist path, a synthetic title like 'Senior Java — Platform & APIs, open to scope'."
     },
     "source": {
       "type": "string",
@@ -46,8 +46,8 @@
     "language": {
       "type": "string",
       "enum": ["fr", "en"],
-      "description": "Language of the pack (codes as in config/languages.yaml). Optional: `cli.py regenerate-outputs` and `record-application` use it when --language is not passed, else default to fr."
+      "description": "Language of the pack (codes as in config/languages.yaml). Required: the cold flow has no job offer to detect it from, so it is chosen explicitly. `cli.py regenerate-outputs` and `record-application` use it when --language is not passed (packs made before it was required fall back to fr)."
     }
   },
-  "required": ["title", "source", "seniority_band", "generated_at", "company_name"]
+  "required": ["title", "source", "seniority_band", "generated_at", "company_name", "language"]
 }

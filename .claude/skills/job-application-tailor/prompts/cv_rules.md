@@ -246,7 +246,7 @@ Return valid JSON matching `schemas/tailored_cv.schema.json` in the job-applicat
 ## Language
 
 - **(offer flow)** Write all CV content in the same language as the job offer, unless a target language is explicitly specified (or `user_prefs.default_language` overrides it — see the flow prompt's inputs).
-- **(cold flow)** Write CV content in `default_language` from user prefs (fallback `fr` for the cold flow).
+- **(cold flow)** Write CV content in `selected_role.language` (chosen in Step 4 from the user's request or `user_prefs.default_language`; `fr` by default).
 - JSON field names must remain in English.
 
 ## Style

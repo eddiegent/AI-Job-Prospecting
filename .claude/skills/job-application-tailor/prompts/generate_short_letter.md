@@ -30,4 +30,4 @@ Return valid JSON matching `schemas/letter.schema.json`. Omit `sender_address`, 
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- The CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — schema + forbidden title labels + claims check) must pass before outputs are generated.
+- After writing `short_letter.json`, run the letters gate (`python scripts/cli.py gate letters "$PREP_DIR"` — schema + claims check on both letters) and fix the wording until it passes.

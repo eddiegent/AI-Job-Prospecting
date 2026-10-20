@@ -53,7 +53,7 @@ def test_unsourced_skill_flagged_and_sourced_ok():
 def test_python_must_keep_qualifier():
     cv = {"skills_sections": [{"heading": "Langages", "items": ["Python"]}]}
     errs = run(cv=cv)
-    assert errs == ["[calibration] 'Python' must keep the master qualifier '(lecture/adaptation de scripts)'"]
+    assert errs == ["[calibration] tailored_cv.json: 'Python' must keep the master qualifier '(lecture/adaptation de scripts)'"]
     cv = {"skills_sections": [{"heading": "Langages", "items": ["Python (lecture/adaptation de scripts)"]}]}
     assert run(cv=cv) == []
 
@@ -72,7 +72,7 @@ def test_qualified_skills_derived_from_skills_table_items_only():
 def test_any_master_qualified_skill_must_keep_its_qualifier():
     cv = {"skills_sections": [{"heading": "Méthodes", "items": ["clean architecture", "SOLID"]}]}
     errs = [e for e in run(cv=cv) if e.startswith("[calibration]")]
-    assert errs == ["[calibration] 'Clean Architecture' must keep the master qualifier '(usage pragmatique)'"]
+    assert errs == ["[calibration] tailored_cv.json: 'Clean Architecture' must keep the master qualifier '(usage pragmatique)'"]
 
 
 def test_calibration_rule_is_not_user_specific():
@@ -152,7 +152,7 @@ def test_stack_hint_techs_drop_annotations():
 def test_stack_contagion_flagged_when_no_offer():
     letter = {"paragraphs": ["J'ai déployé Kubernetes en production."]}
     errs = run(letter=letter, profile=PROFILE)
-    assert len(errs) == 1 and errs[0].startswith("[stack-contagion] 'Kubernetes'")
+    assert len(errs) == 1 and errs[0].startswith("[stack-contagion] letter.json: 'Kubernetes'")
 
 
 def test_stack_tech_that_is_in_master_cv_is_allowed():
@@ -167,7 +167,7 @@ def test_stack_tech_named_as_a_gap_is_allowed():
 def test_offer_technologies_take_precedence_over_profile():
     letter = {"paragraphs": ["J'ai déployé Kubernetes en production."]}
     errs = run(letter=letter, offer={"technologies": ["Kubernetes"]}, profile=PROFILE)
-    assert len(errs) == 1 and errs[0].startswith("[jd-contagion]")
+    assert len(errs) == 1 and errs[0].startswith("[jd-contagion] letter.json:")
 
 
 def test_run_check_reads_company_profile_in_cold_prep(tmp_path, monkeypatch):
@@ -196,8 +196,8 @@ def test_run_check_reads_company_profile_in_cold_prep(tmp_path, monkeypatch):
         {"skills_sections": [{"heading": "Langages", "items": ["C#", "Python"]}]}), encoding="utf-8")
 
     errs = run_check(prep, master=master)
-    assert any(e.startswith("[stack-contagion] 'Kubernetes'") for e in errs)
-    assert "[calibration] 'Python' must keep the master qualifier '(lecture/adaptation de scripts)'" in errs
+    assert any(e.startswith("[stack-contagion] letter.json: 'Kubernetes'") for e in errs)
+    assert "[calibration] tailored_cv.json: 'Python' must keep the master qualifier '(lecture/adaptation de scripts)'" in errs
 
 
 # ------------------------------------------- addendum prohibitions are not a source
@@ -226,4 +226,102 @@ def test_addendum_prohibition_does_not_exempt_jd_contagion():
     letter = {"paragraphs": ["J'ai utilisé Razor en production."]}
     errs = run(letter=letter, offer={"technologies": ["Razor"]},
                addendum="Razor n'est pas dans le fact base, ne jamais le reprendre.")
-    assert any(e.startswith("[jd-contagion] 'Razor'") for e in errs)
+    assert any(e.startswith("[jd-contagion] letter.json: 'Razor'") for e in errs)
+
+
+# ------------------------------------- addendum sections and clause-level negation
+
+from scripts.claims_guard import addendum_source_text, familiar_items  # noqa: E402
+
+
+def test_no_code_is_not_a_negation_in_the_addendum():
+    cv = {"skills_sections": [{"heading": "Low-code", "items": ["Glide"]}]}
+    addendum = "## Off-CV facts to remember\n- Comparé trois plateformes no-code, dont Glide."
+    assert run(cv=cv, addendum=addendum) == []
+
+
+def test_hidden_skills_bullets_are_never_filtered():
+    bullet = "- Diagnostic d'un portage qui ne pouvait pas être livré sans équivalent VSS fiable."
+    cv = {"skills_sections": [{"heading": "Systèmes", "items": ["VSS"]}]}
+    assert run(cv=cv, addendum="## Hidden skills\n" + bullet) == []
+    errs = run(cv=cv, addendum="## Off-CV facts to remember\n" + bullet)
+    assert any(e.startswith("[unsourced-skill]") and "'VSS'" in e for e in errs)
+
+
+def test_negation_drops_only_its_clause():
+    src = addendum_source_text("## Additional experience entries\n### Acme — 2020\n"
+                               "- Bases : PostgreSQL ; SQLite en local. Pas de SQL Server ici.")
+    assert "postgresql" in src and "sqlite en local." in src
+    assert "sql server" not in src
+
+
+def test_skill_calibration_sentences_with_a_negation_are_dropped_whole():
+    addendum = "## Skill calibration\n- **Kafka — évalué, pas retenu.** Go : usage quotidien."
+    src = addendum_source_text(addendum)
+    assert "kafka" not in src and "go : usage quotidien." in src
+
+
+def test_jd_tech_in_an_affirmative_clause_of_a_contrast_is_flagged():
+    letter = {"paragraphs": ["J'ai déployé Kubernetes, pas Terraform."]}
+    errs = run(letter=letter, offer={"technologies": ["Kubernetes", "Terraform"]})
+    assert [e.split("'")[1] for e in errs] == ["Kubernetes"]
+
+
+def test_familiar_items_drop_tool_qualifiers_listed_elsewhere():
+    rows = [["Outils", "GitHub, GitLab, Jira"],
+            ["Familiar / to deepen", "Docker, GitHub / GitLab CI/CD, RabbitMQ / Kafka"]]
+    assert familiar_items(rows) == ["Docker", "CI/CD", "RabbitMQ", "Kafka"]
+
+
+# --------------------------------------------------- earlier-experience line
+
+def test_earlier_line_accepts_english_colon_and_legal_suffixes():
+    cv = _earlier("Globex SA | Initech GmbH", "Globex SA: built tools. Initech: payroll in C.")
+    assert run(cv=cv) == []
+    cv = _earlier("Globex SA | Initech GmbH", "Initech: payroll. Globex: built tools.")
+    assert any("out of order" in e for e in run(cv=cv))
+
+
+def test_earlier_line_messages_name_the_file_and_are_generic():
+    cv = _earlier("Globex SA", "Built tools.")
+    errs = run(cv=cv)
+    assert errs == ["[earlier-line] tailored_cv.json: no 'Employer: ...' clause for 'Globex SA' "
+                    "in the earlier-experience bullet"]
+    cv = _earlier("Globex SA", "Globex : x.",
+                  {"role_line": "X", "metadata_line": "Globex SA | Lyon | 2010", "bullets": []})
+    assert any("'(<city>)'" in e for e in run(cv=cv))
+
+
+# ------------------------------------------------------------- run_check(only=)
+
+def _prep_with_cv_and_letter_problems(tmp_path, monkeypatch):
+    import json
+
+    from docx import Document
+
+    master = tmp_path / "MASTER_CV.docx"
+    doc = Document()
+    doc.add_paragraph("Développeur C# senior.")
+    doc.save(str(master))
+    monkeypatch.setenv("JOB_TAILOR_HOME", str(tmp_path))
+    prep = tmp_path / "_prep"
+    prep.mkdir()
+    (prep / "job_offer_analysis.json").write_text(json.dumps({"technologies": ["Kubernetes"]}), encoding="utf-8")
+    (prep / "tailored_cv.json").write_text(json.dumps(
+        {"skills_sections": [{"heading": "Langages", "items": ["C#", "Oracle"]}]}), encoding="utf-8")
+    (prep / "letter.json").write_text(json.dumps({"paragraphs": ["J'ai déployé Kubernetes."]}), encoding="utf-8")
+    (prep / "linkedin.json").write_text(json.dumps({"connection_request": "Bonjour"}), encoding="utf-8")
+    return prep, master
+
+
+def test_run_check_only_scopes_to_the_named_files(tmp_path, monkeypatch):
+    from scripts.claims_guard import run_check
+
+    prep, master = _prep_with_cv_and_letter_problems(tmp_path, monkeypatch)
+    every = run_check(prep, master=master)
+    assert any("tailored_cv.json:" in e for e in every) and any("letter.json:" in e for e in every)
+    cv_only = run_check(prep, master=master, only=("tailored_cv.json",))
+    assert cv_only and all("tailored_cv.json:" in e for e in cv_only)
+    letters = run_check(prep, master=master, only=("letter.json", "short_letter.json"))
+    assert letters == [e for e in every if " letter.json:" in e]
+    assert run_check(prep, master=master, only=("linkedin.json",)) == []

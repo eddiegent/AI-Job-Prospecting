@@ -69,17 +69,18 @@ After generating packs, use these commands:
 
 ## Configuration
 
-All settings live in `.claude/skills/job-application-tailor/config/settings.yaml`:
+Defaults live in `.claude/skills/job-application-tailor/config/settings.default.yaml`. To change one, put just that key in an optional `settings.yaml` in your user data directory — it is applied on top of the defaults:
 
 | Setting | Default | What it does |
 |---------|---------|-------------|
-| `default_language` | `auto` | Language detection (auto/fr/en) |
 | `behaviour.skip_company_research` | `false` | Skip web research (faster) |
 | `behaviour.dry_run` | `false` | Score only, no file generation |
-| `paths.database` | `resources/job_history.db` | Where to store application history |
+| `behaviour.experience_compression_cutoff_year` | `2005` | Roles ending before this year may be consolidated into one "Earlier experience" line (`null` disables) |
 | `fit_levels.very_good` | `85` | Threshold for "very good" fit |
 | `fit_levels.good` | `70` | Threshold for "good" fit |
 | `fit_levels.medium` | `50` | Below this = "low", generation stops |
+
+The output language is detected from the job offer. To force one, set `default_language: fr` or `en` in `user_prefs.yaml` (default `auto`). The history database location is resolved automatically (`JOB_TAILOR_HOME`, then the repo's legacy `resources/` folder, then the OS data directory); the CLI's `--db` flag targets another file.
 
 ## Troubleshooting
 
@@ -91,4 +92,6 @@ All settings live in `.claude/skills/job-application-tailor/config/settings.yaml
 
 **WebSearch fails** — the company research step needs web access. If you haven't granted permission, the skill skips it gracefully. You can also disable it permanently with `skip_company_research: true`.
 
-**Validation errors** — the skill validates all intermediate JSON against schemas. If validation fails, it will show the specific error and re-generate. This is normal — it self-corrects.
+**Gate failures** — after each intermediate file the skill runs `cli.py gate <stage>`, which validates the JSON against its schema and runs that stage's truthfulness checks. If a gate fails, it shows every problem at once, fixes the generated file and re-runs the gate. This is normal — it self-corrects.
+
+For anything else (database errors, no PDF, DOCX build errors, subagent permission prompts), see `references/troubleshooting.md`.

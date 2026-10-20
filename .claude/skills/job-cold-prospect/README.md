@@ -42,13 +42,15 @@ Output folders are prefixed `cold-[DDMMYYYY]-[company-slug]/` so they are visual
 
 ## Shared infrastructure
 
-This skill does not duplicate the tailor skill's Python or schemas. It imports them from `.claude/skills/job-application-tailor/`:
+This skill does not duplicate the tailor skill's Python, schemas or CV rules. It uses them from `.claude/skills/job-application-tailor/`:
 
-- `scripts/generate_outputs.py`, `scripts/validate.py`, `scripts/paths.py`, `scripts/user_customization.py`, `scripts/job_history.py`, `scripts/cli.py`, `scripts/common.py`
+- `scripts/cli.py` — `gate` (the per-stage checks), `regenerate-outputs` (builds the cold pack when the folder starts with `cold-`), `record-application`, `rename-cold-folder`, `company-check`
+- `scripts/claims_guard.py` (merged fact base + claims check), plus `paths.py`, `user_customization.py`, `job_history_db.py`, `common.py`
+- `prompts/cv_rules.md` — the CV rules shared with the offer flow; `prompts/tailor_cv_cold.md` holds only the cold-specific parts
 - All CV / letter / LinkedIn schemas
 - `config/settings.default.yaml` + `config/naming_rules.yaml`
 
-When the master CV format changes, both skills stay aligned because there is only one source of truth for the extractor and the DOCX generator.
+When the master CV format or the CV rules change, both skills stay aligned because there is only one source of truth for the extractor, the CV rules, the checks and the DOCX generator.
 
 ## Hard rules
 
@@ -67,12 +69,15 @@ All hard rules from `job-application-tailor` apply here unchanged — truthfulne
 
 Walkthrough:
 
-1. Pre-flight runs the blacklist check on the input name, resolves output folder (`output/cold-20260420-dassault-aviation/`), and loads user customization.
+1. Pre-flight runs the blacklist check on the input name, resolves output folder (`output/cold-20042026-dassault-aviation/`), and loads user customization.
 2. Research fetches the company website, Indeed company data, LinkedIn page (best-effort), and recent news; writes `_prep/company_profile.json` and appends each raw source to `_prep/raw_research.md`. Blacklist re-checks the canonical name.
-3. Role inference proposes 1–3 candidate angles. You answer with a number, `generalist`, or a free-form title. The pick is written to `_prep/selected_role.json`.
-4. CV tailoring, speculative motivation letter, short letter, LinkedIn outreach, and the company dossier generate in sequence. Between artefacts the skill checks that the motivation-letter hook, LinkedIn connection-request opener, and dossier § 3 all reference the same company fact.
-5. `generate_outputs.py` renders DOCX + PDF files and converts the dossier Markdown (`_prep/company_dossier.md`) into responsive HTML at `$OUTPUT_DIR/company_dossier.html`.
-6. A row is inserted into `job_history.db` with `source='cold'` and a compact profile snapshot. The application id comes back so you can update status later with `/job-status`.
+3. `claims_guard.py merge` builds the per-run merged fact base (`_prep/cv_fact_base_merged.json` — CV + addendum + skill calibration + familiar-only skills) that every later step reads.
+4. Role inference proposes 1–3 candidate angles. You answer with a number, `generalist`, or a free-form title. The pick is written to `_prep/selected_role.json`, with the pack language.
+5. CV tailoring, speculative motivation letter, short letter, LinkedIn outreach, and the company dossier generate in sequence. Between artefacts the skill checks that the motivation-letter hook, LinkedIn connection-request opener, and dossier § 3 all reference the same company fact.
+6. `cli.py regenerate-outputs` renders DOCX + PDF files and converts the dossier Markdown (`_prep/company_dossier.md`) into responsive HTML at `$OUTPUT_DIR/company_dossier.html`.
+7. A row is inserted into `job_history.db` with `source='cold'` and a compact profile snapshot. The application id comes back so you can update status later with `/job-status`.
+
+Each intermediate file is followed by its gate — `cli.py gate profile`, `roles`, `selected-role`, `cv`, `letters`, `linkedin` — which runs every check for that stage at once: schema, forbidden title labels, stack grounding (no `tech_stack_hints` technology in a role's emphasis unless it is in the fact base), and the same claims check as the offer flow. In the cold flow the claims check also blocks `tech_stack_hints` technologies absent from the CV and addendum. The skill never continues past a failing gate.
 
 You can interrupt between any two steps — the `_prep/` JSONs are idempotent anchor points to resume from.
 

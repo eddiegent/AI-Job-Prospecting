@@ -7,10 +7,10 @@ You will receive:
 2. `company_profile.json` from Step 3 — industry, size_band, mission, products_services, values_culture_signals, tech_stack_hints (inferred), hiring_signals, pain_points_inferred (inferred), locations, leadership
 3. `selected_role.json` from Step 4 — `title`, `source`, `seniority_band`, `emphasis_areas`, `risk_notes`, `rationale`
 4. the **experience compression cutoff year** from layered settings (`config/settings.default.yaml` merged with `<user-data-dir>/settings.yaml`) → `behaviour.experience_compression_cutoff_year` (may be `null` to disable compression)
-5. the **user prefs** dict from `resources/user_prefs.yaml`. Honour these keys:
+5. the **user prefs** dict from `user_prefs.yaml` in the user data dir. Honour these keys:
    - `preferred_title_labels`
    - `forbidden_title_labels`
-   - `default_language` — for the cold flow, the default is `fr` unless user prefs set a different language
+   - (language: write in `selected_role.language`, set in Step 4 from the user's request or `user_prefs.default_language`; `fr` by default)
 
 ## Goal
 
