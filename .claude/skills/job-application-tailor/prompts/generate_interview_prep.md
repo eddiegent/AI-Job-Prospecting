@@ -48,6 +48,5 @@ Help the candidate walk into the interview confident and prepared. Every talking
 
 ## Output format
 Return markdown only. Use the language-appropriate template from `templates/`:
-- French: `templates/interview_prep_template_fr.md`
+- French: `templates/interview_prep_template.md`
 - English: `templates/interview_prep_template_en.md`
-- Fallback: `templates/interview_prep_template.md` (French)

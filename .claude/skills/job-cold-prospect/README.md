@@ -31,7 +31,7 @@ Typical triggers:
 | File | Format | Purpose |
 |------|--------|---------|
 | `CV_<Candidate>_<Role>.docx` / `.pdf` | DOCX + PDF | CV anchored on the user-selected target role + company values |
-| `Lettre_de_motivation_<Candidate>_<Role>.docx` / `.pdf` | DOCX + PDF | Speculative cover letter opening with a specific observation about the company |
+| `Lettre_de_motivation_<Candidate>_<Role>.docx` | DOCX | Speculative cover letter opening with a specific observation about the company |
 | `Lettre_courte_<Candidate>_<Role>.txt` | TXT | 500–750-character email-ready version (same hook as the full letter) |
 | `LinkedIn_message_<Candidate>_<Role>.txt` | TXT | Cold connection requests + post-acceptance DMs, hiring-manager-targeted |
 | `company_dossier.html` | HTML | 9-section dossier (responsive/mobile-friendly): glance, angle of approach, contacts, objections, openers, interview prep, transition narrative, research gaps. Markdown source kept in `_prep/` |

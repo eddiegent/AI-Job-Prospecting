@@ -82,12 +82,14 @@ def _configure_probe_url(p: argparse.ArgumentParser) -> None:
 def cmd_cache_raw_offer(db, args: argparse.Namespace) -> None:
     """Write stdin verbatim to <prep>/raw_offer.md (audit snapshot)."""
     prep = _prep_dir(args.target)
-    text = sys.stdin.read()
+    # Decode the raw bytes as UTF-8: sys.stdin uses the locale code page on
+    # Windows (cp1252), which turns every accented character into mojibake.
+    text = sys.stdin.buffer.read().decode("utf-8-sig", errors="replace")
     if not text.strip():
         print("stdin was empty — nothing cached", file=sys.stderr)
         sys.exit(2)
     out = prep / "raw_offer.md"
-    out.write_text(text, encoding="utf-8")
+    out.write_text(text, encoding="utf-8", newline="")  # keep line endings verbatim
     print(f"Cached raw offer -> {out}")
 
 

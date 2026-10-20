@@ -184,7 +184,7 @@ cd "$SKILL_BASE_TAILOR" && python scripts/cli.py regenerate-outputs "$OUTPUT_DIR
 The `cold-` prefix selects the cold build: title from `selected_role.title` (used in filenames such as `CV_<Candidate>_<Role>.docx`), language from `selected_role.language`, and the dossier instead of interview prep. Result:
 
 - `CV_<Candidate>_<Role>.docx` + `.pdf`
-- `Lettre_de_motivation_<Candidate>_<Role>.docx` + `.pdf` (`Cover_letter_…` in English)
+- `Lettre_de_motivation_<Candidate>_<Role>.docx` (`Cover_letter_…` in English; only the CV is converted to PDF)
 - `Lettre_courte_<Candidate>_<Role>.txt` (`Short_cover_letter_…` in English)
 - `LinkedIn_message_<Candidate>_<Role>.txt`
 - `company_dossier.html` (Markdown source kept in `_prep/`)

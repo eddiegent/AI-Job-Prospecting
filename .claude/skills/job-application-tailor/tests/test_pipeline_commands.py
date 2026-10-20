@@ -58,19 +58,43 @@ def test_probe_url_other_error(monkeypatch, capsys):
 
 # ----------------------------------------------------------- cache-raw-offer
 
+def _stdin_bytes(data: bytes, encoding: str = "cp1252") -> io.TextIOWrapper:
+    """A text stdin over raw bytes, with the code page Windows gives Python."""
+    return io.TextIOWrapper(io.BytesIO(data), encoding=encoding)
+
+
 def test_cache_raw_offer_writes_stdin(tmp_path, monkeypatch, capsys):
     run = tmp_path / "14072026-acme"
     (run / "_prep").mkdir(parents=True)
-    monkeypatch.setattr(sys, "stdin", io.StringIO("OFFER TEXT — développeur"))
+    monkeypatch.setattr(sys, "stdin", _stdin_bytes("OFFER TEXT — développeur".encode("utf-8")))
     cmd_cache_raw_offer(None, Namespace(target=str(run)))
     assert (run / "_prep" / "raw_offer.md").read_text(encoding="utf-8") == "OFFER TEXT — développeur"
     assert "Cached raw offer" in capsys.readouterr().out
 
 
+def test_cache_raw_offer_decodes_utf8_despite_cp1252_console(tmp_path, monkeypatch):
+    # Regression: sys.stdin.read() decoded piped UTF-8 as cp1252 on Windows,
+    # caching "TÃ©lÃ©travail" instead of "Télétravail".
+    run = tmp_path / "14072026-acme"
+    (run / "_prep").mkdir(parents=True)
+    text = "Télétravail jusqu'à 2 jours — Île-de-France, cœur"
+    monkeypatch.setattr(sys, "stdin", _stdin_bytes(b"\xef\xbb\xbf" + text.encode("utf-8")))
+    cmd_cache_raw_offer(None, Namespace(target=str(run)))
+    assert (run / "_prep" / "raw_offer.md").read_text(encoding="utf-8") == text
+
+
+def test_cache_raw_offer_keeps_line_endings(tmp_path, monkeypatch):
+    run = tmp_path / "14072026-acme"
+    (run / "_prep").mkdir(parents=True)
+    monkeypatch.setattr(sys, "stdin", _stdin_bytes(b"line 1\nline 2\n"))
+    cmd_cache_raw_offer(None, Namespace(target=str(run)))
+    assert (run / "_prep" / "raw_offer.md").read_bytes() == b"line 1\nline 2\n"
+
+
 def test_cache_raw_offer_rejects_empty_stdin(tmp_path, monkeypatch):
     run = tmp_path / "14072026-acme"
     (run / "_prep").mkdir(parents=True)
-    monkeypatch.setattr(sys, "stdin", io.StringIO("   \n"))
+    monkeypatch.setattr(sys, "stdin", _stdin_bytes(b"   \n"))
     with pytest.raises(SystemExit) as e:
         cmd_cache_raw_offer(None, Namespace(target=str(run)))
     assert e.value.code == 2
