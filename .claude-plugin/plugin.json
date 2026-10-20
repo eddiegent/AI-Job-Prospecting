@@ -1,7 +1,7 @@
 {
   "name": "job-prospecting",
   "displayName": "Job Prospecting",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Job search automation: generate tailored application packs (CV, motivation letter, LinkedIn messages, interview prep) from a job offer, or speculative cold-application packs from just a company name — grounded in your master CV so nothing is invented. Tracks applications in SQLite with duplicate detection, status updates, and stats/skill-gap reporting.",
   "author": {
     "name": "Eddie Gent"

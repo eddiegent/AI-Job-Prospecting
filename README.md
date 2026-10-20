@@ -2,7 +2,7 @@
 
 Five [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills — four user-facing plus a shared internal sub-skill (`job-prep-cv`) — that automate a job search end-to-end: generate a fully tailored application pack from a job offer and your master CV, send speculative (cold) applications to companies with no advertised vacancy, track every application in SQLite, and report on your pipeline.
 
-**Current release: v1.0.0** (2026-07-15) — git tags `v1.0.0` and `job-prospecting--v1.0.0` (the marketplace version convention). See [CHANGELOG.md](CHANGELOG.md).
+**Current release: v1.1.0** (2026-10-20) — git tags `v1.1.0` and `job-prospecting--v1.1.0` (the marketplace version convention). See [CHANGELOG.md](CHANGELOG.md).
 
 ## What you get
 
@@ -60,7 +60,7 @@ Note for marketplace testing: `/plugin marketplace add <local-path>` copies the 
 Clone the repo (optionally at the release tag) and open Claude Code inside it — the five skills under `.claude/skills/` load as **project skills**, no plugin install needed:
 
 ```bash
-git clone --branch v1.0.0 https://github.com/eddiegent/AI-Job-Prospecting.git
+git clone --branch v1.1.0 https://github.com/eddiegent/AI-Job-Prospecting.git
 cd AI-Job-Prospecting && claude
 ```
 

@@ -5,7 +5,11 @@ Build history for the job-prospecting toolkit. Kept out of the individual
 trigger; historical notes don't need to ride along). Newest entries first
 within each section.
 
-## Unreleased
+## v1.1.0 — 2026-10-20
+
+Second release (git tags `v1.1.0` and `job-prospecting--v1.1.0`): the claims
+guard, status history (schema v4), one `gate` command per pipeline stage, and
+the marketplace catalog. Everything below up to v1.0.0 is part of it.
 
 - **Two more gate checks (2026-10-20)** — `gate linkedin` now checks message
   lengths: a connection request over 300 characters (LinkedIn truncates it) or
