@@ -36,6 +36,11 @@ Two subcommands:
        job_offer_analysis.json, from company_profile.tech_stack_hints (cold flow,
        ``[stack-contagion]``) - that is absent from master CV + addendum must not
        appear anywhere in the output, unless the sentence admits the gap.
+    7. Durations: every "N ans / années / mois / years / months" (digits or
+       spelled out: "trente ans") must match a duration the master CV or
+       addendum states for that unit ("35+ ans", "dont 15+ en C#/.NET", "en
+       6 mois"). A range ("2 à 5 ans") describes a requirement, not the
+       candidate, and is skipped.
 
 Every message is ``[rule] <file>: ...`` so a gate can tell whose file failed.
 ``run_check(..., only=...)`` restricts the check to some of the four files
@@ -68,6 +73,88 @@ LEGAL_SUFFIXES = (
     "srl", "spa", "sl", "ab", "as", "oy",
 )
 _LEGAL_SUFFIX_RE = re.compile(r"(?:[\s,]+(?:" + "|".join(LEGAL_SUFFIXES) + r")\.?)+$")
+
+
+# Rule 7 - durations. Patterns run on _norm()-ed text (lowercase, no accents).
+_UNITS = {
+    "zero": 0, "un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5,
+    "six": 6, "sept": 7, "huit": 8, "neuf": 9, "dix": 10, "onze": 11, "douze": 12,
+    "treize": 13, "quatorze": 14, "quinze": 15, "seize": 16,
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "seven": 7,
+    "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13,
+    "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19,
+}
+_TENS = {
+    "vingt": 20, "trente": 30, "quarante": 40, "cinquante": 50, "soixante": 60,
+    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
+}
+_UNIT_WORDS = "|".join(sorted(_UNITS, key=len, reverse=True))
+_TENS_WORDS = "|".join(_TENS)
+_NUMBER = (rf"\d+|(?:{_TENS_WORDS})(?:[- ](?:et[- ])?(?:{_UNIT_WORDS}))?|(?:{_UNIT_WORDS})")
+_DURATION_RE = re.compile(
+    rf"(?<![\w.,])(?P<num>{_NUMBER})\s*\+?\s*(?P<unit>annees?|ans?|mois|years?|yrs?|months?)(?![\w])"
+)
+# "2 a 5 ans", "3-5 years", "2 to 4 years", "deux ou trois ans": a range.
+_RANGE_BEFORE_RE = re.compile(rf"(?:{_NUMBER})\s*(?:a|-|to|ou|or)\s*$")
+# Source-only shorthand: "dont 15+ en C#/.NET" states 15 years.
+_SOURCE_PLUS_EN_RE = re.compile(r"(?<![\w.,])(\d+)\s*\+\s*(?:en|in)\b")
+
+
+def _number_value(token: str) -> int | None:
+    token = token.strip()
+    if token.isdigit():
+        return int(token)
+    parts = re.split(r"[- ](?:et[- ])?", token)
+    if parts[0] in _TENS:
+        return _TENS[parts[0]] + (_UNITS.get(parts[1], 0) if len(parts) > 1 else 0)
+    return _UNITS.get(token)
+
+
+def _unit_class(unit: str) -> str:
+    return "month" if unit.startswith(("mois", "month")) else "year"
+
+
+def durations(text_norm: str, *, skip_ranges: bool = True) -> list[tuple[int, str, str]]:
+    """``(value, 'year'|'month', matched text)`` for each duration in normalised text."""
+    out = []
+    for m in _DURATION_RE.finditer(text_norm):
+        if skip_ranges and _RANGE_BEFORE_RE.search(text_norm[max(0, m.start() - 40):m.start()]):
+            continue
+        value = _number_value(m.group("num"))
+        if value is not None:
+            out.append((value, _unit_class(m.group("unit")), m.group(0)))
+    return out
+
+
+_MONTHS = {
+    "janvier": 1, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6, "juillet": 7,
+    "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "decembre": 12,
+    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6, "july": 7,
+    "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
+}
+_MONTH_WORDS = "|".join(_MONTHS)
+_SPAN_RE = re.compile(rf"\b({_MONTH_WORDS}) (\d{{4}}) ?- ?({_MONTH_WORDS}) (\d{{4}})\b")
+# A sentence about the candidate, not about the offer or the company.
+_FIRST_PERSON_RE = re.compile(r"(?:\bj'|\bm'|\b(?:je|mon|ma|mes|moi|i|i'm|i've|my)\b)")
+
+
+def tenure_durations(source_norm: str) -> set[tuple[int, str]]:
+    """Durations implied by the CV's own "Mars 2005 - Juin 2010" ranges: a role's
+    span in whole years (rounded down and to nearest) and in months."""
+    found: set[tuple[int, str]] = set()
+    for m1, y1, m2, y2 in _SPAN_RE.findall(source_norm):
+        months = (int(y2) - int(y1)) * 12 + _MONTHS[m2] - _MONTHS[m1]
+        if months <= 0:
+            continue
+        found |= {(months // 12, "year"), (round(months / 12), "year"), (months, "month")}
+    return found
+
+
+def source_durations(source_norm: str) -> set[tuple[int, str]]:
+    found = {(v, u) for v, u, _ in durations(source_norm, skip_ranges=False)}
+    found |= {(int(n), "year") for n in _SOURCE_PLUS_EN_RE.findall(source_norm)}
+    return found | tenure_durations(source_norm)
 
 
 def _norm(s: str) -> str:
@@ -332,6 +419,24 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
                 if ctx and ctx in source:  # phrase (with its noun) already in master/addendum
                     continue
                 errors.append(f"[intensity] {name}: '{m.group(0)}' is not supported by any source: {s[:110]!r}")
+
+    sourced = source_durations(source)
+    # Durations the offer / company states ("mission de 24 mois", "5 ans
+    # demandés") may be quoted back, as long as the sentence isn't a claim
+    # about the candidate.
+    role_side = source_durations(_norm(" ".join(_strings([offer or {}, profile or {}]))))
+    for name, doc in docs.items():
+        for s in _strings(doc):
+            for sentence in re.split(r"(?<=[.!?])\s+", _norm(s)):
+                for value, unit, text in durations(sentence):
+                    if (value, unit) in sourced:
+                        continue
+                    if (value, unit) in role_side and not _FIRST_PERSON_RE.search(sentence):
+                        continue
+                    stated = sorted(v for v, u in sourced if u == unit)
+                    errors.append(f"[duration] {name}: '{text}' - no source states a {value}-{unit} duration "
+                                  f"(master CV / addendum / role dates give {unit}s: {stated or 'none'}); use one "
+                                  f"of those, or a date instead (\"depuis 2025\"): {sentence[:90]!r}")
 
     cvn = "tailored_cv.json"
     cv = docs.get(cvn, {})

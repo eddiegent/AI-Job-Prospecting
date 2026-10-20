@@ -191,6 +191,36 @@ def _claims(*filenames: str) -> Callable[[Ctx], Result]:
     return run
 
 
+# LinkedIn limits. A connection note over 300 characters is silently truncated
+# by LinkedIn; the cold prompt caps the post-acceptance message at 700. Offer-
+# flow messages have no template type, so only the prompt's soft 500 applies.
+CONNECTION_REQUEST_MAX = 300
+DIRECT_MESSAGE_MAX = 700
+SOFT_MESSAGE_MAX = 500
+
+
+def _linkedin_lengths(ctx: Ctx) -> Result:
+    r = Result("linkedin message lengths")
+    data = json.loads(ctx.path("linkedin.json").read_text(encoding="utf-8"))
+    for i, v in enumerate(data.get("variants", [])):
+        msg = v.get("message", "")
+        hint = (v.get("subject_hint") or "").strip().lower()
+        who = v.get("contact_name") or v.get("target", "?")
+        if hint.startswith("connection request"):
+            limit, kind = CONNECTION_REQUEST_MAX, "connection request"
+        elif hint.startswith("direct message"):
+            limit, kind = DIRECT_MESSAGE_MAX, "direct message"
+        else:
+            if len(msg) > SOFT_MESSAGE_MAX:
+                r.warnings.append(f"variants[{i}] ({who}): {len(msg)} characters - "
+                                  f"the prompt prefers at most {SOFT_MESSAGE_MAX}")
+            continue
+        if len(msg) > limit:
+            r.errors.append(f"variants[{i}] ({who}, {kind}): {len(msg)} characters, limit {limit} - "
+                            f"cut {len(msg) - limit}")
+    return r
+
+
 def _role_grounding(filename: str, kind: str) -> Callable[[Ctx], Result]:
     def run(ctx: Ctx) -> Result:
         from scripts.check_role_grounding import check
@@ -234,6 +264,7 @@ STAGES: dict[str, list[Step]] = {
     ],
     "linkedin": [
         (_schema("linkedin.json", TAILOR_SCHEMAS / "linkedin.schema.json"), True),
+        (_linkedin_lengths, False),
         (_claims("linkedin.json"), False),
     ],
     "profile": [
@@ -301,6 +332,7 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "match (recount in place + schema + grounding), "
         "cv (schema + forbidden labels + claims on tailored_cv.json), letters "
         "(letter + short_letter schemas + claims on those two), linkedin (schema + "
+        "message lengths: connection request <= 300, direct message <= 700 + "
         "claims on linkedin.json), profile (cold schema), "
         "roles (cold schema + forbidden labels + role grounding), "
         "selected-role (cold schema + role grounding). Grounding (match, roles, "

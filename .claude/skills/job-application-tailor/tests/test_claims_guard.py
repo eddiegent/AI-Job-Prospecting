@@ -156,7 +156,7 @@ def test_stack_contagion_flagged_when_no_offer():
 
 
 def test_stack_tech_that_is_in_master_cv_is_allowed():
-    assert run(letter={"paragraphs": ["Dix ans de C#."]}, profile=PROFILE) == []
+    assert run(letter={"paragraphs": ["Développement en C#."]}, profile=PROFILE) == []
 
 
 def test_stack_tech_named_as_a_gap_is_allowed():
@@ -325,3 +325,55 @@ def test_run_check_only_scopes_to_the_named_files(tmp_path, monkeypatch):
     letters = run_check(prep, master=master, only=("letter.json", "short_letter.json"))
     assert letters == [e for e in every if " letter.json:" in e]
     assert run_check(prep, master=master, only=("linkedin.json",)) == []
+
+
+# ---------------------------------------------------------------- rule 7: durations
+
+DUR_MASTER = _norm("Ingénieur avec plus de 35 ans d'expérience, dont 15+ en C#/.NET. "
+                   "Portage livré en production en 6 mois. "
+                   "Development Manager | Telmar | Mars 2005 – Juin 2010")
+
+
+def run_dur(text, offer=None, profile=None, addendum=""):
+    return [e for e in check(None, DUR_MASTER, [], addendum, {"letter.json": {"paragraphs": [text]}},
+                             offer or {}, profile=profile) if e.startswith("[duration]")]
+
+
+def test_duration_stated_in_master_cv_passes():
+    assert run_dur("Plus de 35 ans de développement, dont 15 ans de C#/.NET, livré en 6 mois.") == []
+
+
+def test_spelled_out_duration_not_in_any_source_is_flagged():
+    errs = run_dur("Trente ans de carrière dans le logiciel.")
+    assert len(errs) == 1 and "'trente ans'" in errs[0] and "30-year" in errs[0]
+
+
+def test_inflated_duration_is_flagged_with_the_sourced_values():
+    errs = run_dur("J'ai passé 17 ans chez Oodrive.")
+    assert len(errs) == 1 and "17-year" in errs[0] and "[5, 15, 35]" in errs[0]
+
+
+def test_role_span_from_cv_dates_counts_as_a_source():
+    # Telmar: Mars 2005 – Juin 2010 = 63 months -> 5 years.
+    assert run_dur("Cinq ans chez Telmar sur des outils média.") == []
+
+
+def test_month_and_year_units_are_kept_apart():
+    errs = run_dur("Le portage a pris 6 ans.")
+    assert len(errs) == 1 and "6-year" in errs[0]
+
+
+def test_a_range_describes_a_requirement_and_is_skipped():
+    assert run_dur("Votre offre demande 2 à 5 ans d'expérience ; je suis plus senior.") == []
+
+
+def test_offer_duration_quoted_outside_the_first_person_passes():
+    offer = {"responsibilities": ["Mission freelance de 24 mois"]}
+    assert run_dur("Candidature — mission freelance 24 mois.", offer=offer) == []
+    errs = run_dur("J'ai 24 mois d'expérience sur ce type de mission.", offer=offer)
+    assert len(errs) == 1 and "24-month" in errs[0]
+
+
+def test_addendum_duration_counts_as_a_source():
+    add = "## Off-CV facts to remember\n- 30+ années de carrière technique en langue seconde.\n"
+    assert run_dur("Trente ans de carrière.", addendum=add) == []

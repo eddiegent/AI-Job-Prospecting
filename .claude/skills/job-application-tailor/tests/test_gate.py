@@ -243,3 +243,35 @@ def test_read_cv_missing_cv_exits_2(tmp_path):
     with pytest.raises(SystemExit) as e:
         cmd_read_cv(None, Namespace(cv=str(tmp_path / "missing.docx")))
     assert e.value.code == 2
+
+
+def _cold_linkedin(connection: str, direct: str) -> dict:
+    return {"outreach_type": "cold", "variants": [
+        {"target": "hiring_manager", "contact_name": "Jo Martin", "subject_hint": "Connection request",
+         "message": connection},
+        {"target": "hiring_manager", "contact_name": "Jo Martin",
+         "subject_hint": "Direct message — post-acceptance", "message": direct},
+    ]}
+
+
+def test_gate_linkedin_passes_messages_within_limits(tmp_path, home, capsys):
+    run = _run(tmp_path, {"linkedin.json": _cold_linkedin("x" * 300, "y" * 700)})
+    code, out = _gate("linkedin", run, capsys)
+    assert code == 0, out
+    assert "[PASS] linkedin message lengths" in out
+
+
+def test_gate_linkedin_fails_over_the_cold_limits(tmp_path, home, capsys):
+    run = _run(tmp_path, {"linkedin.json": _cold_linkedin("x" * 301, "y" * 750)})
+    code, out = _gate("linkedin", run, capsys)
+    assert code == 1
+    assert "variants[0] (Jo Martin, connection request): 301 characters, limit 300 - cut 1" in out
+    assert "variants[1] (Jo Martin, direct message): 750 characters, limit 700 - cut 50" in out
+
+
+def test_gate_linkedin_offer_messages_only_warn_over_500(tmp_path, home, capsys):
+    run = _run(tmp_path, {"linkedin.json": _linkedin("z" * 620)})
+    code, out = _gate("linkedin", run, capsys)
+    assert code == 0, out
+    assert "[WARN] linkedin message lengths (non-blocking)" in out
+    assert "620 characters - the prompt prefers at most 500" in out

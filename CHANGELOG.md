@@ -7,6 +7,19 @@ within each section.
 
 ## Unreleased
 
+- **Two more gate checks (2026-10-20)** — `gate linkedin` now checks message
+  lengths: a connection request over 300 characters (LinkedIn truncates it) or
+  a direct message over 700 fails; offer-flow messages only warn over the
+  prompt's 500. The claims guard gains rule 7, durations: every "N ans /
+  années / mois / years / months", digits or spelled out ("trente ans"), must
+  match a duration the master CV or addendum states, or one implied by a
+  role's own dates ("Mars 2005 – Juin 2010" = 5 years). Ranges ("2 à 5 ans")
+  are skipped, and a duration quoted from the offer or company profile passes
+  outside a first-person sentence. Across the 141 existing packs it flags 8
+  real problems ("17 ans chez Oodrive", "depuis trois ans" for a 2025 move,
+  "12+ ans en C++") and no false alarms. Also: `cache-raw-offer` no longer
+  garbles accents or line endings on Windows.
+
 - **Skill simplification: one gate per stage (2026-10-20)** — a new
   `cli.py gate <stage> <folder>` runs every deterministic check for a pipeline
   stage in one call and reports all failures at once. Stages: `factbase`,

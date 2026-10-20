@@ -101,12 +101,12 @@ cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
 | `match` | `match_analysis.json` | recount `match_summary` in place → schema → grounding against `cv_fact_base_merged.json` (a `direct` match needs evidence; familiar-only skills are at most `transferable`) |
 | `cv` | `tailored_cv.json` | schema → forbidden title labels (`user_prefs.yaml`) → claims check |
 | `letters` | `letter.json` + `short_letter.json` | schema → claims check |
-| `linkedin` | `linkedin.json` | schema → claims check |
+| `linkedin` | `linkedin.json` | schema → message lengths (connection request ≤ 300, direct message ≤ 700; other messages warn over 500) → claims check |
 | `profile` | `company_profile.json` (cold) | schema |
 | `roles` | `role_candidates.json` (cold) | schema → forbidden title labels → stack grounding |
 | `selected-role` | `selected_role.json` (cold) | schema → stack grounding |
 
-Exit 0 = pass, 1 = at least one check failed (each failure is listed under its check), 2 = bad folder. `match`, `roles` and `selected-role` fail if `cv_fact_base_merged.json` is missing — run `claims_guard.py merge` (Step 3.9) first. The claims check in `cv` / `letters` / `linkedin` covers only that stage's own files, and each message is prefixed `[rule] <file>:`. A failed schema check stops the stage; otherwise every check runs. The claims check flags unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, dropped skill qualifiers, a malformed "Earlier experience" line, and technologies from the job posting (offer) or the company's `tech_stack_hints` (cold) that the CV doesn't support.
+Exit 0 = pass, 1 = at least one check failed (each failure is listed under its check), 2 = bad folder. `match`, `roles` and `selected-role` fail if `cv_fact_base_merged.json` is missing — run `claims_guard.py merge` (Step 3.9) first. The claims check in `cv` / `letters` / `linkedin` covers only that stage's own files, and each message is prefixed `[rule] <file>:`. A failed schema check stops the stage; otherwise every check runs. The claims check flags unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, dropped skill qualifiers, a malformed "Earlier experience" line, durations no source states ("trente ans", "17 ans chez X" — only those in the master CV, the addendum or implied by a role's dates; a range like "2 à 5 ans" is skipped), and technologies from the job posting (offer) or the company's `tech_stack_hints` (cold) that the CV doesn't support.
 
 **On failure, fix the generated file and re-run.** Never edit the master CV, the addendum or `.cv_hash` to make a gate pass. Match grounding failure → downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`. Fact-base `[metric]` failure → re-extract the figure from the CV, don't delete it.
 
