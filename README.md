@@ -92,7 +92,7 @@ Inside that directory you'll place:
 | File | Required? | Purpose |
 |------|-----------|---------|
 | `MASTER_CV.docx` | **yes** | Your source-of-truth CV; everything is grounded in this |
-| `cv_addendum.md` | no | Off-CV facts, extra experience entries, hidden skills |
+| `cv_addendum.md` | no | Off-CV facts, extra experience entries, hidden skills, skill calibration (the real scope of a skill) |
 | `user_prefs.yaml` | no | Tone directives, forbidden title labels, team-context companies |
 | `settings.yaml` | no | Overrides on top of `config/settings.default.yaml` |
 

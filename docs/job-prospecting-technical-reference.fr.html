@@ -745,11 +745,12 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash existent
         <h2>Personnalisation — addendum &amp; préférences<a class="anchor" href="#customization" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
         <p>Deux fichiers optionnels appartenant à l'utilisateur (tous deux exclus de git) permettent à la boîte à outils de connaître des faits vrais mais absents du CV ainsi que des préférences personnelles, sans jamais muter le cache vérifié.</p>
         <div class="cardgrid">
-          <div class="icard"><div class="k">cv_addendum.md</div><h4>Trois sections reconnues</h4>
+          <div class="icard"><div class="k">cv_addendum.md</div><h4>Quatre sections reconnues</h4>
             <ul class="tight" style="margin-bottom:0;">
               <li><code>## Additional experience entries</code> → puces rattachées à un poste existant (associé par entreprise + dates)</li>
               <li><code>## Hidden skills</code> → <code>addendum_hidden_skills</code></li>
               <li><code>## Off-CV facts to remember</code> → <code>addendum_off_cv_facts</code></li>
+              <li><code>## Skill calibration</code> → <code>addendum_skill_calibration</code> — la portée réelle de chaque compétence (employeur, en équipe ou seul, réglage ou conception) ; la formulation doit rester dans ce cadre</li>
             </ul>
           </div>
           <div class="icard"><div class="k">user_prefs.yaml</div><h4>Clés honorées</h4>

@@ -745,11 +745,12 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
         <h2>Customization — addendum &amp; prefs<a class="anchor" href="#customization" aria-label="Link to this section" title="Link to this section">#</a></h2>
         <p>Two optional user-owned files (both git-ignored) let the toolkit know true-but-off-CV facts and personal preferences, without ever mutating the verified cache.</p>
         <div class="cardgrid">
-          <div class="icard"><div class="k">cv_addendum.md</div><h4>Three recognised sections</h4>
+          <div class="icard"><div class="k">cv_addendum.md</div><h4>Four recognised sections</h4>
             <ul class="tight" style="margin-bottom:0;">
               <li><code>## Additional experience entries</code> → bullets attached to an existing role (matched by company + dates)</li>
               <li><code>## Hidden skills</code> → <code>addendum_hidden_skills</code></li>
               <li><code>## Off-CV facts to remember</code> → <code>addendum_off_cv_facts</code></li>
+              <li><code>## Skill calibration</code> → <code>addendum_skill_calibration</code> — the real scope of each skill (employer, team or solo, tuning or design); wording must stay inside it</li>
             </ul>
           </div>
           <div class="icard"><div class="k">user_prefs.yaml</div><h4>Honoured keys</h4>

@@ -12,9 +12,10 @@ Use it for:
   out of the master CV for length reasons,
 - hidden skills the CV doesn't showcase but you want the tailor to know
   about (e.g. a language you once shipped production code in),
+- the real scope of a skill, so the tailor doesn't oversell it,
 - off-CV facts you want the skill to remember across every application.
 
-Delete any section you don't need. All three are optional.
+Delete any section you don't need. All four are optional.
 
 ---
 
@@ -39,6 +40,25 @@ when the tailor step builds its in-memory fact base.
 ### Northbridge Software — Aug 2019 – Feb 2022
 
 - Example: owned the on-call runbook for the order-management service.
+
+---
+
+## Skill calibration
+
+Flat bullet list. Each item states the real scope of one skill: where
+you used it, alone or in a team, tuning an existing system or designing
+one. The CV, the letters and the LinkedIn messages must keep their
+wording inside these limits, so a skill you only touched is never sold
+as an expertise. Keep the heading starting with `## Skill calibration`
+(you may add text after it, e.g. `## Skill calibration (honest framing)`).
+
+A sentence that contains a negation ("not", "never", "pas", "jamais")
+is read as a rule only, never as evidence that you have the skill.
+
+- Example: PostgreSQL — query tuning and indexing on an existing schema
+  at Helios Analytics; I did not design the schema.
+- Example: Kubernetes — deployed services with the platform team's Helm
+  charts; cluster administration was not my job.
 
 ---
 

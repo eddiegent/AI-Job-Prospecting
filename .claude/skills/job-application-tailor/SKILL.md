@@ -13,10 +13,13 @@ This skill takes a job offer and your master CV, then produces a complete applic
 
 ## Directory layout
 
-**`PROJECT_ROOT`** (current working directory) holds your data:
-- `resources/MASTER_CV.docx` — source CV (or wherever preflight's `master_cv_path` points)
-- `resources/cv_fact_base.json` + `.cv_hash` — cached extraction (auto-managed)
-- `output/` — generated packs, named `[fit_level]-[date]-[job-slug]/`
+**The user data folder** (preflight's `user_data_dir`) holds your data. It is `$JOB_TAILOR_HOME` if set, else the project's `resources/` when it holds a `MASTER_CV.docx` (the pre-plugin layout), else the OS app-data folder (`%APPDATA%\job-application-tailor\`, `~/Library/Application Support/job-application-tailor/`, `$XDG_DATA_HOME/job-application-tailor/`):
+- `MASTER_CV.docx` — source CV (preflight's `master_cv_path`)
+- `cv_fact_base.json` + `.cv_hash` — cached extraction (auto-managed)
+- `job_history.db` — application history
+- optional `cv_addendum.md`, `user_prefs.yaml`, `settings.yaml` (overrides on top of `config/settings.default.yaml`)
+
+**`PROJECT_ROOT`** (preflight's `project_root`: the git repo you run from, or the user data folder for an installed plugin with no project) holds `output/` — generated packs, named `[fit_level]-[date]-[job-slug]/`.
 
 **`SKILL_BASE`** (`.claude/skills/job-application-tailor`) holds reusable infrastructure:
 - `prompts/` — instructions for each generation step (`cv_rules.md` holds the CV rules shared with the cold flow)

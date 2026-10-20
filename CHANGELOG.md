@@ -5,6 +5,15 @@ Build history for the job-prospecting toolkit. Kept out of the individual
 trigger; historical notes don't need to ride along). Newest entries first
 within each section.
 
+## Unreleased
+
+- **Docs fixes (2026-10-20)** — the addendum's `## Skill calibration` section
+  is now documented (template, README, technical reference); the overview no
+  longer claims a PDF motivation letter (only the CV gets a PDF) and its pack
+  count is current; the `job-application-tailor` SKILL.md layout section
+  describes the user data folder instead of only the old `resources/` layout;
+  CLAUDE.md lists the docs-drift pre-commit check.
+
 ## v1.1.0 — 2026-10-20
 
 Second release (git tags `v1.1.0` and `job-prospecting--v1.1.0`): the claims

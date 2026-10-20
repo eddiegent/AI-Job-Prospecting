@@ -240,8 +240,8 @@ Any layout change (Phase 3) or migration (Phase 4.5) that touches these files wi
 - [x] **Update `common.py::_load_fit_levels`** to use `load_settings()` instead of opening the raw defaults file directly. Local import avoids a top-level circular dependency with `scripts.paths`.
 - [x] **Update `generate_outputs.py::main`** to use `load_settings(defaults_path=Path(args.settings))` so the CLI picks up the user override automatically. Default `--settings` flag now points at `config/settings.default.yaml`.
 - [x] **Update load-bearing doc/prompt references** — `SKILL.md` (all `config/settings.yaml` mentions → `config/settings.default.yaml`), `prompts/tailor_cv.md` (compression cutoff lookup), `references/commands.md` (generate_outputs.py example). Cosmetic README.md/SETUP.md rename is deferred to the Phase 5 documentation pass.
-- [ ] **Replace every hardcoded `resources/...` path** in the remaining scripts with a `resolve_user_data_dir()` call. Currently only `backup_user_data.py` still references the legacy `resources/` layout and is explicitly legacy-aware (allowlisted in `test_no_hardcoded_resources_slash_in_scripts`). Nothing else in `scripts/` hardcodes the old path. *(Concern closed — the two outstanding call sites are `cv_cache_is_valid` / `save_cv_fact_base` / `copy_cached_cv_fact_base` in `common.py`, which derive the cache directory from `cv_path.parent`, so they automatically track wherever the resolved CV lives.)*
-- [ ] **Update `SKILL.md` Directory Layout section** to describe the plugin-install vs user-data-dir split with the new layered-config example. *(Step 0 and the fit_level paragraph already renamed; the full layout section rewrite is pending and tracked as a Phase 5 pre-release task.)*
+- [x] **Replace every hardcoded `resources/...` path** in the remaining scripts with a `resolve_user_data_dir()` call. Currently only `backup_user_data.py` still references the legacy `resources/` layout and is explicitly legacy-aware (allowlisted in `test_no_hardcoded_resources_slash_in_scripts`). Nothing else in `scripts/` hardcodes the old path. *(Concern closed — the two outstanding call sites are `cv_cache_is_valid` / `save_cv_fact_base` / `copy_cached_cv_fact_base` in `common.py`, which derive the cache directory from `cv_path.parent`, so they automatically track wherever the resolved CV lives.)*
+- [x] **Update `SKILL.md` Directory Layout section** to describe the plugin-install vs user-data-dir split with the new layered-config example. *(Done 2026-10-20: the section now describes the user data folder and its resolution order, and where `output/` goes.)*
 - [x] **Keep a backwards-compat path** — when `<repo>/resources/MASTER_CV.docx` exists, it takes precedence over any OS-standard location. Pinned by `test_resolve_returns_legacy_path_when_project_resources_exists`.
 
 ### Success criteria
@@ -326,9 +326,9 @@ These are the most safety-critical tests in the whole roadmap. Every one pins an
   6. The DB's `output_folder` column is rewritten **in the staged copy** before the verification gate, so a rewrite bug surfaces at verify time instead of on the real DB.
   7. `<target>/.migrated_from` is written after commit; subsequent runs short-circuit with `{"already_migrated": True}`.
 - [x] **Handle the output folder rewrite specifically.** `_rewrite_path()` uses prefix-stripping against the resolved legacy output path and falls back to `Path.relative_to` — survives path-separator differences. The sidecar `.migration_rollback.json` records `{app_id: original_output_folder}` so `rollback_migration(target)` can undo the column rewrite in a single UPDATE pass. Tested end-to-end via `test_rollback_restores_db_output_folder_column`.
-- [ ] **Memory files cleanup prompt.** Not yet wired into `migrate.py::main()`. Deferred to the Phase 5 packaging pass so the prompt can sit alongside the README migration section rather than shipping as loose print statements. Listed files: `project_cv_fortran_experience.md`, `feedback_no_backend_label.md`, `feedback_motivation_letter_tone.md`, `feedback_training_not_in_experience.md`.
+- [x] ~~**Memory files cleanup prompt.**~~ *Dropped 2026-10-20 — the only pre-plugin user has already migrated, so no one would see the prompt.* Not wired into `migrate.py::main()`. Deferred to the Phase 5 packaging pass so the prompt can sit alongside the README migration section rather than shipping as loose print statements. Listed files: `project_cv_fortran_experience.md`, `feedback_no_backend_label.md`, `feedback_motivation_letter_tone.md`, `feedback_training_not_in_experience.md`.
 - [x] **Dry-run eval.** `test_find_duplicates_still_works_after_migration` acts as the automated end-to-end check: fixture legacy install → `apply_migration` → open migrated DB via `JobHistoryDB` → call `find_duplicates` → assert the returned row's `output_folder` points at the new location and is openable. Running this against Eddie's real data is left as a manual smoke step when Phase 5 ships.
-- [ ] **Document in README** — deferred to Phase 5 (README.md is one of the Phase 5 packaging deliverables, so migration docs will land with the rest of the release docs rather than in a separate pass).
+- [x] **Document in README** — done: README § "Migrating from a loose project install". Originally deferred to Phase 5 (README.md is one of the Phase 5 packaging deliverables, so migration docs will land with the rest of the release docs rather than in a separate pass).
 
 ### Success criteria
 
@@ -392,7 +392,7 @@ These are the most safety-critical tests in the whole roadmap. Every one pins an
 - [ ] **Multi-CV support** — pick the best base CV per job when a user maintains several.
 - [ ] **Email-driven status updates** via Gmail MCP.
 - [ ] **Deadline reminder skill** via gcal MCP.
-- [ ] **Audit `job-stats` and `job-status`** for Eddie-specific assumptions; apply Phases 1 and 3 to them too.
+- [x] **Audit `job-stats` and `job-status`** for Eddie-specific assumptions; apply Phases 1 and 3 to them too. *(Checked 2026-10-20: no personal references remain; both resolve the DB through `cli.py`.)*
 
 ---
 

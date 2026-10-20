@@ -22,6 +22,8 @@ The `cli.py` argparse parser is the canonical reference. Auto-generated docs liv
 A pre-commit hook (`.githooks/pre-commit`) keeps this in sync:
 - Regenerates `references/cli.md` when `scripts/cli.py` is staged.
 - Lints staged `*.md` files for invocations referencing flags that don't exist on the named subcommand.
+- Checks the CV fact base against the master CV (see below).
+- Blocks a commit that stages doc-relevant source (`cli.py`, `job_history_db.py`, any `SKILL.md`, a schema, `settings.default.yaml`) without staging anything under `docs/`. The `docs/` pages are hand-written, EN + FR — update both languages. Bypass with `DOCS_OK=1 git commit …` only when the change doesn't affect them.
 
 One-time setup on a fresh clone:
 
