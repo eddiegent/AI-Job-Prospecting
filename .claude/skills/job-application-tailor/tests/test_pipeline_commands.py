@@ -259,3 +259,93 @@ def test_timeline_command_json(tmp_path, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["group_by"] == "week"
     assert sum(p["applications"] for p in payload["periods"]) == 3
+
+
+# ---------------------------------------------------------- regenerate-outputs
+
+from scripts.commands.records import cmd_regenerate_outputs  # noqa: E402
+
+
+def _regen(monkeypatch, folder: Path, **flags) -> tuple[int, list[str]]:
+    """Run regenerate-outputs with generate_outputs.py stubbed; return (exit, argv)."""
+    seen: list[list[str]] = []
+
+    class _Done:
+        returncode = 0
+
+    monkeypatch.setattr("scripts.commands.records.subprocess.run",
+                        lambda cmd: seen.append(cmd) or _Done())
+    args = Namespace(target=str(folder), check=False, skip_pdf=False,
+                     language=None, job_title=None)
+    for k, v in flags.items():
+        setattr(args, k, v)
+    with pytest.raises(SystemExit) as e:
+        cmd_regenerate_outputs(None, args)
+    return e.value.code, (seen[0] if seen else [])
+
+
+def _flag(cmd: list[str], name: str) -> str | None:
+    return cmd[cmd.index(name) + 1] if name in cmd else None
+
+
+def _cold_pack(tmp_path: Path, role_extra: dict | None = None) -> Path:
+    run = tmp_path / "cold-14072026-Acme"
+    for name in ("tailored_cv.json", "letter.json", "linkedin.json", "short_letter.json"):
+        _write_prep(run, name, {})
+    _write_prep(run, "selected_role.json", {"title": "Tech Lead .NET", **(role_extra or {})})
+    (run / "_prep" / "company_dossier.md").write_text("# Dossier", encoding="utf-8")
+    return run
+
+
+def _offer_pack(tmp_path: Path) -> Path:
+    run = tmp_path / "good-14072026-Dev-NET-Acme"
+    for name in ("tailored_cv.json", "letter.json", "linkedin.json", "match_analysis.json"):
+        _write_prep(run, name, {})
+    _write_prep(run, "job_offer_analysis.json", {"job_title": "Dév .NET", "detected_language": "en"})
+    (run / "_prep" / "interview_prep.md").write_text("# Prep", encoding="utf-8")
+    return run
+
+
+def test_regenerate_cold_pack_builds_with_dossier_and_role_title(tmp_path, monkeypatch):
+    code, cmd = _regen(monkeypatch, _cold_pack(tmp_path))
+    assert code == 0
+    assert _flag(cmd, "--job-title") == "Tech Lead .NET"
+    assert _flag(cmd, "--language") == "fr"
+    assert _flag(cmd, "--dossier-markdown").endswith("company_dossier.md")
+    assert "--interview-markdown" not in cmd
+    assert "--match-analysis-json" not in cmd
+    assert _flag(cmd, "--short-letter-json").endswith("short_letter.json")
+    assert _flag(cmd, "--settings") and _flag(cmd, "--naming-rules")
+
+
+def test_regenerate_cold_language_from_selected_role_then_override(tmp_path, monkeypatch):
+    run = _cold_pack(tmp_path, {"language": "en"})
+    assert _flag(_regen(monkeypatch, run)[1], "--language") == "en"
+    assert _flag(_regen(monkeypatch, run, language="fr")[1], "--language") == "fr"
+
+
+def test_regenerate_offer_pack_unchanged(tmp_path, monkeypatch):
+    code, cmd = _regen(monkeypatch, _offer_pack(tmp_path))
+    assert code == 0
+    assert _flag(cmd, "--job-title") == "Dev-NET-Acme"   # folder slug, as before
+    assert _flag(cmd, "--language") == "en"              # detected_language
+    assert _flag(cmd, "--interview-markdown").endswith("interview_prep.md")
+    assert _flag(cmd, "--match-analysis-json").endswith("match_analysis.json")
+    assert "--dossier-markdown" not in cmd
+
+
+def test_regenerate_offer_overrides(tmp_path, monkeypatch):
+    _, cmd = _regen(monkeypatch, _offer_pack(tmp_path), language="fr", job_title="Dév .NET")
+    assert _flag(cmd, "--language") == "fr" and _flag(cmd, "--job-title") == "Dév .NET"
+
+
+def test_regenerate_check_reports_cold_inputs(tmp_path, monkeypatch, capsys):
+    run = _cold_pack(tmp_path)
+    (run / "_prep" / "company_dossier.md").unlink()
+    with pytest.raises(SystemExit) as e:
+        cmd_regenerate_outputs(None, Namespace(target=str(run), check=True, skip_pdf=False))
+    out = capsys.readouterr().out
+    assert e.value.code == 1
+    assert "Flow: cold" in out
+    assert "[MISSING] company_dossier.md" in out and "[OK] selected_role.json" in out
+    assert "interview_prep.md" not in out and "job_offer_analysis.json" not in out

@@ -1,5 +1,5 @@
 Write a short, concise motivation letter based on:
-1. a structured CV fact base (includes `candidate_location`; may also include `addendum_off_cv_facts` if the user has off-CV facts worth surfacing)
+1. the merged CV fact base (`cv_fact_base_merged.json`; includes `candidate_location`; may also include `addendum_off_cv_facts` if the user has off-CV facts worth surfacing)
 2. a structured job offer analysis (includes `location` and `work_mode`)
 3. the match analysis (includes `location_analysis` with commute assessment)
 4. company research (if available) — use company context to make the letter feel targeted, not generic
@@ -33,11 +33,11 @@ Recruiters read dozens of letters a day. The ones that stand out feel genuine, n
 - No invented experience — every claim must be grounded in the CV
 - No empty flattery or generic buzzwords
 - No exaggerated passion story
-- **Don't imply solo work** — phrases like "en autonomie complète" or "j'ai piloté seul" suggest the candidate did everything alone. In reality, most work happened within a team. Only mention autonomy if the CV fact base explicitly marks a period as solo/autonomous, and even then scope it to that specific period, not the whole tenure. Companies listed in `user_prefs.yaml → team_context_companies` are a hard no for any solo-work phrasing, regardless of what the CV bullets say.
+- **Don't imply solo work** — phrases like "en autonomie complète" or "j'ai piloté seul" suggest the candidate did everything alone. In most roles the work happens within a team. Only mention autonomy if the CV fact base explicitly marks a period as solo/autonomous, and even then scope it to that specific period, not the whole tenure. Companies listed in `user_prefs.yaml → team_context_companies` are a hard no for any solo-work phrasing, regardless of what the CV bullets say.
 - If the candidate lives near the job location, it's worth mentioning naturally (e.g. "basé à Lyon, à proximité de vos locaux" or "based locally in..."). Geographic proximity is a real advantage — recruiters prefer candidates who won't need relocation. But don't force it if the role is fully remote or if the candidate is far away.
 - Keep it short (3-4 paragraphs max)
 - Paragraphs should be 2-4 sentences, not dense blocks
-- Don't headline the same metric/achievement in more than one paragraph — state each strongest proof point once and let other paragraphs cover different ground (e.g. don't repeat a throughput figure or a signature phrase like "reverse engineering" in several places).
+- Don't headline the same metric/achievement in more than one paragraph — state each strongest proof point once and let other paragraphs cover different ground (e.g. don't repeat the same headline figure or signature phrase in several places).
 - Signoff must be "Cordialement," or "Bien cordialement," — nothing more formal
 - The closing salutation goes ONLY in the `signoff` field. Never repeat it as the last item of `paragraphs` — `paragraphs` is body text only (no "Cordialement,", no sender name). The renderer appends `signoff` and `name` itself.
 - Align to the language of the job offer unless a target language is specified
@@ -54,7 +54,7 @@ Key fields: `sender_name`, `sender_address` (array), `recipient_name`, `recipien
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
-- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé .NET Remoting/WCF par gRPC").
+- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- `python scripts/claims_guard.py check "$PREP_DIR"` must pass before outputs are generated.
+- The CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — schema + forbidden title labels + claims check) must pass before outputs are generated.

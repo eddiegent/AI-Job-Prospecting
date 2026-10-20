@@ -35,7 +35,7 @@ The three variants are alternatives sent to *different* people — they must not
 - **hiring_manager** — lead with ONE concrete, role-specific technical proof point that shows you grasp their actual challenge. Skip generic "X years of Y".
 - **internal_contact** — lead with a genuine question about the team, environment, or culture; at most one short line of background. A conversation-opener, not a pitch.
 
-Vary which fact you lead with across the three, so the same metric (e.g. a backup-throughput number) doesn't headline more than one message.
+Vary which fact you lead with across the three, so the same metric (e.g. a headline performance figure) doesn't headline more than one message.
 
 ## Output format
 Return valid JSON matching `schemas/linkedin.schema.json`. Read that schema file for the exact structure.
@@ -45,7 +45,7 @@ Return valid JSON matching `schemas/linkedin.schema.json`. Read that schema file
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
-- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé .NET Remoting/WCF par gRPC").
+- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- `python scripts/claims_guard.py check "$PREP_DIR"` must pass before outputs are generated.
+- The CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — schema + forbidden title labels + claims check) must pass before outputs are generated.

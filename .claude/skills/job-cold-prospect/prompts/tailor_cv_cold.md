@@ -1,7 +1,9 @@
 You must tailor a candidate CV for a **speculative (cold-call) application**. There is no job offer. The anchor is a researched company profile plus the user-selected target role.
 
+**First, read `$SKILL_BASE_TAILOR/prompts/cv_rules.md` (the job-application-tailor skill's shared CV rules). ALL of its rules apply to this prompt** — fact-base input, candidate location, summary sourcing, learning language, skill sections, training, personal projects, earlier-experience compression and wording, structural consistency, evidence ledger, forbidden list, shared self-checks, output format, language and style. Follow its **(cold flow)** notes. This file adds only the cold-flow inputs and rules.
+
 You will receive:
-1. the structured CV fact base (with the user's addendum already merged in — extra bullets appear as `experience[*].details` entries, and hidden skills / off-CV facts appear under `addendum_hidden_skills` and `addendum_off_cv_facts` when present)
+1. the **merged CV fact base** `$PREP_DIR/cv_fact_base_merged.json` (produced by `scripts/claims_guard.py merge` — the cached fact base with the user's addendum already merged in: extra bullets appear as `experience[*].details` entries, hidden skills / off-CV facts appear under `addendum_hidden_skills` and `addendum_off_cv_facts` when present, plus `addendum_skill_calibration` and `familiar_only_skills`)
 2. `company_profile.json` from Step 3 — industry, size_band, mission, products_services, values_culture_signals, tech_stack_hints (inferred), hiring_signals, pain_points_inferred (inferred), locations, leadership
 3. `selected_role.json` from Step 4 — `title`, `source`, `seniority_band`, `emphasis_areas`, `risk_notes`, `rationale`
 4. the **experience compression cutoff year** from layered settings (`config/settings.default.yaml` merged with `<user-data-dir>/settings.yaml`) → `behaviour.experience_compression_cutoff_year` (may be `null` to disable compression)
@@ -20,135 +22,41 @@ Produce a truthful CV tailored to the **selected role angle** at this specific c
 - **`selected_role.seniority_band`** — calibrate the summary, tagline, and top-of-bullet phrasing to this level (e.g. "lead" → team leadership, mentoring, architecture calls).
 - **`company_profile.mission_statement` + `values_culture_signals`** — where experience from the fact base resonates with the company's stated values, surface it. Concrete examples only: if the company values "shipping fast" and the CV has concrete delivery-speed evidence, elevate it; if the company values "rigorous engineering" and the CV has testing/CI evidence, elevate that.
 - **`company_profile.products_services` + `tech_stack_hints`** — technology overlap is a real signal. When the candidate's fact base intersects with the company's stack or product domain, lead with it. Remember `tech_stack_hints` is **inferred**, so do not over-commit to stack matches that are speculative.
-- **`company_profile.size_band`** — same rules as the tailor skill:
+- **`company_profile.size_band`** — small companies need generalists, large ones value specialists:
   - `startup` (<50) → emphasise versatility, automation, cross-functional work
   - `scaleup` (50–250) → balance depth and breadth, add autonomy/delivery signals
   - `midmarket` (250–2000) → depth and methodology
   - `enterprise` (2000+) → technical depth, methodology, structured collaboration
   - `unknown` → neutral; lean on `selected_role.emphasis_areas`
 
-## Candidate location
-
-Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Keep the original format from the CV (e.g. "Lyon (69)"). Geographic proximity to `company_profile.locations[0]` (when close) is useful context for the motivation letter — not for the CV.
-
 ## Allowed changes
 
 - **Adjust** the title / headline / summary to highlight the selected-role angle. The core identity must come from the master CV and `user_prefs.yaml` (`preferred_title_labels` / `forbidden_title_labels`), not from `selected_role.title` alone. You may reuse the selected-role title where it aligns with the candidate's self-description; do **not** paste a user_override title verbatim if it contains a forbidden label.
 - Reorder skills to lead with those that map to `emphasis_areas` or intersect with the company's stack hints.
 - Tighten wording. Emphasise bullets that resonate with the company's mission and values. De-emphasise detail that doesn't land for this angle.
-- Compress older detail per the compression rule below.
-
-## Summary sourcing — every clause must be traceable
-
-`summary_paragraphs` and `tagline` are the freest-form prose in the CV and are where embellishment most easily creeps in. Every clause you write must be traceable to one of:
-
-- `cv_fact_base.summary`
-- a concrete fact already present in `cv_fact_base.experience[*].details`
-- `cv_fact_base.transition_signals` (for forward-looking / in-progress language)
-- `cv_fact_base.addendum_hidden_skills` or `cv_fact_base.addendum_off_cv_facts`
-
-If a clause cannot be traced to one of those sources, drop it. Do not infer it from `selected_role.emphasis_areas`, from `company_profile.tech_stack_hints` (which are **inferred** about the company, not claims about the candidate), or from what would make the candidate "sound better for this role".
+- Compress older detail per `cv_rules.md` § Earlier-experience compression (using its **(cold flow)** Criterion A).
 
 ## Honesty on technology claims
 
 There is no job offer and no match analysis in the cold flow, so the CV is judged purely against the candidate's fact base. Two traps to avoid:
 
 - **Inferred stack mirroring.** `company_profile.tech_stack_hints` is a best-guess about what the company uses — it does **not** confer competence on the candidate. Do not reword a CV bullet to echo a company stack hint the candidate hasn't actually worked with.
-- **Active-learning / in-progress phrasing.** Do not introduce phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, or *"ramping up on X"* unless that specific technology appears by name in `cv_fact_base.transition_signals`. Transition signals come from the candidate; they are not inferred from the selected role or the company profile.
+- **Active-learning / in-progress phrasing.** No *"en apprentissage"* / *"learning X"* / *"ramping up on X"* unless that specific technology appears by name in `cv_fact_base.transition_signals` — see `cv_rules.md` § Active-learning / in-progress phrasing. Transition signals come from the candidate; they are not inferred from the selected role or the company profile.
 
-## Preserving skill sections
+## Forbidden — cold-flow additions
 
-The master CV may contain dedicated skill sections beyond the main technical skills table. Every such section must appear in the tailored CV's `skills_sections` array — you may reorder them for relevance but never drop them entirely.
-
-## Training in Education, not Work Experience
-
-When building the `experience` array, skip any fact-base entry whose `type` field is `"training"`. Those entries appear only in the `education` array. This rule is identical to the tailor skill's — training reads to a recruiter as mislabeled employment when it shows up under Work Experience.
-
-## Earlier-experience compression
-
-Apply the same rule as the tailor skill, with one adaptation for the cold flow:
-
-### Step 1 — Split the roles at the cutoff
-
-Let `CUTOFF` be `experience_compression_cutoff_year`. If `null`, skip this section.
-
-- End date on or after January `CUTOFF` → **recent role**, kept full.
-- End date strictly before January `CUTOFF` → **pre-cutoff role**, candidate for consolidation.
-
-### Step 2 — Decide load-bearing
-
-A pre-cutoff role is **load-bearing** if *any* apply. Since there is no match_analysis.json in the cold flow, Criterion A is replaced:
-
-**Criterion A (cold) — Anchor alignment.** Does this role provide concrete evidence for one of `selected_role.emphasis_areas` or for a technology in `company_profile.tech_stack_hints` that a recent role does not already amply cover? If yes, load-bearing.
-
-**Criterion B — Unique technology overlap.** Does the role's stack intersect with `company_profile.tech_stack_hints` (inferred) or the candidate's headline specialisations in a way that's **not** already covered by a post-cutoff role? Example: C++ MFC only in pre-2005 roles + company profile hints at C++ usage → load-bearing.
-
-**Criterion C — Unique responsibility coverage.** Is the role the best or only evidence for a responsibility the selected-role angle calls out (e.g. reverse engineering, Fortran→C++ migration, domain-specific experience)?
-
-If none of A, B, C apply, the role goes into the consolidated line.
-
-### Step 3 — Build the consolidated line
-
-Exactly as in the tailor skill: `role_line` = `"Expériences antérieures"` (fr) or `"Earlier experience"` (en), `metadata_line` = pipe-separated company names only, one summary bullet.
-
-### Step 4 — Edge cases
-
-Same as the tailor skill: all load-bearing → no consolidated line; none pre-cutoff → no-op; mixed → consolidated line after the last retained entry.
-
-## Structural consistency — these formats must never vary between runs
-
-Same as the tailor skill. Contact line, skills-section granularity, experience `role_line` / `metadata_line` split, date format (`Month YYYY – Month YYYY`), education date format, languages line — all inherited unchanged from the master CV.
-
-## Forbidden
-
-- Inventing projects, achievements, tools, certifications, or leadership claims
+Everything in `cv_rules.md` § Forbidden, plus:
 - **Claiming company facts you cannot cite.** If something isn't in `company_profile.json`, do not assume the company uses it. Stack hints are **inferred** — never reword a CV bullet as if the company confirmed they use that tech.
-- Adding keywords not evidenced in the CV
-- **Injecting adjectives not in the fact base** — do not attach modifiers like *"cloud-native"*, *"event-driven"*, *"distributed"*, *"mission-critical"*, etc. to an existing fact unless that exact adjective (or a clear equivalent) is already in the fact base. Promoting *"architectures backend"* to *"architectures backend cloud-native"* is invention, not emphasis.
-- **Relabeling experience to echo `selected_role.emphasis_areas` or `tech_stack_hints`** — if the fact base describes a piece of work one way, keep that framing. Keyword-style alignment belongs in the skills section, not in reworded bullets.
-- **Claiming active learning or in-progress competence for a technology** — phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, *"ramping up on X"* are only permitted when that specific technology appears in `cv_fact_base.transition_signals`. The selected role and company stack hints do not justify such claims.
-- Dropping dedicated skill sections from the master CV
-- Replacing the candidate's professional identity with `selected_role.title` wording when that title conflicts with `preferred_title_labels` / `forbidden_title_labels`
-- Reordering experiences
-- Creating timeline gaps between recent roles
-- Dropping a load-bearing pre-cutoff role
+- **Replacing the candidate's professional identity with `selected_role.title` wording** when that title conflicts with `preferred_title_labels` / `forbidden_title_labels`.
 
 ## Final self-check before returning
 
 Before emitting the JSON, run these checks in order. If any fails, fix the draft and re-check.
 
-1. **Summary traceability** — read each clause of `summary_paragraphs` and the `tagline`. For each clause, silently point to the fact-base location (`summary` / a specific `experience[*].details` entry / `transition_signals` / addendum). If you can't, drop the clause.
+1. **Summary traceability** — as defined in `cv_rules.md` § Final self-check.
 2. **Stack-hint check** — scan `experience[*].bullets` for any wording that mirrors `company_profile.tech_stack_hints` but doesn't come from the fact base. Revert to the fact base's original wording. Stack hints are about the company, not the candidate.
-3. **Learning-language check** — scan for any *"en apprentissage / learning / ramping up"* phrasing. For every occurrence, confirm the technology is named in `cv_fact_base.transition_signals`. If not, remove the claim.
-4. **Adjective audit** — scan `summary_paragraphs` and `experience[*].bullets` for qualifiers not in the fact base (*"cloud-native"*, *"mission-critical"*, *"distributed"*, etc.). Strip any that aren't grounded.
+3. **Learning-language check** — as defined in `cv_rules.md` § Final self-check.
+4. **Adjective audit** — as defined in `cv_rules.md` § Final self-check.
 5. **Selected-role contagion check** — `selected_role.emphasis_areas` and `selected_role.rationale` are *intent signals*, not fact-base entries. Do not promote a tech named there into `summary_paragraphs`, `tagline`, `skills_sections`, or `experience[*].bullets` unless that tech also appears in `cv_fact_base.{technologies,skills,methodologies}` or in `experience[*].details`. The Step-4 grounding check should have already scrubbed `selected_role`, but this is the last line of defence before the CV ships.
 
-## Output format
-
-Return valid JSON matching `schemas/tailored_cv.schema.json` (reused from the tailor skill). Read that schema file for the exact structure.
-
-**Example structure** (abbreviated, as in the tailor skill):
-```json
-{
-  "candidate_name": "Jane Doe",
-  "title": "Ingénieur Logiciel Senior C# / .NET",
-  "contact_line": "Email: ... | Tel: ... | LinkedIn: ... | Paris (75)",
-  "tagline": "Applications critiques • Architecture de services • Qualité logicielle",
-  "summary_paragraphs": ["..."],
-  "skills_sections": [{"heading": "Langages", "items": ["C#", "Java"]}],
-  "experience": [
-    {"role_line": "Senior Developer", "metadata_line": "Acme Corp | Paris | January 2020 – Present", "bullets": ["..."]}
-  ],
-  "education": ["..."],
-  "languages": ["..."]
-}
-```
-
-## Language
-
-- Write CV content in `default_language` from user prefs (fallback `fr` for the cold flow).
-- JSON field names stay in English.
-
-## Style
-
-ATS-friendly, clear, professional, concise, realistic — no inflated language. The cold-flow reader is more likely to be a named hiring manager than an ATS filter, but structural conventions still matter (recruiters forward the CV onward).
+Then write `$PREP_DIR/tailored_cv.json` and run the CV gate (`cd "$SKILL_BASE_TAILOR" && python scripts/cli.py gate cv "$PREP_DIR"` — see `cv_rules.md` § Evidence ledger and SKILL.md).

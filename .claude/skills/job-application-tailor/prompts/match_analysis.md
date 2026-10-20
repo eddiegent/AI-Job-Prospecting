@@ -1,7 +1,7 @@
 You are creating a structured match analysis between a candidate's CV and a job offer.
 
 You will receive:
-1. a structured CV fact base
+1. the merged CV fact base (`cv_fact_base_merged.json`)
 2. a structured job offer analysis
 
 ## Goal
@@ -34,8 +34,8 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 - "transferable" must include a concrete explanation of why the experience transfers
 - Be honest about gaps — do not stretch transferability
 - Write evidence and notes in the same language as the job offer
-- **Name the role in the evidence** — when the evidence comes from a specific experience entry (especially an older one), include the company name and date range in the `evidence` field (e.g. "Conversions Fortran → C++ chez JFC Informatique & Média, Asnières (1994–2001)"). The CV tailoring step later uses these mentions to decide whether an older role should be kept in full or folded into a consolidated "Earlier experience" line. If the evidence is anchored to a specific pre-cutoff role and you don't name it, that role risks being hidden.
-- **No false directs.** A `direct` match means the candidate has the requirement, not that the JD lists it. For each requirement you are about to mark `direct`, locate the matching token (or close synonym) in `cv_fact_base.{technologies, skills, methodologies}` or in an `experience[*].details` bullet — if you can't, downgrade to `transferable` with a concrete `notes` explanation, or to `gap`. Concrete failures to avoid: marking "Kubernetes" direct when the fact base only has Docker; marking "Entity Framework" direct when the fact base only has Dapper. A deterministic post-check (`scripts/check_match_grounding.py`) runs after this prompt and rejects the output when a `direct` requirement contains a tech token from the JD that isn't in the fact base.
+- **Name the role in the evidence** — when the evidence comes from a specific experience entry (especially an older one), include the company name and date range in the `evidence` field (e.g. "Migration COBOL → Java chez Globex SA, Lille (1998–2004)"). The CV tailoring step later uses these mentions to decide whether an older role should be kept in full or folded into a consolidated "Earlier experience" line. If the evidence is anchored to a specific pre-cutoff role and you don't name it, that role risks being hidden.
+- **No false directs.** A `direct` match means the candidate has the requirement, not that the JD lists it. For each requirement you are about to mark `direct`, locate the matching token (or close synonym) in `cv_fact_base.{technologies, skills, methodologies}` or in an `experience[*].details` bullet — if you can't, downgrade to `transferable` with a concrete `notes` explanation, or to `gap`. Concrete failures to avoid: marking "Kubernetes" direct when the fact base only has Docker; marking "Hibernate" direct when the fact base only has plain JDBC. A deterministic post-check (`scripts/check_match_grounding.py`) runs after this prompt and rejects the output when a `direct` requirement contains a tech token from the JD that isn't in the fact base.
 - **Direct ≠ partial.** When a requirement combines several tokens (e.g. "C# / Kubernetes"), `direct` requires ALL tokens to be grounded. If only some are grounded, downgrade to `transferable` and explain which token is the partial-match gap.
 - **Compound concept-list phrases.** When a requirement is a comma-list of multiple distinct concept tokens (e.g. `"OOP, design patterns, data structures, algorithms"`, `"reliability, performance, scalability, maintainability"`), apply the same all-or-nothing rule as `"C# / Kubernetes"`: every token must have a literal counterpart (or close synonym) in `cv_fact_base.{technologies, skills, methodologies}` or in `experience[*].details`. Even one ungrounded token in the list demotes the whole row to `transferable` with a `notes` explanation. The `check_match_grounding` script will block the row when any token is tech-shaped (acronyms, CamelCase, dot/hash/slash/plus); soft-skill tokens become warnings. Don't rely on the warning-vs-error split — the prompt should produce honest classifications either way.
 
@@ -44,14 +44,14 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 {
   "match_summary": {"direct_count": 8, "transferable_count": 3, "gap_count": 2, "overall_fit_pct": 73},
   "location_analysis": {
-    "candidate_location": "Lyon (69)",
+    "candidate_location": "Versailles (78)",
     "job_location": "Paris",
     "work_mode": "hybrid",
     "commute_assessment": "Trajet faisable",
-    "notes": "40-50 min en RER D, gérable en hybride"
+    "notes": "40-50 min en transports en commun, gérable en hybride"
   },
   "matches": [
-    {"requirement": "C#", "category": "required_skill", "match_type": "direct", "evidence": "15 ans en C#/.NET chez Acme Corp", "notes": ""},
+    {"requirement": "Java", "category": "required_skill", "match_type": "direct", "evidence": "10 ans en Java chez Acme Corp", "notes": ""},
     {"requirement": "Docker", "category": "preferred_skill", "match_type": "transferable", "evidence": "Conteneurisation Docker chez Acme Corp", "notes": "Utilisé pour CI/CD, pas en production"},
     {"requirement": "Kubernetes", "category": "technology", "match_type": "gap", "evidence": "", "notes": "Non mentionné dans le CV"}
   ]
@@ -60,7 +60,7 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json` (addendum + `addendum_skill_calibration` + `familiar_only_skills`).
-- A skill that sits in the master CV's "Familier / à approfondir" row (`familiar_only_skills`) is at most `transferable`, never `direct`. Same for anything a calibration note says is limited (e.g. SQL Server = schemas and queries, no tuning; WPF = team work).
+- A skill that sits in the master CV's "Familier / à approfondir" row (`familiar_only_skills`) is at most `transferable`, never `direct`. Same for anything a calibration note says is limited (e.g. a database noted as "schemas and queries, no tuning", or a framework noted as "team work only").
 - A technology that is merely listed in a skills table, with no described use, may be `direct` only for that exact tool name — never for a wider practice ("documentation", "CI/CD pipelines", "support") built on it.
-- Do not rename a requirement to make it pass the grounding check (e.g. calling CI/CD "GitLab/GitHub pipelines"). If the master calls it familiar, it is transferable.
+- Do not rename a requirement to make it pass the grounding check (e.g. calling a familiar-only "CI/CD" requirement "<tool> pipelines" because the hosting tool sits in the core skills table). If the master calls it familiar, it is transferable.
 - Prefer a lower honest `overall_fit_pct` to an inflated one.

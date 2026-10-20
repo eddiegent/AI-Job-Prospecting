@@ -42,7 +42,7 @@ Return valid JSON matching `schemas/cv_fact_base.schema.json`. Read that schema 
     {"name": "My side project", "dates": "2024 – ongoing", "link": "github.com/janedoe/my-project", "bullets": ["What it does", "Stack used"]}
   ],
   "education": ["2015 : University X – MSc Computer Science"],
-  "languages": ["Bilingue Français / Anglais"],
+  "languages": ["Français natif / Anglais courant"],
   "transition_signals": ["Currently learning cloud architectures"]
 }
 ```
@@ -72,8 +72,8 @@ separate `technologies_to_deepen` array (and do **not** also list it in
 - a dedicated "Familier / à approfondir", "Familiar / to deepen", "Notions" or
   "En découverte" (or equivalent) section/column;
 - a technology the CV only **evaluated but did not adopt** — e.g. "évaluation
-  RabbitMQ vs Kafka (RabbitMQ retenu)" means RabbitMQ is the held tool and
-  **Kafka belongs in `technologies_to_deepen`, not `technologies`**.
+  PostgreSQL vs MongoDB (PostgreSQL retenu)" means PostgreSQL is the held tool and
+  **MongoDB belongs in `technologies_to_deepen`, not `technologies`**.
 
 This stops the tailoring step from presenting exploratory tech as a core skill.
 If the CV makes no such distinction, leave `technologies_to_deepen` empty.

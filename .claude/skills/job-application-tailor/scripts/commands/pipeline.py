@@ -172,6 +172,20 @@ def _configure_rename_cold_folder(p: argparse.ArgumentParser) -> None:
 
 # ----------------------------------------------------- check-forbidden-labels
 
+def forbidden_label_violations(data: dict) -> list[str]:
+    """Forbidden-title-label violations in a tailored_cv / role_candidates /
+    selected_role payload, against the resolved user prefs. Shared with `gate`."""
+    prefs = load_customization_context(resolve_user_data_dir())["prefs"]
+    violations: list[str] = []
+    if "candidates" in data:  # role_candidates.json
+        for i, cand in enumerate(data.get("candidates", [])):
+            hits = find_forbidden_title_label_violations({"title": cand.get("title", "")}, prefs)
+            violations.extend(f"candidates[{i}]: {v}" for v in hits)
+    else:  # tailored_cv.json or selected_role.json — both carry a title field
+        violations.extend(find_forbidden_title_label_violations(data, prefs))
+    return violations
+
+
 def cmd_check_forbidden_labels(db, args: argparse.Namespace) -> None:
     """Check a generated JSON against user_prefs.forbidden_title_labels.
 
@@ -185,17 +199,7 @@ def cmd_check_forbidden_labels(db, args: argparse.Namespace) -> None:
     if not path.exists():
         print(f"No such file: {path}", file=sys.stderr)
         sys.exit(2)
-    data = json.loads(path.read_text(encoding="utf-8"))
-    prefs = load_customization_context(resolve_user_data_dir())["prefs"]
-
-    violations: list[str] = []
-    if "candidates" in data:  # role_candidates.json
-        for i, cand in enumerate(data.get("candidates", [])):
-            hits = find_forbidden_title_label_violations({"title": cand.get("title", "")}, prefs)
-            violations.extend(f"candidates[{i}]: {v}" for v in hits)
-    else:  # tailored_cv.json or selected_role.json — both carry a title field
-        violations.extend(find_forbidden_title_label_violations(data, prefs))
-
+    violations = forbidden_label_violations(json.loads(path.read_text(encoding="utf-8")))
     if violations:
         for v in violations:
             print(f"VIOLATION: {v}")
@@ -236,6 +240,31 @@ def _configure_save_cv_cache(p: argparse.ArgumentParser) -> None:
     p.add_argument("--cv", help="Master CV path (default: <user-data-dir>/MASTER_CV.docx)")
 
 
+# -------------------------------------------------------------------- read-cv
+
+def cmd_read_cv(db, args: argparse.Namespace) -> None:
+    """Print the master CV text: non-empty paragraphs as `[<style>] <text>`,
+    then each table as `--- TABLE n ---` with cells joined by ` | `."""
+    from docx import Document
+
+    cv = Path(args.cv) if args.cv else resolve_user_data_dir() / "MASTER_CV.docx"
+    if not cv.exists():
+        print(f"Master CV not found: {cv}", file=sys.stderr)
+        sys.exit(2)
+    doc = Document(str(cv))
+    for p in doc.paragraphs:
+        if p.text.strip():
+            print(f"[{p.style.name}] {p.text}")
+    for ti, t in enumerate(doc.tables):
+        print(f"--- TABLE {ti} ---")
+        for r in t.rows:
+            print(" | ".join(c.text.strip() for c in r.cells))
+
+
+def _configure_read_cv(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--cv", help="Master CV path (default: <user-data-dir>/MASTER_CV.docx)")
+
+
 COMMANDS = [
     Command("probe-url",
             help="HEAD-probe an offer URL before WebFetch (prints OK / BLOCKED <code> / OTHER_*)",
@@ -258,4 +287,7 @@ COMMANDS = [
     Command("save-cv-cache",
             help="Save _prep/cv_fact_base.json as the shared cache (+ .cv_hash) after the drift guard passes",
             configure=_configure_save_cv_cache, handler=cmd_save_cv_cache, needs_db=False),
+    Command("read-cv",
+            help="Print the master CV text (paragraphs as [<style>] <text>, then tables) for LLM extraction",
+            configure=_configure_read_cv, handler=cmd_read_cv, needs_db=False),
 ]

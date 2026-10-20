@@ -131,26 +131,40 @@ def _resolve_app_folder(db: JobHistoryDB, target: str) -> Path:
     return folder
 
 
+def _regenerate_inputs(prep: Path, flow: str) -> tuple[dict[str, Path], dict[str, Path]]:
+    """(required, optional) _prep/ inputs for a pack build, per flow."""
+    if flow == "cold":
+        required = {name: prep / name for name in (
+            "tailored_cv.json", "letter.json", "linkedin.json",
+            "company_dossier.md", "selected_role.json",
+        )}
+        optional = {"short_letter.json": prep / "short_letter.json"}
+    else:
+        required = {name: prep / name for name in (
+            "tailored_cv.json", "letter.json", "linkedin.json",
+            "interview_prep.md", "job_offer_analysis.json",
+        )}
+        optional = {name: prep / name for name in (
+            "short_letter.json", "match_analysis.json", "company_dossier.md",
+        )}
+    return required, optional
+
+
 def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    """Build (or rebuild) the DOCX/PDF/TXT/HTML deliverables from _prep/.
+
+    Flow-aware: `cold-` folders build a cold pack (dossier, no interview prep,
+    `--job-title` = selected_role.title); anything else builds an offer pack.
+    """
     folder = _resolve_app_folder(db, args.target)
     prep = folder / "_prep"
-
-    required = {
-        "tailored_cv.json": prep / "tailored_cv.json",
-        "letter.json": prep / "letter.json",
-        "linkedin.json": prep / "linkedin.json",
-        "interview_prep.md": prep / "interview_prep.md",
-        "job_offer_analysis.json": prep / "job_offer_analysis.json",
-    }
-    optional = {
-        "short_letter.json": prep / "short_letter.json",
-        "match_analysis.json": prep / "match_analysis.json",
-        "company_dossier.md": prep / "company_dossier.md",
-    }
+    flow = _detect_flow_from_folder(folder)
+    required, optional = _regenerate_inputs(prep, flow)
     missing = [n for n, p in required.items() if not p.exists()]
 
     if args.check:
         print(f"Target: {folder}")
+        print(f"Flow: {flow}")
         print("Required:")
         for name, p in required.items():
             print(f"  [{'OK' if p.exists() else 'MISSING'}] {name}")
@@ -164,20 +178,31 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
         print("Run with --check for details. Re-run the upstream step(s) before retrying.", file=sys.stderr)
         sys.exit(1)
 
-    job = json.loads(required["job_offer_analysis.json"].read_text(encoding="utf-8"))
-    job_title = job.get("job_title") or "Role"
-    language = job.get("detected_language") or "fr"
+    language_override = getattr(args, "language", None)
+    title_override = getattr(args, "job_title", None)
 
-    # Reuse the existing folder slug for filenames so a regenerate run
-    # doesn't produce a second set of files under a different slug
-    # alongside the originals. The folder slug may differ from
-    # `slug_for_filename(job_title)` when the initial run built the slug
-    # from `{job_title}-{company}` or applied ASCII folding — we can't
-    # reconstruct that choice here, so we just reuse whatever the folder
-    # already has. `slug_for_filename` is idempotent on its own output,
-    # so filename sanitisation downstream stays a no-op.
-    _, existing_slug = _split_folder_prefix(folder.name)
-    title_for_filenames = existing_slug or job_title
+    if flow == "cold":
+        role = json.loads(required["selected_role.json"].read_text(encoding="utf-8"))
+        # Same title the cold skill has always passed on the first build, so a
+        # rebuild lands on the same filenames (the cold folder slug is the
+        # company name, not the role).
+        title_for_filenames = title_override or role.get("title") or "Role"
+        language = language_override or role.get("language") or "fr"
+    else:
+        job = json.loads(required["job_offer_analysis.json"].read_text(encoding="utf-8"))
+        job_title = job.get("job_title") or "Role"
+        language = language_override or job.get("detected_language") or "fr"
+        # Reuse the existing folder slug for filenames so a regenerate run
+        # doesn't produce a second set of files under a different slug
+        # alongside the originals. The folder slug may differ from
+        # `slug_for_filename(job_title)` when the initial run built the slug
+        # from `{job_title}-{company}` or applied ASCII folding — we can't
+        # reconstruct that choice here, so we just reuse whatever the folder
+        # already has. `slug_for_filename` is idempotent on its own output,
+        # so filename sanitisation downstream stays a no-op. `--job-title`
+        # overrides this (e.g. to match a first build made with the raw title).
+        _, existing_slug = _split_folder_prefix(folder.name)
+        title_for_filenames = title_override or existing_slug or job_title
 
     cmd = [
         sys.executable,
@@ -185,23 +210,29 @@ def cmd_regenerate_outputs(db: JobHistoryDB, args: argparse.Namespace) -> None:
         "--tailored-cv-json", str(required["tailored_cv.json"]),
         "--letter-json", str(required["letter.json"]),
         "--linkedin-json", str(required["linkedin.json"]),
-        "--interview-markdown", str(required["interview_prep.md"]),
+    ]
+    if flow == "cold":
+        cmd.extend(["--dossier-markdown", str(required["company_dossier.md"])])
+    else:
+        cmd.extend(["--interview-markdown", str(required["interview_prep.md"])])
+    cmd.extend([
         "--output-dir", str(folder),
         "--job-title", title_for_filenames,
         "--settings", str(SKILL_BASE / "config" / "settings.default.yaml"),
         "--naming-rules", str(SKILL_BASE / "config" / "naming_rules.yaml"),
         "--language", language,
-    ]
+    ])
     if optional["short_letter.json"].exists():
         cmd.extend(["--short-letter-json", str(optional["short_letter.json"])])
-    if optional["match_analysis.json"].exists():
-        cmd.extend(["--match-analysis-json", str(optional["match_analysis.json"])])
-    if optional["company_dossier.md"].exists():
-        cmd.extend(["--dossier-markdown", str(optional["company_dossier.md"])])
+    if flow == "offer":
+        if optional["match_analysis.json"].exists():
+            cmd.extend(["--match-analysis-json", str(optional["match_analysis.json"])])
+        if optional["company_dossier.md"].exists():
+            cmd.extend(["--dossier-markdown", str(optional["company_dossier.md"])])
     if args.skip_pdf:
         cmd.append("--skip-pdf")
 
-    print(f"Regenerating outputs for: {folder}")
+    print(f"Regenerating {flow} outputs for: {folder}")
     result = subprocess.run(cmd)
     sys.exit(result.returncode)
 
@@ -310,9 +341,9 @@ def _build_cold_kwargs(
         "transferable_count": None,
         "gap_count": None,
         "output_folder": str(folder),
-        # Cold flow has no JD to auto-detect from; default to fr (the
-        # cold-flow default) unless the caller passes --language.
-        "detected_language": language_override or "fr",
+        # Cold flow has no JD to auto-detect from: --language, else the
+        # selected role's language, else fr (the cold-flow default).
+        "detected_language": language_override or role.get("language") or "fr",
         "required_skills": [],
         "preferred_skills": [],
         "source": "cold",
@@ -528,9 +559,25 @@ def _configure_check_duplicate(p: argparse.ArgumentParser) -> None:
 
 
 def _configure_regenerate_outputs(p: argparse.ArgumentParser) -> None:
+    p.description = (
+        "Build (first run) or rebuild the deliverables from _prep/. Flow is detected "
+        "from the folder name: cold-* = cold pack (requires tailored_cv.json, "
+        "letter.json, linkedin.json, company_dossier.md, selected_role.json; optional "
+        "short_letter.json; filenames use selected_role.title; language = "
+        "selected_role.language, else fr). Otherwise offer pack (requires "
+        "tailored_cv.json, letter.json, linkedin.json, interview_prep.md, "
+        "job_offer_analysis.json; optional short_letter.json, match_analysis.json, "
+        "company_dossier.md; filenames use the folder slug; language = "
+        "detected_language, else fr)."
+    )
     p.add_argument("target", help="Application id (integer) or path to an output folder")
-    p.add_argument("--check", action="store_true", help="Only report which _prep/ files are present or missing")
+    p.add_argument("--check", action="store_true", help="Only report which _prep/ files are present or missing for the detected flow")
     p.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion (DOCX only)")
+    p.add_argument("--language", choices=["fr", "en"],
+                   help="Override the output language (default: offer = job_offer_analysis.detected_language; "
+                   "cold = selected_role.language, else fr)")
+    p.add_argument("--job-title", dest="job_title",
+                   help="Override the title used in filenames (default: offer = folder slug; cold = selected_role.title)")
 
 
 def _configure_record_application(p: argparse.ArgumentParser) -> None:
@@ -543,7 +590,7 @@ def _configure_record_application(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument(
         "--language",
-        help="Detected language for cold flow (default: 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json.",
+        help="Detected language for cold flow (default: selected_role.language, else 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json.",
     )
     p.add_argument(
         "--dry-run",
@@ -577,7 +624,7 @@ COMMANDS = [
             help='Step 3.5 — check duplicate / same-company / blacklist against a job_offer_analysis.json',
             configure=_configure_check_duplicate, handler=cmd_check_duplicate),
     Command('regenerate-outputs',
-            help='Rebuild DOCX/PDF/TXT/MD from existing _prep/ JSONs (Step 9 only)',
+            help='Build or rebuild DOCX/PDF/TXT/HTML from _prep/ (offer or cold pack, flow from folder name)',
             configure=_configure_regenerate_outputs, handler=cmd_regenerate_outputs),
     Command('record-application',
             help='Step 10 — read _prep/ artefacts and insert the history row',

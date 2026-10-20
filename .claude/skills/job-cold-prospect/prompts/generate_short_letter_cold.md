@@ -1,7 +1,7 @@
 Write a very concise speculative cold-letter variant for online forms, email bodies, or any context with tight character limits.
 
 You will receive:
-1. the structured CV fact base
+1. the merged CV fact base (`cv_fact_base_merged.json`)
 2. `company_profile.json`
 3. `selected_role.json`
 4. the full speculative motivation letter (already generated) — **distill it, don't start from scratch**

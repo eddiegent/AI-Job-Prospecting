@@ -1,7 +1,7 @@
 Produce the **company dossier** — a single markdown deliverable the candidate reads before any conversation with the target company. This is the Phase-E replacement for the fit-score document in the offer-based flow: no JD means no scoreable requirements, so the dossier centres a **narrative angle of approach** plus interview preparation.
 
 You will receive:
-1. the structured CV fact base (positioning, strengths, career timeline)
+1. the merged CV fact base (`cv_fact_base_merged.json` — positioning, strengths, career timeline)
 2. `company_profile.json` — mission, products, values, recent news, leadership, hiring signals, inferred pain points, research gaps, sources
 3. `selected_role.json` — the angle the candidate is leading with, including `rationale` and `risk_notes`
 4. the tailored CV JSON (for evidence-backed talking points)

@@ -38,7 +38,7 @@ Before committing `detected_language`, cross-check against market signals in the
 
 When you spot the signals but the text is in English, that's WebFetch translating. Set `detected_language: "fr"` and write the rest of the analysis in French — the downstream pack will match the real posting language.
 
-The same logic applies to other languages (German, Spanish, Italian, Dutch) if their market signals are present; the French case is the most common at this project's location.
+The same logic applies to other languages (German, Spanish, Italian, Dutch) if their market signals are present; the French case is spelled out because it is the one most often seen in practice.
 
 **Example structure** (abbreviated):
 ```json

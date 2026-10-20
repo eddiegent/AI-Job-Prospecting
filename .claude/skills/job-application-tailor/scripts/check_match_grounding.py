@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -40,6 +41,7 @@ from scripts._grounding_common import (  # noqa: E402
     extract_candidate_vocab,
     is_tech_shaped,
     split_tokens,
+    tech_in_text,
 )
 from scripts.common import force_utf8_stdio  # noqa: E402
 
@@ -124,12 +126,44 @@ def _check_transferable_notes(matches: list[dict]) -> list[tuple[int, str]]:
     return out
 
 
+def _dot_norm(text: str) -> str:
+    """Lowercase and glue a space before a dot ("ASP .Net Core" == "ASP.NET Core")."""
+    return re.sub(r"\s+\.", ".", text.lower())
+
+
+def _check_familiar_directs(matches: list[dict], familiar: list[str]) -> list[tuple[int, str, list[str]]]:
+    """Directs that name a skill the master CV lists as familiar-only.
+
+    Only active for a merged fact base (``claims_guard merge`` adds
+    ``familiar_only_skills``). Those skills often also sit in
+    ``technologies`` (the extractor reads the whole skills table), so plain
+    vocab grounding would accept them — but a "Familier / à approfondir"
+    skill is at most ``transferable``, never ``direct``.
+    """
+    fam = [canonical(_dot_norm(f)) for f in familiar if len(f.strip()) > 1]
+    out: list[tuple[int, str, list[str]]] = []
+    for i, m in enumerate(matches):
+        if m.get("match_type") != "direct":
+            continue
+        requirement = m.get("requirement", "")
+        req = _dot_norm(requirement)
+        hits = [f for f in fam if f and tech_in_text(f, req)]
+        if hits:
+            out.append((i, requirement, hits))
+    return out
+
+
 def check(
     match_file: Path,
     offer_file: Path,
     fact_base_file: Path,
 ) -> tuple[list[str], list[str]]:
-    """Return (errors, warnings)."""
+    """Return (errors, warnings).
+
+    ``fact_base_file`` may be the plain ``cv_fact_base.json`` or the merged
+    ``cv_fact_base_merged.json``; with the merged form, addendum hidden skills
+    and off-CV facts ground claims, and ``familiar_only_skills`` block directs.
+    """
     match_analysis = json.loads(match_file.read_text(encoding="utf-8"))
     offer = json.loads(offer_file.read_text(encoding="utf-8"))
     fact_base = json.loads(fact_base_file.read_text(encoding="utf-8"))
@@ -146,6 +180,12 @@ def check(
         errors.append(
             f"  - matches[{i}] '{requirement}' marked direct but tech token(s) {joined} "
             "are listed in the job offer and absent from cv_fact_base"
+        )
+    for i, requirement, hits in _check_familiar_directs(matches, fact_base.get("familiar_only_skills") or []):
+        joined = ", ".join(repr(t) for t in hits)
+        errors.append(
+            f"  - matches[{i}] '{requirement}' marked direct but {joined} is familiar-only "
+            "in the master CV ('Familier / a approfondir') - at most transferable"
         )
 
     warnings: list[str] = []

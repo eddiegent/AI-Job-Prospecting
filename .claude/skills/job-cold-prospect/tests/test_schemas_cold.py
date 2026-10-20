@@ -228,6 +228,18 @@ def test_selected_role_accepts_user_override(tmp_path, cold_schemas_dir):
     assert errors == []
 
 
+@pytest.mark.parametrize("language", ["fr", "en"])
+def test_selected_role_accepts_optional_language(tmp_path, cold_schemas_dir, language):
+    data = {**_selected_role_min(), "language": language}
+    assert _run(tmp_path, data, cold_schemas_dir / "selected_role.schema.json") == []
+
+
+def test_selected_role_rejects_unknown_language(tmp_path, cold_schemas_dir):
+    data = {**_selected_role_min(), "language": "de"}
+    errors = _run(tmp_path, data, cold_schemas_dir / "selected_role.schema.json")
+    assert any("language" in e for e in errors), errors
+
+
 def test_selected_role_rejects_unknown_source(tmp_path, cold_schemas_dir):
     data = _selected_role_min()
     data["source"] = "llm_guess"

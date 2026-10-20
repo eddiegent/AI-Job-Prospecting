@@ -1,15 +1,13 @@
 ---
 name: job-status
-description: Update the status of a job application (generated, applied, rejected, interview, offer, dropped), list recent applications and their statuses, or manage the company blacklist/whitelist. Use this skill whenever the user wants to update an application status, check application progress, mark a job as applied/rejected/interview/offer/dropped, add or remove a company from the blacklist or whitelist, or asks about their application pipeline.
+description: Update the status of a job application (generated, applied, rejected, interview, offer, dropped), list recent applications and their statuses, fix an application's company name or folder, or manage the company blacklist/whitelist. Use this skill whenever the user wants to update an application status, says they applied / got rejected / got an interview or offer, wants to see or check a specific application or its history, mark a job as dropped, correct the real client behind a platform posting, or add or remove a company from the blacklist or whitelist. For aggregate statistics, trends and reports, use job-stats.
 argument-hint: "[company-or-id] [status]"
 allowed-tools: Read, Bash, Glob
 ---
 
 # Skill: job-status
 
-Update application statuses and manage company lists in the job history database.
-
-**Before composing any `cli.py` subcommand**, consult `references/cli.md` (under `.claude/skills/job-application-tailor/`) or run `python scripts/cli.py <subcommand> --help`. That file is the authoritative signature reference — never compose flags from convention.
+List applications, change their status, correct their metadata, and manage the company lists in the job history database.
 
 ## Setup
 
@@ -21,204 +19,62 @@ if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
 fi
 ```
 
-The CLI resolves the history database automatically (`JOB_TAILOR_HOME` env var → legacy repo `resources/` layout → OS app-data dir). Pass `--db <path>` only to target a different file.
+Run every command as `cd "$SKILL_BASE" && python scripts/cli.py <command> …` — write it out in full each time and quote the paths (they may contain spaces). The CLI finds the database itself; pass `--db <path>` only to target another file. For exact flags, read `$SKILL_BASE/references/cli.md` or run `<command> --help` — never guess a flag. Never edit the database directly; the commands below cover every case.
 
-**Important**: Paths may contain spaces. Always quote variables in commands — use `"$SKILL_BASE"`, `"$PROJECT_ROOT"`, etc. Do NOT store compound commands in a variable because spaces in the path will break argument splitting. Instead, write the full command each time:
+Statuses: `generated`, `applied`, `rejected`, `interview`, `offer`, `dropped` (`dropped` = decided not to pursue; duplicate detection ignores it).
 
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py <command> [args...]
-```
+## Listing and looking up
 
-## What it does
+| The user wants… | Command |
+|---|---|
+| recent applications | `list` (default limit 50; `--limit N`) |
+| one status only | `list --status rejected` |
+| one company | `list --company "Cegid"` — partial, case-insensitive (`"opus"` finds "Opus Recruitment Solutions"; a short query may match several) |
+| a time window | `list --since 30d` (`7d`, `30d`, `this-week`, `this-month`, or an ISO date) |
+| one flow / organisation type | `list --source cold` · `list --org-type esn` |
+| one application's details | `get <id>` |
+| one application's status history | `history <id>` — `[backfill]` entries were reconstructed by the v4 migration, so treat their dates as approximate |
 
-This skill interacts with the SQLite database at `resources/job_history.db` (managed by the `job-application-tailor` skill). It supports:
+Filters combine. Show lists as a table: ID, Status, Fit Level, Fit %, Company, Job Title — and point out any still at `generated` (not yet sent).
 
-1. **Listing applications** — show recent applications with their current status
-2. **Updating status** — change an application's status to: `generated`, `applied`, `rejected`, `interview`, `offer`, or `dropped` (use `dropped` for jobs you've decided not to pursue — dropped jobs are ignored by the duplicate-detection check)
-3. **Managing company lists** — add/remove companies from the blacklist or whitelist
+## Updating a status
 
-## Workflow
+**Resolve by company, never by a remembered id.** Ids are not stable across a DB restore — `105` can point at a different company in a later session. So even when the user gives an id:
 
-### If the user wants to list applications
-
-List all recent applications (default limit 50):
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py list
-```
-
-Filter by status (e.g. only rejected, only applied):
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py list --status rejected
-```
-
-Filter by company — a partial, case-insensitive match, so `--company "opus"` finds
-"Opus Recruitment Solutions" (and a short query can match several companies):
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py list --company "Cegid"
-```
-
-Combine filters:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py list --status applied --company "OPEN" --limit 10
-```
-
-If the user mentions a time period (e.g. "this week", "last 30 days"), add `--since`:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py list --since 30d
-```
-
-Supported `--since` values: `7d`, `30d`, `this-week`, `this-month`, or an ISO date (`2026-03-01`).
-
-To list only one flow, add `--source offer` or `--source cold`; to list only a
-cold-flow organisation type, add `--org-type` (`end_employer` / `esn` /
-`staffing_agency` / `recruitment_agency` / `unknown`):
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py list --source cold
-cd "$SKILL_BASE" && python scripts/cli.py list --org-type esn
-```
-
-### If the user wants to update a status
-
-**Resolve by company, not by a remembered id.** Application ids are *not* stable
-across a DB restore/divergence — id `105` can point at a different company in a
-later session (see `doctor` and `PIPELINE_HARDENING_ROADMAP.md`). So never trust
-an id the user (or you) recalls from earlier; always re-resolve it against the
-DB right now, and pass `--expect-company` as a safety net so a stale id fails
-loudly instead of silently mutating the wrong record.
-
-1. Parse `$ARGUMENTS` for a company name, job title, or application ID, plus the new status.
-2. **Re-resolve to a current id by company name** (even if the user gave an id):
-   ```bash
-   cd "$SKILL_BASE" && python scripts/cli.py list --company "<name>"
-   ```
-   If ambiguous (several matches), show them and ask the user to pick one.
-3. **Before executing the update**, show the current application details and the proposed change:
+1. Parse the company / title / id and the new status from the request.
+2. Re-resolve now: `list --company "<name>"`. Several matches → show them and ask which one.
+3. Show the change and ask for confirmation:
    > Application #<id>: <company> — <title> (currently: <old_status>)
    > Change status to: <new_status>?
-   Ask for confirmation before proceeding.
-4. Once confirmed, update — pass `--expect-company` so the write refuses if that
-   id isn't the company you resolved (exit 2, nothing changed):
+4. Once confirmed, pass `--expect-company` so a stale id fails (exit 2, nothing changed) instead of silently updating the wrong record:
 
 ```bash
-cd "$SKILL_BASE" && python scripts/cli.py update-status <app_id> <new_status> --expect-company "<company>"
+cd "$SKILL_BASE" && python scripts/cli.py update-status <id> <new_status> --expect-company "<company>" --at <date> --note "<context>"
 ```
 
-To look up an application's current details first:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py get <app_id>
-```
+**`--at` — record when it happened.** Whenever the user mentions a day ("I applied to Cegid on Tuesday", "I sent that one last week"), convert it and pass `--at` (`2026-07-14`, `2026-07-14T09:30`, `today`, `yesterday`). Without it the change is stamped now — and a Friday catch-up session makes four applications sent on Monday look same-day, which quietly inflates every response-time figure. Dates before the application existed, or in the future, are refused as typos.
 
-#### Recording *when* it happened
+**`--note`** is optional free text worth keeping ("no answer after 3 weeks", "rejected after technical round").
 
-Every status change is appended to the application's history (schema v4), and
-the reports built on that history — `response-time`, `funnel`, `follow-up` —
-are only as good as the dates. `--at` records when the change actually
-happened, rather than when the user got round to telling the tool:
+**Several applications, same status** ("mark 104, 102 and 98 as applied"): confirm the ids and status with the user, then run one `bulk-status 104 102 98 --status applied` (also takes `--at` / `--note`). It prints each row's company/title as it changes — check they're the ones the user meant, since bulk has no `--expect-company`. Missing ids are reported, skipped, and make it exit non-zero.
 
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py update-status 104 applied --at 2026-07-14 --note "via LinkedIn Easy Apply"
-```
+Every mutation snapshots the DB to `db-backups/` first, so a wrong write is recoverable.
 
-Accepts `2026-07-14`, `2026-07-14T09:30`, `today`, or `yesterday`. **When the
-user mentions a day — "I applied to Cegid on Tuesday", "I sent that one last
-week" — convert it and pass `--at`.** Without it the change is stamped now, and
-a Friday catch-up session makes four applications sent on Monday all look
-same-day, which quietly inflates every response-time figure.
+## Correcting the company or folder
 
-`--note` is free text for context worth keeping ("no answer after 3 weeks",
-"rejected after technical round"). Both flags work on `bulk-status` too, where
-they apply to every id in the batch.
+Typical case: the offer was posted by a platform (Free-Work…) and the real client is now known.
 
-Two dates are refused outright rather than stored: one before the application
-existed, and one in the future. Both are almost always a typo, and either would
-corrupt the history quietly.
+- **`rename-application <id> --new-company "<name>"`** — the normal fix. Renames the folder, updates the DB, patches `_prep/job_offer_analysis.json` and `run_summary.json`, and rebuilds the DOCX/PDF so filenames pick up the new slug. If the old name was a known platform, it is kept as `source_platform`. Options: `--new-slug "<slug>"` to override the folder slug (default keeps `{fit_level}-{date}-` and uses `{job_title}-{new_company}`); `--no-regenerate` to skip the rebuild.
+  - Folder already renamed by hand → it detects that and patches DB + JSON only.
+  - Target folder exists → it refuses; pick a different `--new-slug`.
+  - A DOCX/PDF is open in Word/Acrobat → `PermissionError`; ask the user to close it and re-run.
+- **`update-company <id> "<name>" --expect-company "<old name>"`** / **`update-output-folder <id> "<path>"`** — DB-only fixes, when nothing on disk should change. `update-company` also refreshes the normalised name used by duplicate detection.
 
-#### Viewing an application's history
+## Company lists
 
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py history <app_id>
-```
-
-Shows every recorded status change, oldest first. Entries marked `[backfill]`
-were reconstructed by the v4 migration from `created_at`/`updated_at` — the
-tool knows those transitions happened but not exactly when, so treat their
-dates as approximate.
-
-`update-company` takes the same `--expect-company` guard. A mutation also
-auto-snapshots the DB to `db-backups/` first, so a wrong write is recoverable.
-
-#### Updating several applications at once
-
-When the user wants to move several applications to the **same** status in one
-go (e.g. "mark 104, 102 and 98 as applied"), use `bulk-status` instead of
-issuing `update-status` one id at a time. A single backup covers the whole
-batch. It prints each row's company/title as it changes so you can eyeball that
-the ids resolved to what the user meant (there is no `--expect-company` guard —
-bulk is inherently multi-company). Any missing id is reported and skipped, and
-the command exits non-zero so a typo doesn't pass silently.
-
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py bulk-status 104 102 98 --status applied --at 2026-07-14
-```
-
-Still confirm the list of ids and the target status with the user before running.
-
-### If the user wants to correct the company name or output folder on an existing application
-
-Use when the real hiring company wasn't known at generation time (e.g. the offer was posted via a platform like Free-Work) and has since been identified, or when the output folder was renamed on disk.
-
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py update-company <app_id> "<new name>"
-cd "$SKILL_BASE" && python scripts/cli.py update-output-folder <app_id> "<new path>"
-```
-
-Both commands update `updated_at`. `update-company` also refreshes `company_name_norm` so future duplicate detection sees the new name. Do not edit the database directly — these two primitives cover the common cases.
-
-### If the user wants the full atomic rename (folder + DB + JSON + run_summary)
-
-When the real client surfaces after generation (the classic "Free-Work posted on behalf of Omnitech SA" case), `rename-application` does the whole dance in one shot: filesystem rename, DB updates, `_prep/job_offer_analysis.json` patch, `run_summary.json` path rewrite, and a regenerate-outputs pass so DOCX/PDF filenames pick up the new slug.
-
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py rename-application <app_id> \
-  --new-company "Omnitech SA"
-```
-
-- `--new-slug "<slug>"` — override the auto-derived folder slug (default keeps the prefix `{fit_level}-{date}-` and uses `{job_title}-{new_company}`).
-- `--no-regenerate` — skip the regenerate-outputs step (use when you only want the metadata fixed).
-
-If the old company matched a known aggregator (`Free-Work`, `Indeed`, `LinkedIn`, etc. from `config/settings.default.yaml`), the old name is preserved as `source_platform` in the `_prep/job_offer_analysis.json` for audit.
-
-**When to use which command**:
-- `update-company` / `update-output-folder` — DB-only fixes; the disk hasn't changed and you don't want the rename overhead.
-- `rename-application` — the disk *should* change too (folder rename + filenames + JSON content). This is the normal post-fact correction.
-
-**Edge cases**:
-- Folder already renamed manually on disk → command detects the missing old path and proceeds with DB + JSON patch only.
-- Target folder already exists → command refuses to overwrite; pick a different `--new-slug`.
-- Word/Acrobat has the DOCX/PDF open → `PermissionError` surfaces with a clear "close any open documents" message; rerun once the file is released.
-
-### If the user wants to manage company lists
-
-Show blacklist and whitelist:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py company-list
-```
-
-Check if a specific company is listed:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py company-check "<company_name>"
-```
-
-Add to blacklist or whitelist:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py company-add "<company_name>" --list-type blacklist --reason "optional reason"
-```
-
-Remove from lists:
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py company-remove "<company_name>"
-```
-
-## Display format
-
-When listing applications, present them as a clean table with columns: ID, Status, Fit Level, Fit %, Company, Job Title. Use the status to guide the user — highlight any that are still at "generated" (haven't been submitted yet).
+| The user wants… | Command |
+|---|---|
+| see both lists | `company-list` |
+| check one company | `company-check "<name>"` |
+| add one | `company-add "<name>" --list-type blacklist --reason "<optional reason>"` (or `whitelist`) |
+| remove one | `company-remove "<name>"` |

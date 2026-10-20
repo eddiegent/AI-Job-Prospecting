@@ -14,249 +14,140 @@ This skill takes a job offer and your master CV, then produces a complete applic
 ## Directory layout
 
 **`PROJECT_ROOT`** (current working directory) holds your data:
-- `resources/MASTER_CV.docx` — source CV
+- `resources/MASTER_CV.docx` — source CV (or wherever preflight's `master_cv_path` points)
 - `resources/cv_fact_base.json` + `.cv_hash` — cached extraction (auto-managed)
 - `output/` — generated packs, named `[fit_level]-[date]-[job-slug]/`
 
 **`SKILL_BASE`** (`.claude/skills/job-application-tailor`) holds reusable infrastructure:
-- `prompts/` — step-by-step instructions for each generation task
-- `schemas/` — JSON schemas that validate every intermediate file
-- `scripts/` — Python for DOCX generation, validation, caching
+- `prompts/` — instructions for each generation step (`cv_rules.md` holds the CV rules shared with the cold flow)
+- `schemas/` — JSON schemas for every intermediate file
+- `scripts/` — Python: `cli.py` (all commands), DOCX/PDF generation, caching, guards
 - `config/` — formatting, naming rules, language labels, fit thresholds
-- `references/commands.md` — exact bash commands for every operation
+- `references/commands.md` — the bash for each step · `references/cli.md` — every flag · `references/troubleshooting.md` — DB, PDF, permission and verification problems
 
-Resolve both at the start. See `references/commands.md` § Setup.
+Every command below runs as `cd "$SKILL_BASE" && python scripts/cli.py …`. Quote every path — they may contain spaces.
 
 ## Hard rules
 
 These exist because recruiters and hiring managers spot fabrications instantly, and a single invented skill or inflated title can disqualify an otherwise strong application:
 
 - **Truthfulness first** — never invent experience, tools, certifications, domains, or achievements
-- **Recent timeline is complete** — every role from the cutoff year (configurable in `config/settings.default.yaml` → `behaviour.experience_compression_cutoff_year`) onward appears in the output. Roles that ended before that cutoff may be consolidated into a single dateless "Earlier experience" line — *unless* they are load-bearing for the target job, in which case they are kept fully. See `prompts/tailor_cv.md` § Earlier-experience compression. The goal is to respect recruiter attention span on senior profiles while never dropping evidence the job actually relies on.
+- **Recent timeline is complete** — every role from the cutoff year (`config/settings.default.yaml` → `behaviour.experience_compression_cutoff_year`) onward appears in the output. Older roles may be consolidated into a single dateless "Earlier experience" line — *unless* they are load-bearing for the target job, in which case they are kept fully. See `prompts/cv_rules.md` § Earlier-experience compression.
 - **Chronological integrity** — strict reverse-chronological order, no reordering
 - **Honest gap handling** — if a requirement isn't evidenced, de-emphasise it, surface adjacent experience truthfully, or acknowledge a learning trajectory
-- **Structural consistency** — CV formatting derived from the master CV (contact labels, skills section granularity, experience line order, education date format, languages format) must be identical across all runs. Only content emphasis changes between applications, never the structural layout. See `prompts/tailor_cv.md` § Structural consistency for details.
+- **Structural consistency** — CV formatting derived from the master CV (contact labels, skills section granularity, experience line order, education date format, languages format) is identical across all runs. Only content emphasis changes. See `prompts/cv_rules.md` § Structural consistency.
 
-## Infrastructure
+## Gates
 
-The skill bundles Python scripts, JSON schemas, and prompt files. Use them — they exist because earlier runs without them produced inconsistent output:
+After writing each intermediate file, run its gate — one command that runs every deterministic check for that stage (schema validation plus the stage's guards) and reports all problems at once:
 
-- **Prompt files** (`prompts/*.md`) — read each one and follow its instructions for the corresponding step. They define the exact output format by referencing the schema files.
-- **Schema validation** (`scripts/validate.py`) — run after generating each JSON file. Don't proceed if validation fails — fix and re-validate. This catches malformed output before it reaches DOCX generation.
-- **DOCX generation** (`scripts/generate_outputs.py`) — the single path for producing final files. It validates inputs against schemas, generates DOCX with professional styling matching the master CV, and auto-converts to PDF.
-- **CV caching** — the fact base extraction is expensive, so it's cached in `resources/`. The cache is keyed on the CV file's SHA-256 hash — if the CV hasn't changed, the cached extraction is reused.
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
+```
+
+Exit 0 = continue. Exit 1 = fix the file and re-run the gate; never continue past a failing gate. Each guard exists because it caught a real failure the prompts alone did not prevent: fabricated tech in the fact base, miscounted fit scores, false "direct" matches, forbidden title labels, over-claimed skills, job-posting technologies leaking into the CV.
+
+**Fix the output, never the source.** When a gate fails, change the generated wording. Do not edit the master CV, the addendum or `.cv_hash` to make a gate pass.
 
 ## Workflow
 
 ### Steps 0–2.5 — CV preparation (delegated)
 
-Read `.claude/skills/job-prep-cv/SKILL.md` and follow its instructions. Pass:
+Read `.claude/skills/job-prep-cv/SKILL.md` and follow it with:
 
-- `$FLOW = "offer"` (selects the `[date]-[slug]/` folder naming used by the offer flow — Step 4 below renames it with a fit-level prefix once the match score is known)
-- `$INPUT_SEED = $ARGUMENTS` (the job offer text, URL, or job-title hint — used for the initial folder slug)
-- `$EARLY_BLACKLIST_NAME` is **unset** for the offer flow. The blacklist check happens later in Step 3.5 as part of `check-duplicate`, which uses the canonical company name from `job_offer_analysis.json`.
+- `$FLOW = "offer"` (folder `[date]-[slug]/`; Step 4 adds the fit-level prefix)
+- `$INPUT_SEED = $ARGUMENTS` (the offer text, URL, or title hint — seeds a placeholder slug)
+- `$EARLY_BLACKLIST_NAME` unset — the blacklist check happens in Step 3.5 with the canonical company name.
 
-When that sub-skill returns, the following are set: `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR` (= `$SKILL_BASE` for this flow), `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION`, and `$PREP_DIR/cv_fact_base.json` is verified. Continue from Step 3.
-
-For this flow `$SKILL_BASE` is the same path as `$SKILL_BASE_TAILOR` — the rest of this document references `$SKILL_BASE`.
+It returns with `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR` (= `$SKILL_BASE` for this flow), `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION` set and the fact base verified.
 
 ### Step 3 — Analyse the job offer
 
-If `$ARGUMENTS` is a URL, **probe it with a HEAD request first** — French aggregators like Lesjeudis return 403 on automated requests, and a WebFetch round-trip on a blocked host wastes a step before falling back. See `references/commands.md` § URL Probe. If the probe reports `BLOCKED`, skip WebFetch and ask the user to paste the offer text or share a local file path.
+If `$ARGUMENTS` is a URL, run `probe-url` first (`references/commands.md` § URL Probe) — some French aggregators return 403 to automated requests. If it prints `BLOCKED`, skip WebFetch and ask the user to paste the offer text or share a local file.
 
-Otherwise fetch with WebFetch. **Cache the raw offer text** to `$PREP_DIR/raw_offer.md` before analysis — write the full WebFetch response (or the pasted text if the user supplied one) as-is. This gives an audit trail and survives the posting being pulled. See `references/commands.md` § Cache Raw Offer.
+Otherwise fetch with WebFetch. **WebFetch's summariser can silently translate a non-English posting into English**, which produces a pack in the wrong language — so always put in the WebFetch prompt: *"Return the full job posting text EXACTLY as it appears on the page, preserving the ORIGINAL LANGUAGE — do NOT translate."* The cross-checks in `prompts/analyze_job_offer.md` § *Language mis-detection cross-check* are the final safety net.
 
-**WebFetch language warning.** WebFetch processes pages through an internal summariser LLM, which can silently **translate** a non-English posting into English before returning it. That breaks language detection downstream and produces an application pack in the wrong language. Always include an explicit instruction in the WebFetch `prompt` like *"Return the full job posting text EXACTLY as it appears on the page, preserving the ORIGINAL LANGUAGE — do NOT translate."* Even with that instruction it may still translate, so the cross-checks in `prompts/analyze_job_offer.md` § *Language mis-detection cross-check* are the final safety net before setting `detected_language`.
+Save the raw text (fetched or pasted) with `cache-raw-offer` before analysing (`references/commands.md` § Cache Raw Offer) — it is the audit trail if the posting is pulled. Then follow `prompts/analyze_job_offer.md`, write `job_offer_analysis.json`, and run **`gate offer`**. `detected_language` drives the language of every later output.
 
-Then read `prompts/analyze_job_offer.md`, produce `job_offer_analysis.json`, validate against `schemas/job_offer_analysis.schema.json`. Note the `detected_language` — it drives the language of all subsequent output.
+**Platform vs. real employer.** Job boards (Free-Work, Indeed, LinkedIn… — `config/settings.default.yaml` → `aggregators.known_platforms`) post for real clients, and a pack tailored to the board is wasted. If the analysis didn't already set `company_is_aggregator: true` or `source_platform`, run `detect-platform "$OUTPUT_DIR"`; a printed name means it is a platform. When flagged, ask: *"`<company_name>` looks like a platform, not usually the employer. Who's the real client? (blank = keep it, or 'force' to confirm you really mean this company.)"*
+- Real client named → `company_name` = client, `source_platform` = old name, `company_is_aggregator: false`.
+- `force` → keep `company_name`, set `company_is_aggregator: false`, omit `source_platform`.
+- Blank → leave the file as produced (the flags stay for the history record).
 
-**Platform-vs-client check.** Platforms like Free-Work, Indeed, LinkedIn etc. post on behalf of real employers — tailoring a pack to the platform rather than the real client wastes a run. The full list lives in `config/settings.default.yaml` → `aggregators.known_platforms`.
-
-1. If the LLM already set `company_is_aggregator: true` or `source_platform`, trust it.
-2. Otherwise post-annotate: run `scripts/cli.py detect-platform "$OUTPUT_DIR"`. If it prints a platform name, set `company_is_aggregator: true`. See `references/commands.md` § Platform Detection.
-3. When flagged, ask the user: *"`<company_name>` looks like a platform, not usually the employer. Who's the real client? (blank = keep `<company_name>` as-is, or 'force' to confirm you really mean this company.)"*
-4. If the user provides a real client name, rewrite `company_name` to that name, set `source_platform` to the original platform value, and set `company_is_aggregator: false`. Re-save and re-validate `job_offer_analysis.json`.
-5. If the user replies `force` (or confirms the platform really is the employer — e.g. they work at Free-Work itself), leave `company_name` alone, clear `company_is_aggregator` to `false`, and omit `source_platform`.
-6. If the user just presses enter, leave everything as the LLM produced it — the flagged fields stay for the history record.
+Re-run `gate offer` after any edit.
 
 ### Step 3.5 — Duplicate & history check
 
-After the job offer analysis is complete, run the one-shot `check-duplicate` subcommand — it wraps all three history checks, the same-company context surface, and the blacklist lookup in a single call. See `references/commands.md` § Duplicate Detection.
-
 ```bash
-python scripts/cli.py check-duplicate "$PREP_DIR" --url "<job-url>"
+cd "$SKILL_BASE" && python scripts/cli.py check-duplicate "$PREP_DIR" --url "<job-url>"
 ```
 
-Exit code `0` = clear to proceed. Exit code `1` = flagged (duplicate or blacklisted) — stop and surface the output to the user before continuing.
-
-The three duplicate layers:
-1. **Exact URL match** — same source URL used before
-2. **Company + title match** — normalised comparison (case-insensitive, common abbreviations unified)
-3. **Fuzzy skill match** — same company but different title: if >80% of required skills overlap, flag as likely duplicate
-
-**If a duplicate is found**: the subcommand prints the previous application's id, fit score, date, and output folder. Show that to the user and ask whether to proceed or skip. Do not silently continue.
-
-**If no duplicate but same company**: the `Other applications to …` block surfaces previous applications as context — "You applied to [Company] on [date] for [title] ([fit]% fit). This is a different role." This informs but doesn't block.
-
-**Blacklist is part of the same call** — if the company is on the blacklist, the output starts with `[!] BLACKLIST: …` and the reason (if stored). Stop unless the user explicitly overrides.
+- Exit 1, duplicate → show the previous application (id, fit, date, folder) and ask whether to proceed. Never continue silently.
+- Exit 1, output starts `[!] BLACKLIST` → stop unless the user explicitly overrides.
+- Exit 0 with an `Other applications to …` block → mention the earlier applications as context ("You applied to X on [date] for [title], [fit]% fit — this is a different role") and continue.
 
 ### Step 3.6 — Research the company
 
-Check `config/settings.default.yaml` → `behaviour.skip_company_research`. If `true`, skip this step entirely and proceed to Step 4. If WebSearch is unavailable (user hasn't granted permission), skip gracefully and note it in the output — the rest of the pipeline works fine without company research, just without personalised contact names in LinkedIn messages.
+Skip if `behaviour.skip_company_research` is `true`, or if WebSearch is unavailable (note it; LinkedIn messages then use placeholder names like "Hiring Manager"; everything else works). Otherwise use **WebSearch in the foreground** (background agents can't get web-tool approval) for size, ownership, recent news, culture signals, tech stack, and **key contacts** (names, titles, LinkedIn URLs of recruiters, hiring managers, tech leads).
 
-If a company name was found and research is enabled, use **WebSearch in the foreground** (background agents can't get approval for web tools) to find:
-- Size, ownership, recent news, culture signals, tech stack
-- **Key contacts** — names, titles, LinkedIn URLs for recruiters, hiring managers, tech leads
+Save `$PREP_DIR/company_research.md` with a `## Contacts` section. If research reveals a company size the offer didn't state, update `company_size` in `job_offer_analysis.json` — CV tailoring uses it (small companies value versatility, large ones depth).
 
-Save as `$PREP_DIR/company_research.md` with a `## Contacts` section. If the research reveals company size that the job offer didn't mention, update the `company_size` field in `job_offer_analysis.json` — this feeds into CV tailoring (small companies value versatility, large ones value depth).
-
-### Step 3.9 — Build the merged fact base (mandatory, never skip)
-
-Run:
+### Step 3.9 — Build the merged fact base (never skip)
 
 ```bash
 cd "$SKILL_BASE" && python scripts/claims_guard.py merge "$PREP_DIR"
 ```
 
-This writes `$PREP_DIR/cv_fact_base_merged.json` (cached fact base + addendum bullets + skill-calibration notes + the master CV's familiar-only skills). Steps 4–8 must read THIS file. An earlier run skipped the addendum and over-claimed skills; this step makes that impossible to do silently.
+Writes `$PREP_DIR/cv_fact_base_merged.json`: cached fact base + addendum bullets + skill-calibration notes + the master CV's familiar-only skills. **Every later step reads this file** — it is what "the fact base" means from here on. An earlier run skipped the addendum and over-claimed skills; this file makes that impossible to do silently. It is per-run: never write it back to `resources/`.
 
 ### Step 4 — Match/gap analysis
 
-Read `prompts/match_analysis.md`. Produce a requirement-by-requirement matrix (direct / transferable / gap). Read `cv_fact_base_merged.json` from Step 3.9.
+Follow `prompts/match_analysis.md` to produce a requirement-by-requirement matrix (direct / transferable / gap), then run **`gate match`**. The gate recounts `match_summary` from `matches[]` (the model regularly miscounts it), validates, and rejects any `direct` match whose technology isn't in the fact base — a false direct inflates the fit score past the 50% gate and the CV inherits the claim. On a grounding failure, downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`, and re-run.
 
-**Always run `scripts/recount_match_summary.py` against the produced JSON before validating.** The LLM authors both `matches[]` and `match_summary` and the two regularly drift (counts and `overall_fit_pct` are easy to miscount). The recount script overwrites `match_summary` with the deterministically computed value so downstream steps (folder rename, fit gate, history record) operate on correct figures. See `references/commands.md` § Recount Match Summary.
+Then rename the folder — this adds the fit-level prefix (`low` / `medium` / `good` / `very_good`, thresholds in settings) and rebuilds the slug from `job_title` + `company_name`:
 
-After the recount, validate against `schemas/match_analysis.schema.json`.
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py rename-with-fit "$OUTPUT_DIR"
+```
 
-**After validation, run the grounding check.** This is the deterministic guard against false-direct claims — when the LLM marks a JD requirement (e.g. "Kubernetes") as `direct` despite no evidence in the fact base, the inflated `overall_fit_pct` may push a low-fit role through the 50% gate and the tailored CV will inherit the unfounded claim. See `references/commands.md` § Match Grounding Check. If the script exits non-zero, regenerate Step 4 — surface the offending requirements to the prompt and have the LLM downgrade them to `transferable` (with a concrete `notes` explanation) or `gap` before continuing.
+Set `$OUTPUT_DIR` to the printed path and `$PREP_DIR` to `$OUTPUT_DIR/_prep`.
 
-After validation, **rename the output folder in one shot** — the helper adds the fit-level prefix (`low` / `medium` / `good` / `very_good`) AND rebuilds the trailing slug from the offer's `job_title` + `company_name`, replacing the placeholder slug that was created at preflight from `$ARGUMENTS`. This collapses two historical renames into one and gives the run a meaningful folder name from this step onward. Thresholds are in `config/settings.default.yaml`. See `references/commands.md` § Folder Rename. Update `$OUTPUT_DIR` and `$PREP_DIR`.
+**If `overall_fit_pct` is below 50%, stop.** Tell the user the score, summarise the key gaps, and explain why no pack was generated. The analysis and renamed folder are kept for review.
 
-**If `overall_fit_pct` is below 50%, STOP here.** Do not proceed to CV tailoring or any further steps. Inform the user of the fit score, summarise the key gaps, and explain why the application was not generated. The match analysis and renamed output folder are kept so the user can review the assessment.
-
-**Dry-run mode**: check `config/settings.default.yaml` → `behaviour.dry_run`. If `true`, stop here after displaying the fit score and match summary — do not generate CV, letters, or any output files. This is useful for quickly scanning multiple job offers to assess fit before committing to full generation. The match analysis is still saved and the application is still recorded in the database. The user can also trigger dry-run by including "dry run" or "just the score" in their request.
+**Dry run** — if `behaviour.dry_run` is `true`, or the user said "dry run" / "just the score", stop here after showing the fit score and match summary, then record the application (Step 10). Useful for scanning several offers before committing to full generation.
 
 ### Step 5 — Tailor the CV
 
-Read `prompts/tailor_cv.md`. Use the match analysis and company research to guide emphasis. The prompt includes company-size awareness rules — small companies get expanded versatility bullets, large companies get focused technical depth. It also includes an "Earlier-experience compression" rule: before invoking the prompt, read `config/settings.default.yaml` → `behaviour.experience_compression_cutoff_year` and pass it to the tailoring step as the cutoff year. The prompt explains how the tailoring step uses the cutoff to decide whether each pre-cutoff role stays full or gets folded into a consolidated line. Validate against `schemas/tailored_cv.schema.json`.
-
-**Before invoking the prompt**, merge the user's addendum into the in-memory fact base and pass the user prefs in as context:
-
-```python
-from scripts.user_customization import merge_addendum_into_fact_base
-fact_base_for_tailoring = merge_addendum_into_fact_base(fact_base, $CUSTOMIZATION["addendum"])
-# Pass to the prompt: fact_base_for_tailoring, $CUSTOMIZATION["prefs"]
-```
-
-The merged fact base must NOT be written back to `resources/cv_fact_base.json`. It's used only for this tailoring run.
-
-After the tailored CV is produced, run the forbidden-label check to catch title labels the model might have slipped through (the command loads `forbidden_title_labels` from `user_prefs.yaml` itself):
-
-```bash
-cd "$SKILL_BASE" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/tailored_cv.json"
-```
-
-Exit 1 lists the violations — surface them and regenerate.
-
-### Step 5.5 — Claims check (mandatory gate)
-
-After the tailored CV, and again after the letters and LinkedIn messages exist, run:
-
-```bash
-cd "$SKILL_BASE" && python scripts/claims_guard.py check "$PREP_DIR"
-```
-
-Exit 1 lists unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, lost qualifiers (Python), an "Expériences antérieures" line without one ordered "Employeur :" clause per company (or with an undisambiguated same-name employer), and job-posting technologies leaking into the output. Fix the wording and re-run; do NOT edit the master CV or addendum to make it pass, and do not generate DOCX/PDF until it passes.
+Follow `prompts/tailor_cv.md` (it starts by loading `prompts/cv_rules.md`). Pass it the merged fact base, the match analysis, the company research, `$CUSTOMIZATION["prefs"]`, and the `experience_compression_cutoff_year` from settings. Write `tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels from `user_prefs.yaml` + claims check). Build no DOCX/PDF until it passes.
 
 ### Steps 6, 7 — Letter and LinkedIn (parallel agents)
 
-These two steps are independent once the tailored CV exists. **Spawn two Agent subagents simultaneously** to generate them in parallel. Both subagents must receive `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` as additional context — the letter generator honours `tone_directives` and `team_context_companies`, the LinkedIn generator honours `tone_directives`.
+Once the CV passes its gate these two are independent. **Spawn two Agent subagents at the same time.** Give each the paths to the merged fact base, `job_offer_analysis.json`, `match_analysis.json`, `company_research.md`, `$SKILL_BASE` and `$OUTPUT_DIR`, plus `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` (the letter honours `tone_directives` and `team_context_companies`; LinkedIn honours `tone_directives`).
 
-**Subagent 1 — Motivation letter:**
-Read `prompts/generate_motivation_letter.md`. Use the CV fact base, job offer analysis, match analysis, and company research as context. Save as `$PREP_DIR/letter.json`. Validate against `schemas/letter.schema.json`. Then generate the **short version** (500-750 characters body): read `prompts/generate_short_letter.md`, pass it the full letter as context, save as `$PREP_DIR/short_letter.json`. Validate against the same schema.
+- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters). Run **`gate letters`**.
+- **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Run **`gate linkedin`**.
 
-**Subagent 2 — LinkedIn messages:**
-Read `prompts/generate_linkedin_message.md`. Use the CV fact base, job offer analysis, match analysis, and company research (especially the Contacts section) as context. Save as `$PREP_DIR/linkedin.json`. Validate against `schemas/linkedin.schema.json`.
-
-Wait for both subagents to complete before proceeding to Step 8.
-
-**Write permission note:** subagents need to write JSON into `$PREP_DIR`. The project's tracked `.claude/settings.json` pre-approves `Edit(output/**)` for exactly this reason, so the rule ships with the repo. It must be an `Edit()` rule: Claude Code does not match `Write()` permission rules, and `Edit()` rules cover the Write tool too. If you ever see a subagent report "Write permission denied" for `output/**/_prep/*.json`:
-1. Confirm the allow rule is still present in `.claude/settings.json`.
-2. If a subagent returned the generated JSON in its final message instead of saving it, save it yourself from the main context and continue — don't re-run the subagent.
+Each subagent returns only once its gate passes. Wait for both. If one can't write into `_prep/`, see `references/troubleshooting.md`.
 
 ### Step 8 — Interview prep (foreground)
 
-**Do not use a background agent for this step.** Interview prep is markdown-only (no schema validation via Bash), and background agents can encounter permission issues that silently fail. Generate this in the main context instead.
+Generate this in the main context, not a background agent — background agents can hit permission issues that fail silently, and this step has no gate to catch it. Follow `prompts/generate_interview_prep.md` with all the context above. Include a quick reference block (job URL from `$ARGUMENTS`, output folder path, application date), the fit score banner, and a company context section. Save `$PREP_DIR/interview_prep.md`; Step 9 renders it as mobile-friendly HTML.
 
-Read `prompts/generate_interview_prep.md`. Use all available context (CV fact base, job offer analysis, match analysis, company research). Include a quick reference block (job URL from `$ARGUMENTS`, output folder path, application date), fit score banner, and company context section. Save as `$PREP_DIR/interview_prep.md`.
+### Step 9 — Build the output files
 
-The `_prep/` copy stays Markdown (easy to edit and re-run). Step 9 renders it into the **final deliverable as responsive HTML** (`Interview_prep_*.html`) via `scripts/md_to_html.py` — Markdown displays poorly in a phone/tablet viewer, so the shipped file is a styled, mobile-friendly HTML page (dark-mode aware, tappable links, horizontally-scrollable tables).
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py regenerate-outputs "$OUTPUT_DIR"
+```
 
-### Step 9 — Generate output files
-
-Run `scripts/generate_outputs.py` with `--output-dir` pointing to `$OUTPUT_DIR`. The script validates all JSON inputs against schemas before generating anything, then produces DOCX (with professional styling), PDF (via Microsoft Word if available), TXT, and the interview-prep HTML plus `run_summary.json`. See `references/commands.md` § Generate Final Output Files.
-
-When regenerating outputs for an existing folder (not the first run), prefer `scripts/cli.py regenerate-outputs` — it reads `job_title` and `detected_language` from `_prep/job_offer_analysis.json` and assembles the 10-flag invocation automatically. See `references/commands.md` § Regenerate Outputs.
+Reads everything it needs from `_prep/` (title and language from `job_offer_analysis.json`) and produces the CV DOCX + PDF, letter DOCX, short-letter and LinkedIn TXT, interview-prep HTML and `run_summary.json`. The same command rebuilds a pack later. If it reports missing inputs, `--check` lists them.
 
 ### Step 10 — Record in job history
 
-After all output files are generated, record this application in the database. See `references/commands.md` § Record Application. This stores the company, title, skills, fit score, and output folder path so future runs can detect duplicates and surface history.
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py record-application "$OUTPUT_DIR"
+```
 
-## Error recovery & fallbacks
-
-1. **Company research unavailable** — If WebSearch is denied or fails, skip Step 3.6 gracefully. LinkedIn messages will use placeholder names (e.g. "Hiring Manager"). All other outputs work normally without company research data.
-
-2. **Schema validation failure** — Fix the JSON and re-validate. Do not proceed to the next step until validation passes. Common causes: missing required fields, wrong enum values, malformed arrays.
-
-3. **Fact base verification failure** — Remove flagged items from `cv_fact_base.json` and re-verify. If the cache was just saved, re-save it after fixing. This usually means job offer keywords leaked into the fact base during extraction.
-
-4. **Database missing or corrupted** — If `job_history.db` doesn't exist, it's created automatically on first run. If it's corrupted (e.g. `disk I/O error`, `database disk image is malformed` — common when the DB lives on a network/mounted filesystem), **do NOT just delete and re-run**: `backfill_history.py` only reimports applications that still have an output folder, so any history whose folder was since cleaned would be lost silently. Instead, **salvage first**: copy the DB to local disk and recover surviving rows one at a time by rowid into a fresh DB (a bulk `SELECT *` aborts on the first bad page, but row-by-row reads skip only the damaged rows), then re-record today's runs from their output folders. Delete-and-backfill is a last resort only when no rows are recoverable. See the network-FS note below — the DB layer now mirrors writes through local temp to avoid this class of corruption in the first place.
-
-5. **DOCX generation failure** — Check that all required JSON files exist in `_prep/`. Common cause: missing `letter.json` or `linkedin.json`. Re-run the missing step before retrying Step 9.
-
-6. **PDF conversion** — PDF generation is **cross-platform** and does NOT require Microsoft Word. `scripts/pdf_pipeline.py` tries three converters in order and stops at the first that works: `docx2pdf` (needs Word, Windows/Mac) -> **LibreOffice** (`soffice` headless, works anywhere it's on PATH) -> `pandoc` (needs a LaTeX engine). Do NOT pass `--skip-pdf` assuming "no Word = no PDF" - on Linux/CI the LibreOffice fallback handles it. Only if *none* of the three are installed does the PDF step skip (with an actionable message); the DOCX is always still produced. In a bare environment install LibreOffice (`apt install libreoffice`) so `soffice` is on PATH.
-
-## Database durability & concurrency (network/mounted filesystems)
-
-`job_history.db` is SQLite. SQLite is reliable on local disks but its file
-locking and rollback journals are **unreliable on networked / mounted
-filesystems** (NFS, SMB/CIFS, 9p, many container/VM mounts): operating on it
-directly there can raise `disk I/O error` or even leave the file
-`database disk image is malformed`. `scripts/job_history_db.py` handles this so
-callers don't have to:
-
-- **Local mirror.** Every `JobHistoryDB` opens a fast local-disk copy (keyed by
-  the canonical target path, under the system temp dir) and does all SQL there.
-  The canonical file is touched only at open and close — minimising writes to
-  the flaky filesystem.
-- **Verified, retrying write-back.** Each write-back is integrity-checked
-  *off-mount* before and after the swap and retried; a copy that fails to verify
-  is discarded, so a healthy target is **never** replaced by a corrupt one. If
-  no attempt yields a clean file the prior target is left intact and the local
-  mirror remains the durable copy.
-- **Cross-process lock.** Each instance holds an exclusive advisory lock
-  (`fcntl` on POSIX, `msvcrt` on Windows — both auto-released if the process
-  dies) on a **local** lockfile for its whole lifetime, so the
-  open -> operate -> write-back section is serialised across processes. This is
-  what makes *parallel* writers safe: a second process can't start until the
-  first has finished syncing its rows, so the whole-file write-back can't
-  interleave, lose updates, or duplicate rows. The lock is **re-entrant within a
-  process** (a refcount, so opening the same DB twice never self-deadlocks) and
-  **fail-safe** (if the lock primitive errors or a 60 s wait times out, the DB
-  still opens, degraded, rather than blocking the tool).
-
-**Scope / boundary.** This guarantees correctness for multiple processes **on a
-single machine** (the skill's single-user model). It does **not** coordinate
-writers on *different* machines against the same networked DB file — that is a
-distributed-locking problem and out of scope; don't run the skill against one
-shared `job_history.db` from several hosts at once.
-
-**Recovery.** If the file is already corrupt, follow Error recovery item 4
-(salvage rows row-by-row off-mount first; delete-and-backfill only as a last
-resort). Concurrency and durability behaviour is covered by
-`tests/test_db_concurrency.py` (re-entrancy, serialisation via non-overlapping
-critical sections, and a teeth test proving the serialisation check fails
-without the lock).
+Stores company, title, skills, fit score and folder so future runs detect duplicates and surface history. Tell the user the output folder and the application id (for `/job-status` updates).
 
 ## Output
 
@@ -268,39 +159,28 @@ All files land in `$PROJECT_ROOT/output/[fit_level]-[date]-[job-slug]/`:
 | Motivation letter | DOCX |
 | Short motivation letter | TXT (500-750 chars, for online forms) |
 | LinkedIn messages | TXT (with contact names and LinkedIn URLs) |
-| Interview prep | HTML (responsive/mobile-friendly; quick reference links and fit score banner) |
+| Interview prep | HTML (responsive; quick reference links and fit score banner) |
 | Run summary | JSON (fit %, match counts, file paths) |
 
-Filename patterns are language-aware (FR: `Lettre_de_motivation_...`, EN: `Cover_letter_...`) — configured in `config/naming_rules.yaml`.
+Filenames are language-aware (FR: `Lettre_de_motivation_...`, EN: `Cover_letter_...`) — see `config/naming_rules.yaml`.
 
-## Re-running individual steps
+## Re-running one step
 
-If the user asks to regenerate a specific output (e.g. "redo the LinkedIn messages", "regenerate the letter for Eddyfi"), you don't need to re-run the full pipeline. Each step's inputs and outputs are in `$PREP_DIR` (`$OUTPUT_DIR/_prep`).
+When the user asks to redo one output ("redo the LinkedIn messages", "regenerate the letter for Eddyfi"), don't re-run the pipeline — every step's inputs are in `_prep/`. ("Regenerate the pack" with no specific output means the full pipeline.)
 
-### Input/output mapping
+1. Find the folder — ask, or take the most recent one in `output/` matching their description. Set `$OUTPUT_DIR` and `$PREP_DIR`.
+2. If `cv_fact_base_merged.json` is missing (older packs), run Step 3.9 first. If another input the step needs is missing, tell the user which earlier step must run.
+3. Re-run the step from its prompt using the existing `_prep/` files, then its gate:
 
-| Step | Reads from `_prep/` | Writes to `_prep/` |
-|------|---------------------|---------------------|
-| 5 — Tailor CV | cv_fact_base.json, job_offer_analysis.json, match_analysis.json, company_research.md | tailored_cv.json |
-| 6 — Letter | cv_fact_base.json, job_offer_analysis.json, match_analysis.json, company_research.md | letter.json, short_letter.json |
-| 7 — LinkedIn | cv_fact_base.json, job_offer_analysis.json, match_analysis.json, company_research.md | linkedin.json |
-| 8 — Interview prep | All of the above | interview_prep.md |
+| Request mentions | Step | Writes | Gate |
+|---|---|---|---|
+| CV, resume | 5 | `tailored_cv.json` | `cv` |
+| letter, cover letter, motivation letter | 6 | `letter.json` + `short_letter.json` | `letters` |
+| short letter, short version | 6 (short part) | `short_letter.json` | `letters` |
+| LinkedIn, messages, InMail | 7 | `linkedin.json` | `linkedin` |
+| interview, prep | 8 | `interview_prep.md` | — |
+| "all outputs", "everything" (files only) | — | — | — |
 
-### Detecting which step to re-run
+4. Run Step 9 (`regenerate-outputs`) to rebuild the files.
 
-Parse the user's request for keywords:
-- "CV", "resume", "tailored CV" -> Step 5
-- "letter", "cover letter", "motivation letter" -> Step 6
-- "short letter", "short version" -> Step 6 (short letter part only)
-- "LinkedIn", "messages", "InMail" -> Step 7
-- "interview", "prep", "preparation" -> Step 8
-- "all outputs", "everything" -> Step 9 only (re-generate DOCX/PDF from existing JSON)
-
-### How to re-run a step
-
-1. **Find the output folder** — ask the user which application, or find the most recent folder in `output/` matching their description.
-2. Set `$OUTPUT_DIR` to that folder and `$PREP_DIR` to `$OUTPUT_DIR/_prep`.
-3. **Read the required input files** from `$PREP_DIR` — if any are missing, inform the user which earlier step needs to run first.
-4. **Read the prompt file** for the target step (e.g. `prompts/generate_motivation_letter.md`) and follow its instructions using the existing `_prep/` files as context.
-5. **Validate** the generated JSON against its schema (same as the original step).
-6. **Re-run Step 9** to produce updated DOCX/PDF/TXT files from the new JSON. Use `scripts/cli.py regenerate-outputs <app-folder-or-id>` — it reads job title and language from `_prep/job_offer_analysis.json` and assembles the full `generate_outputs.py` invocation. See `references/commands.md` § Regenerate Outputs.
+For anything that fails outside the gates (DB errors, no PDF, DOCX build errors), read `references/troubleshooting.md`.

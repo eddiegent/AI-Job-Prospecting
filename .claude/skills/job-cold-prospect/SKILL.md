@@ -9,53 +9,41 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, Agent
 
 ## How it works
 
-This skill produces a speculative application pack — CV, motivation letter, short letter, LinkedIn outreach, and a company dossier with interview prep — targeted at a company with no advertised vacancy. Instead of a job offer, the pipeline pivots on a researched **company profile** and a user-selected **target role**.
+This skill produces a speculative application pack — CV, motivation letter, short letter, LinkedIn outreach, and a company dossier with interview prep — for a company with no advertised vacancy. Instead of a job offer, the pipeline pivots on a researched **company profile** and a user-selected **target role**.
 
-Shared infrastructure (master CV, fact base, DOCX generation, history DB, user customization) is reused unchanged from the `job-application-tailor` skill. See `.claude/skills/job-application-tailor/SKILL.md` for the hard rules on truthfulness, chronological integrity, and structural consistency — they apply here identically.
+Everything except the cold-specific prompts and schemas is shared with `job-application-tailor` (master CV, fact base, guards, DOCX generation, history DB, customization), so both flows stay aligned when the CV format changes.
 
 ## Directory layout
 
-**`PROJECT_ROOT`** (current working directory) holds your data — shared with `job-application-tailor`:
-- `resources/MASTER_CV.docx` — source CV (shared)
-- `resources/cv_fact_base.json` + `.cv_hash` — cached extraction (shared)
-- `resources/job_history.db` — application history (shared, with new `source` column)
-- `output/` — generated packs. Cold packs are prefixed `cold-[DDMMYYYY]-[company-slug]/` to distinguish them from offer-based packs.
+**`PROJECT_ROOT`** — your data, shared with `job-application-tailor` (master CV, cached fact base, `job_history.db`). Cold packs go in `output/cold-[DDMMYYYY]-[company-slug]/`.
 
-**`SKILL_BASE`** (`.claude/skills/job-cold-prospect`) — this skill's own assets:
-- `prompts/` — cold-specific prompts
-- `schemas/` — `company_profile.schema.json`, `role_candidates.schema.json`, `selected_role.schema.json`
+**`SKILL_BASE`** (`.claude/skills/job-cold-prospect`) — this skill's `prompts/` and `schemas/` (`company_profile`, `role_candidates`, `selected_role`).
 
-**`SKILL_BASE_TAILOR`** (`.claude/skills/job-application-tailor`) — sibling skill, imported:
-- `scripts/` — DOCX generation, validation, paths, user customization, history DB, common helpers
-- `schemas/` — CV fact base, tailored CV, letter, LinkedIn schemas
-- `config/` — settings, naming rules
-- `references/commands.md` — exact bash commands for shared operations
+**`SKILL_BASE_TAILOR`** (`.claude/skills/job-application-tailor`) — everything shared: `scripts/cli.py`, the CV/letter/LinkedIn schemas, `prompts/cv_rules.md`, `config/`, `references/commands.md`, `references/cli.md`, `references/troubleshooting.md`.
 
-Resolve all three at the start. When the master CV format changes, both skills must stay aligned — that is why scripts and schemas live in the tailor skill and are imported, not copy-pasted.
+Every command below runs as `cd "$SKILL_BASE_TAILOR" && python scripts/cli.py …`. Quote every path.
 
 ## Hard rules
 
-All hard rules from `job-application-tailor` apply unchanged (truthfulness, recent-timeline completeness, chronological integrity, honest gap handling, structural consistency). On top of those, cold-specific rules:
+All hard rules from `job-application-tailor` SKILL.md apply unchanged (truthfulness, recent-timeline completeness, chronological integrity, honest gap handling, structural consistency), and so does its § Gates: run the named gate after each file, never continue past a failing one, and fix the output — never the master CV, addendum or `.cv_hash`. Cold-specific rules on top:
 
 - **Every factual claim about the company cites a source URL** — the dossier links back to where each fact came from.
-- **Classify the organisation type, and let it reframe the pack.** Step 3 sets `company_profile.org_type` (`end_employer` / `esn` / `staffing_agency` / `recruitment_agency` / `unknown`). It is **not** cosmetic: for an intermediary (ESN/SSII/régie, intérim, or cabinet de recrutement), the candidate would be placed on a client's mission or represented to a hiring company — they would *not* work on this organisation's own mission. So the role inference, both letters, the LinkedIn target, and the dossier all switch from "join your team/mission" to "here is the profile I offer for your missions / for you to represent". Writing a "your mission moves me" letter to an ESN is the cold flow's worst tell. Every downstream prompt reads `org_type` and branches.
-- **Inferred fields stay inferred** — `tech_stack_hints`, `pain_points_inferred`, and similar must be flagged as inferred in the dossier, never presented as fact.
-- **Research gaps are honest** — if a source is gated or missing, record it in `research_gaps` rather than fabricating content.
-- **No fit score** — there is no JD, so no scoreable requirements. The dossier replaces the score with a narrative "angle of approach".
+- **Classify the organisation type, and let it reframe the pack.** Step 3 sets `company_profile.org_type` (`end_employer` / `esn` / `staffing_agency` / `recruitment_agency` / `unknown`). For an intermediary (ESN/SSII/régie, intérim, cabinet de recrutement) the candidate would be placed on a client's mission or represented to a hiring company — not work on this organisation's own mission. So the role inference, both letters, the LinkedIn target and the dossier switch from "join your team/mission" to "here is the profile I offer for your missions / for you to represent". A "your mission moves me" letter to an ESN is the cold flow's worst tell. Every downstream prompt reads `org_type` and branches.
+- **Inferred fields stay inferred** — `tech_stack_hints`, `pain_points_inferred` and similar are flagged as inferred in the dossier, never presented as fact.
+- **Research gaps are honest** — a gated or missing source goes in `research_gaps`, never fabricated content.
+- **No fit score** — there is no JD to score against. The dossier replaces the score with a narrative "angle of approach".
 
 ## Workflow
 
-Steps 0–2.5 are delegated to the shared `job-prep-cv` sub-skill. Steps 3–10 are cold-flow specific.
-
 ### Steps 0–2.5 — CV preparation (delegated)
 
-Read `.claude/skills/job-prep-cv/SKILL.md` and follow its instructions. Pass:
+Read `.claude/skills/job-prep-cv/SKILL.md` and follow it with:
 
-- `$FLOW = "cold"` (selects the `cold-[date]-[slug]/` folder naming, distinct from offer-based packs)
-- `$INPUT_SEED = $ARGUMENTS` (the company name or URL — used for the initial folder slug)
-- `$EARLY_BLACKLIST_NAME = $ARGUMENTS` (the user's input string — the canonical-name re-check happens in Step 3 once research resolves the real name, so this first pass catches obvious hits early)
+- `$FLOW = "cold"` (folder `cold-[date]-[slug]/`)
+- `$INPUT_SEED = $ARGUMENTS` (company name or URL — seeds a placeholder slug)
+- `$EARLY_BLACKLIST_NAME = $ARGUMENTS` (catches obvious hits early; Step 3 re-checks the canonical name)
 
-Resolve `$SKILL_BASE` for this skill on top of what `job-prep-cv` already set:
+Then resolve this skill's own base:
 
 ```bash
 SKILL_BASE="$PROJECT_ROOT/.claude/skills/job-cold-prospect"   # dev/repo layout
@@ -64,111 +52,66 @@ if [ ! -d "$SKILL_BASE" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
 fi
 ```
 
-`job-prep-cv` returns with `$PROJECT_ROOT`, `$SKILL_BASE_TAILOR`, `$OUTPUT_DIR`, `$PREP_DIR`, `$CUSTOMIZATION` set, and `$PREP_DIR/cv_fact_base.json` verified.
-
-**Default language.** Cold flow defaults to French (`fr`). Override via `$CUSTOMIZATION["prefs"]["default_language"]` or an explicit user request. There is no JD to auto-detect from.
+**Language.** Default `fr`; `$CUSTOMIZATION["prefs"]["default_language"]` or an explicit user request overrides it. There is no JD to detect it from. Call the result `$PACK_LANG` (not `$LANG`, which is the shell locale) — Step 4c stores it in `selected_role.json`.
 
 ### Step 3 — Company research
 
-Produce a structured profile of the target company. This step anchors every downstream artefact.
+Every later artefact is anchored on this profile.
 
-**Cache raw research first.** Before assembling the profile, save every raw source you fetch into `$PREP_DIR/raw_research.md` so the pack has an audit trail if the company changes their site. Append one section per source with a heading like `## [website] https://…` and the fetched body.
+**Cache raw sources as you go.** Append each fetched source to `$PREP_DIR/raw_research.md` under a heading like `## [website] https://…` — the audit trail if the company's site changes.
 
-**Follow the prompt.** Read `prompts/research_company.md` in full — it spells out the source priority (company website → Indeed MCP → LinkedIn → news → tech hints), the hard rules (cite every fact, flag inferences, record gaps), the **organisation-type classification** (`org_type` + `org_type_evidence`, distinguishing a real employer from an ESN/SSII, an intérim agency, or a cabinet de recrutement), and the output structure. The careers/About pages are the primary `org_type` signal — does the org sell its own product, or sell consultants/missions?
+**Follow `prompts/research_company.md` in full.** It sets the source priority, the rules (cite every fact, flag inferences, record gaps), the **organisation-type classification** (`org_type` + `org_type_evidence` — does the org sell its own product, or sell consultants/missions? the careers/About pages are the main signal), and the output structure. Tools per source:
 
-**Sources — exact tool choices**:
+1. Company website (About, Careers, Products, Team / Leadership): **WebFetch**
+2. Indeed company data: **`mcp__claude_ai_Indeed__get_company_data`** with the company name — cite the Indeed company URL
+3. LinkedIn company page: **WebFetch**, best-effort (gated → `research_gaps`)
+4. News from the last 12 months: **WebSearch** (e.g. scoped with `after:<date 12 months ago>`)
+5. Tech hints: **WebFetch** / **WebSearch** on Stack Share, the company's GitHub org, or job listings (aggregators included)
 
-1. Company's own website (About, Careers, Products, Team / Leadership): **WebFetch**
-2. Indeed company data: **`mcp__claude_ai_Indeed__get_company_data`** — call with the company name, cite the Indeed company URL
-3. LinkedIn company page: **WebFetch** (best-effort; gated results go into `research_gaps`)
-4. Recent news (last 12 months): **WebSearch** scoped to e.g. `site:news.example OR after:<date 12 months before today>`
-5. Tech radar hints: **WebFetch** / **WebSearch** for Stack Share, the company's GitHub org, or job listings even on aggregators
+Web tools need foreground approval — don't use a subagent for this step.
 
-Web tools require foreground approval — do not spawn a subagent for this step.
+Write `$PREP_DIR/company_profile.json` and run **`gate profile`**.
 
-**Write and validate**:
-
-```bash
-# Write the JSON to $PREP_DIR/company_profile.json (via the Write tool), then:
-cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
-  "$PREP_DIR/company_profile.json" \
-  "$SKILL_BASE/schemas/company_profile.schema.json"
-```
-
-Validation must pass before continuing. If it fails, fix the flagged fields and re-run.
-
-**Blacklist re-check against the canonical name.** Research may resolve "acme" to "Acme Robotics SAS" — that new name might itself be on the blacklist, so re-check with the canonical name from `company_profile.json`:
+**Re-check the blacklist with the canonical name** — research may resolve "acme" to "Acme Robotics SAS":
 
 ```bash
 cd "$SKILL_BASE_TAILOR" && python scripts/cli.py company-check "<company_profile.company_name>"
 ```
 
-If the canonical name is blacklisted, stop and surface the reason. If the whitelist hits, flag it to the user as a positive signal but continue.
+Blacklisted → stop and give the reason. Whitelisted → mention it as a positive signal and continue.
 
-**Job-board / aggregator check.** If research set `company_profile.company_is_aggregator: true`, the resolved company is a job board / recruitment portal (e.g. Aerocontact, Free-Work), not necessarily the employer of the role that brought the user here. **Stop and ask** before generating a pack for the board itself:
+**Job board instead of an employer.** If `company_profile.company_is_aggregator` is `true`, the company is a job board / recruitment portal (Aerocontact, Free-Work…), not necessarily the employer behind the role that brought the user here. Stop and ask:
 
 > "[Company] looks like a job board / channel, not usually the employer. Did you arrive here via a posting for a specific company? Name the real client to prospect them instead, or say 'the board itself' to continue prospecting [Company] (e.g. to build their platform)."
 
-- **User names a real client** → this is the actual target. Set `source_platform` to the board's name in `company_profile.json`, then **re-run Step 3 research on the real client** — the current profile describes the board, not the client, so it must be rebuilt. The client's name becomes `company_name`.
-- **User says "the board itself"** → continue as-is; the board is a legitimate `end_employer` for its own product.
+- Real client named → set `source_platform` to the board's name, make the client `company_name`, and **redo Step 3 research on the client** (the current profile describes the board).
+- "The board itself" → continue; the board is a legitimate `end_employer` for its own product.
 
-This mirrors the offer flow's aggregator handling (`config/settings.default.yaml` → `aggregators.known_platforms`; `common.matched_aggregator`), catching the "Aerocontact posted a Safran role" case before a pack is wasted on the channel.
-
-**Canonicalise the folder slug.** Preflight built the output folder slug from the raw `$INPUT_SEED` — usually a URL, often unreadable (e.g. `cold-14052026-https-wwwlinkedincom-company-francebillet/`). Now that research has resolved `company_profile.company_name`, rebuild the slug in one shot. Idempotent — when the slug already matches, this prints the same path back and stops.
+**Rename the folder** from the placeholder slug to the canonical company name (idempotent):
 
 ```bash
 cd "$SKILL_BASE_TAILOR" && python scripts/cli.py rename-cold-folder "$OUTPUT_DIR"
 ```
 
-Capture the printed path and reassign the orchestrator's shell variables before continuing — every later step reads from these:
+Set `OUTPUT_DIR` to the printed path and `PREP_DIR="$OUTPUT_DIR/_prep"`. Every later file is written after this, so nothing needs path fix-up. If the target folder already exists (an earlier run on the same company), it raises `FileExistsError` — tell the user and let them delete the old pack or pick a different angle.
+
+**Checkpoint.** Summarise the profile for the user — company name, **organisation type** (and whether inferred), size band, mission, 3–5 top findings, research gaps — then continue.
+
+### Step 3.9 — Build the merged fact base (never skip)
 
 ```bash
-OUTPUT_DIR="<printed path>"
-PREP_DIR="$OUTPUT_DIR/_prep"
+cd "$SKILL_BASE_TAILOR" && python scripts/claims_guard.py merge "$PREP_DIR"
 ```
 
-The rename happens **before** `selected_role.json`, the tailored CV, the letters, the LinkedIn output, the dossier, the DOCX/PDF files, the `run_summary.json`, and the history-DB insert are produced — so nothing downstream needs path fix-up. If the target folder already exists (left over from a previous run on the same company), the helper raises `FileExistsError`; surface the error to the user and let them decide whether to delete the old pack or pick a different angle.
-
-**Research checkpoint.** At this point the research has produced `company_profile.json` plus the cached raw research, and the output folder is named after the canonical company. Summarise the profile back to the user — company name, **organisation type** (and whether it's inferred), size band, mission, 3–5 top findings, research gaps — then continue to Step 4.
+Writes `$PREP_DIR/cv_fact_base_merged.json` (fact base + addendum bullets + skill calibration + familiar-only skills). **Every later step reads this file** as "the fact base". It is per-run — never write it back to `resources/`.
 
 ### Step 4 — Target-role inference
 
-Without a JD, pick a plausible target role to anchor CV tailoring and letter framing. Always interactive — never auto-select.
+Without a JD, pick a plausible target role to anchor the CV and letters. Always interactive — never auto-select.
 
-**4a. Generate candidates.** Read `prompts/infer_target_role.md` in full. Pass it:
-- `cv_fact_base` — from `$PREP_DIR/cv_fact_base.json` (already present after Step 2)
-- `company_profile` — from `$PREP_DIR/company_profile.json` (from Step 3)
-- `user_prefs` — from `$CUSTOMIZATION["prefs"]`
-- any free-form user hints from the invocation
+**4a. Candidates.** Follow `prompts/infer_target_role.md` in full, passing the merged fact base, `company_profile.json`, `$CUSTOMIZATION["prefs"]` and any hints from the user's request. Write `$PREP_DIR/role_candidates.json` and run **`gate roles`** — schema, forbidden title labels, and stack grounding (no `tech_stack_hints` technology in a candidate's `emphasis_areas` or rationale unless it is in the fact base; domain phrases are ignored). On failure, regenerate 4a with the flagged labels/technologies named in the prompt.
 
-Write the LLM output to `$PREP_DIR/role_candidates.json` and validate:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
-  "$PREP_DIR/role_candidates.json" \
-  "$SKILL_BASE/schemas/role_candidates.schema.json"
-```
-
-**4b. Forbidden-label post-check.** The prompt tells the LLM to respect `forbidden_title_labels`, but surface-check deterministically as a safety net. The command loads the labels from `user_prefs.yaml` itself — nothing is spliced in from context:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/role_candidates.json"
-```
-
-Exit 1 lists the violating candidates. If violations appear, regenerate 4a — do not ship candidates with forbidden labels.
-
-**4b-bis. Stack-grounding post-check.** Run `scripts/check_role_grounding.py` to confirm no tech listed in `company_profile.tech_stack_hints` has leaked into the candidates' `emphasis_areas` or rationale unless that tech is actually in the candidate's fact base. This is the deterministic guard the 4a prompt cannot enforce on its own.
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/check_role_grounding.py \
-  --target "$PREP_DIR/role_candidates.json" --kind candidates \
-  --company-profile "$PREP_DIR/company_profile.json" \
-  --cv-fact-base "$PREP_DIR/cv_fact_base.json"
-```
-
-If the script exits non-zero, **regenerate 4a** with the offending techs surfaced to the prompt — do not ship candidates with stack-mirroring leaks. The check looks at every emphasis_areas item and at rationale prose; it ignores domain phrases (e.g. "Architecture de services") because those don't appear in `tech_stack_hints`.
-
-**4c. Present candidates to the user.** Format the list as a plain-text menu so the user can answer with a number, "generalist", or a free-form title:
+**4b. Ask the user.** Present a plain-text menu they can answer with a number, "generalist", or a free-form title:
 
 ```
 Based on my research, here are the angles I'd consider for [Company]:
@@ -188,168 +131,79 @@ Options:
 Which one?
 ```
 
-Wait for the user's response. Do not proceed to Step 5 without one.
+Wait for the reply. Do not continue without one.
 
-**4d. Persist the selection.** Based on the user's reply, build `$PREP_DIR/selected_role.json` conforming to `schemas/selected_role.schema.json`:
+**4c. Save the selection** as `$PREP_DIR/selected_role.json`, with `language` set to `$PACK_LANG`:
 
 | User reply | `source` | `title` | `candidate_index` | Other fields |
 |---|---|---|---|---|
-| A number `N` | `candidate_pick` | from `candidates[N-1].title` | `N-1` | copy `seniority_band`, `emphasis_areas`, `risk_notes`, `rationale` from the picked candidate |
-| `generalist` (only if `allow_generalist: true`) | `generalist` | synthetic — e.g. `"Senior .NET — Desktop & Services, open to scope"` built from CV headline + `preferred_title_labels` | `null` | `seniority_band` inferred from fact base; `emphasis_areas` may be empty; `rationale` notes the open-to-discussion framing |
-| Free-form title | `user_override` | user's exact words | `null` | `seniority_band` inferred or `"unspecified"`; `emphasis_areas` empty unless the user volunteered some; `rationale` records it is a user override |
+| A number `N` | `candidate_pick` | `candidates[N-1].title` | `N-1` | copy `seniority_band`, `emphasis_areas`, `risk_notes`, `rationale` from the candidate |
+| `generalist` (only if `allow_generalist: true`) | `generalist` | synthetic — e.g. `"Senior .NET — Desktop & Services, open to scope"` built from the CV headline + `preferred_title_labels` | `null` | `seniority_band` inferred from the fact base; `emphasis_areas` may be empty; `rationale` notes the open-to-discussion framing |
+| Free-form title | `user_override` | the user's exact words | `null` | `seniority_band` inferred or `"unspecified"`; `emphasis_areas` empty unless the user gave some; `rationale` records the override |
 
-If the user picks `generalist` when `allow_generalist: false`, confirm they want to override before proceeding — small/deep-specialist shops often read "open to discussion" as lack of focus.
+If the user picks `generalist` while `allow_generalist: false`, confirm first — small or deep-specialist shops often read "open to discussion" as lack of focus.
 
-Validate the result:
+Run **`gate selected-role`**. An override (or an edited rationale) can reintroduce a stack leak after 4a, and Step 5 onward consumes `emphasis_areas` directly — so on failure, show the violations, ask the user to amend the override or revisit the pick, and re-run.
 
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
-  "$PREP_DIR/selected_role.json" \
-  "$SKILL_BASE/schemas/selected_role.schema.json"
-```
-
-**Stack-grounding re-check.** A user override (or even a candidate-pick whose rationale was edited in flight) can reintroduce a leak after 4b. Run the same guard a second time:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/check_role_grounding.py \
-  --target "$PREP_DIR/selected_role.json" --kind selected \
-  --company-profile "$PREP_DIR/company_profile.json" \
-  --cv-fact-base "$PREP_DIR/cv_fact_base.json"
-```
-
-If non-zero, surface the violations to the user, ask them to amend the override (or revisit the pick), and only proceed once the check passes — Step 5 onward consumes `selected_role.emphasis_areas` directly and any leak here propagates into the CV, letters, LinkedIn, and dossier.
-
-**Role checkpoint.** Research + selected role are now locked. Summarise the pick back to the user — title, source, emphasis areas, risk notes — then continue to Step 5.
+**Checkpoint.** Summarise the pick — title, source, emphasis areas, risk notes — then continue.
 
 ### Step 5 — Tailor the CV
 
-Read `prompts/tailor_cv_cold.md`. Anchor = `selected_role.json` + `company_profile.json`. All structural rules from `job-application-tailor` SKILL.md § Step 5 apply unchanged (contact line, skills-section granularity, `role_line` / `metadata_line` split, date format, education/languages conventions, earlier-experience compression).
-
-**Before invoking the prompt**, merge the user's addendum into the in-memory fact base and pass `$CUSTOMIZATION["prefs"]` as context:
-
-```python
-from scripts.user_customization import merge_addendum_into_fact_base
-fact_base_for_tailoring = merge_addendum_into_fact_base(fact_base, $CUSTOMIZATION["addendum"])
-```
-
-The merged fact base must NOT be written back to `resources/cv_fact_base.json`.
-
-Save the output to `$PREP_DIR/tailored_cv.json` and validate against the tailor skill's schema:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
-  "$PREP_DIR/tailored_cv.json" \
-  "$SKILL_BASE_TAILOR/schemas/tailored_cv.schema.json"
-```
-
-**Forbidden-title post-check** — same as the tailor skill:
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/cli.py check-forbidden-labels "$PREP_DIR/tailored_cv.json"
-```
-
-Exit 1 means a forbidden label reached the CV title — surface the violation and regenerate.
+Follow `prompts/tailor_cv_cold.md` (it starts by loading `$SKILL_BASE_TAILOR/prompts/cv_rules.md`, the same CV rules the offer flow uses). Anchor = `selected_role.json` + `company_profile.json`. Pass the merged fact base, `$CUSTOMIZATION["prefs"]` and the `experience_compression_cutoff_year` from settings. Write `$PREP_DIR/tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels + claims check, which here also blocks `tech_stack_hints` technologies absent from the CV).
 
 ### Step 6 — Speculative motivation letter + short letter
 
-Read `prompts/generate_motivation_letter_cold.md`. Use the fact base, company profile, selected role, and `$CUSTOMIZATION["prefs"]` (especially `tone_directives` and `team_context_companies`) as context. The letter must:
+Follow `prompts/generate_motivation_letter_cold.md` with the merged fact base, company profile, selected role and `$CUSTOMIZATION["prefs"]` (especially `tone_directives` and `team_context_companies`). The letter:
 
-- Open with a specific observation from the company profile (prefer `recent_news`, then `mission_statement`, then `products_services`).
-- Explicitly frame the outreach as speculative — no posting reference.
-- Set `letter_type: "speculative"` for the audit trail.
+- opens with a specific observation from the profile (prefer `recent_news`, then `mission_statement`, then `products_services`);
+- frames the outreach explicitly as speculative — no posting reference;
+- sets `letter_type: "speculative"`.
 
-Save to `$PREP_DIR/letter.json` and validate against the tailor skill's letter schema (which now accepts `letter_type`):
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
-  "$PREP_DIR/letter.json" \
-  "$SKILL_BASE_TAILOR/schemas/letter.schema.json"
-```
-
-Then read `prompts/generate_short_letter_cold.md`, pass it the full letter as context, save to `$PREP_DIR/short_letter.json`, validate against the same schema. Body between 500–750 characters, same cold-flow hook.
+Save `letter.json`. Then follow `prompts/generate_short_letter_cold.md` with the full letter as context → `short_letter.json` (body 500–750 characters, same hook). Run **`gate letters`**.
 
 ### Step 7 — Cold LinkedIn outreach
 
-Read `prompts/generate_linkedin_cold.md` in full. Pass it: the fact base, `company_profile.json`, `selected_role.json`, the speculative motivation letter (so hooks stay aligned), and `$CUSTOMIZATION["prefs"]`.
+Follow `prompts/generate_linkedin_cold.md` in full, passing the merged fact base, `company_profile.json`, `selected_role.json`, the motivation letter (so hooks stay aligned) and `$CUSTOMIZATION["prefs"]`. It targets **hiring managers / CTO / tech leads** from `company_profile.leadership[]`, not recruiters, with two variants per contact: a ≤300-char connection request and a ≤700-char follow-up message. If `leadership[]` is empty it falls back to one `hiring_manager` pair with a `[Prénom]` placeholder and flags the missing name as a research gap.
 
-The prompt targets **hiring managers / CTO / tech leads** (from `company_profile.leadership[]`), **not recruiters**, and produces two variants per contact — a ≤300-char connection request and a ≤700-char post-acceptance direct message. If `leadership[]` is empty, it falls back to a single `hiring_manager` pair with `[Prénom]` placeholder and flags the missing name as a research gap.
-
-Save to `$PREP_DIR/linkedin.json` and validate against the tailor skill's linkedin schema (now extended with optional `outreach_type` and `target_role`):
-
-```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/validate.py \
-  "$PREP_DIR/linkedin.json" \
-  "$SKILL_BASE_TAILOR/schemas/linkedin.schema.json"
-```
-
-**Set `outreach_type: "cold"` and `target_role: "<selected_role.title>"`** at the root of the JSON — these are the cold-flow audit signals carried into the dossier and the run summary.
+Set `outreach_type: "cold"` and `target_role: "<selected_role.title>"` at the root of `linkedin.json`, then run **`gate linkedin`**.
 
 ### Step 8 — Company dossier + interview prep
 
-The merged deliverable that replaces the fit-score document. It is the candidate-facing artefact the user opens before any conversation with the company.
+The candidate-facing document the user opens before any conversation with the company; it replaces the fit-score document. Follow `prompts/generate_dossier_cold.md` in full, passing the merged fact base, `company_profile.json`, `selected_role.json`, the tailored CV, the letter, the LinkedIn JSON and `$CUSTOMIZATION["prefs"]`.
 
-Read `prompts/generate_dossier_cold.md` in full. Pass it: the fact base, `company_profile.json`, `selected_role.json`, the tailored CV JSON, the motivation letter JSON, the LinkedIn outreach JSON, and `$CUSTOMIZATION["prefs"]`.
+Nine sections, in order: Quick reference, Company at a glance, Why you / why them (the angle of approach), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, Research gaps. Write the Markdown to `$PREP_DIR/company_dossier.md`; Step 9 renders it as mobile-friendly HTML.
 
-The dossier has nine sections in order: Quick reference, Company at a glance, Why you / why them (the narrative angle of approach — replaces fit score), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, and Research gaps.
+**Alignment check.** The opening hook must match across the letter (§ 1), the top contact's connection request, and dossier § 3 "Why you, why them". Mismatched hooks are the most preventable cold-flow mistake — if they diverge, regenerate the LinkedIn or dossier step that drifted.
 
-**Write the Markdown source to `_prep/`** — the dossier is generated as Markdown (easiest for the model to author and for the user to re-run), then Step 9 renders it into the shipped deliverable as responsive HTML (`company_dossier.html`). Markdown reads poorly in a phone/tablet viewer, and the dossier is the artefact the user opens just before a conversation:
-
-```bash
-# The LLM output is pure markdown — write it to $PREP_DIR/company_dossier.md via the Write tool.
-# Step 9 converts it to $OUTPUT_DIR/company_dossier.html (styled, mobile-friendly).
-```
-
-**Alignment check.** Before moving to Step 9, confirm the opening hook is consistent across the motivation letter (§ 1), the LinkedIn connection request for the top contact (first variant), and § 3 "Why you, why them" in the dossier. Mismatched hooks across artefacts is the single most preventable cold-flow mistake. If they diverge, regenerate the LinkedIn or dossier step that drifted — do not ship the pack as-is.
-
-### Step 9 — Generate output files
-
-The tailor skill's `scripts/generate_outputs.py` receives CV + letters, the LinkedIn JSON, AND the dossier Markdown. Passing `--dossier-markdown` makes the script render `$PREP_DIR/company_dossier.md` into `$OUTPUT_DIR/company_dossier.html` (responsive, mobile-friendly) — the same treatment the offer flow gives its interview prep.
+### Step 9 — Build the output files
 
 ```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/generate_outputs.py \
-  --tailored-cv-json "$PREP_DIR/tailored_cv.json" \
-  --letter-json "$PREP_DIR/letter.json" \
-  --short-letter-json "$PREP_DIR/short_letter.json" \
-  --linkedin-json "$PREP_DIR/linkedin.json" \
-  --dossier-markdown "$PREP_DIR/company_dossier.md" \
-  --output-dir "$OUTPUT_DIR" \
-  --job-title "<selected_role.title>" \
-  --language "<fr|en>"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py regenerate-outputs "$OUTPUT_DIR"
 ```
 
-Pass the selected role's title as `--job-title`. The file-naming patterns in `config/naming_rules.yaml` substitute it into filenames like `CV_<Candidate>_<Role>.docx`, `Lettre_de_motivation_<Candidate>_<Role>.docx`, and `LinkedIn_message_<Candidate>_<Role>.txt`. The `cold-` prefix on `$OUTPUT_DIR` already distinguishes the folder from offer-based packs. `--interview-markdown` is deliberately **omitted** in the cold flow — the dossier (passed via `--dossier-markdown`) replaces the interview prep deliverable.
+The `cold-` prefix selects the cold build: title from `selected_role.title` (used in filenames such as `CV_<Candidate>_<Role>.docx`), language from `selected_role.language`, and the dossier instead of interview prep. Result:
 
-Final pack contents after Step 9:
 - `CV_<Candidate>_<Role>.docx` + `.pdf`
 - `Lettre_de_motivation_<Candidate>_<Role>.docx` + `.pdf` (`Cover_letter_…` in English)
 - `Lettre_courte_<Candidate>_<Role>.txt` (`Short_cover_letter_…` in English)
 - `LinkedIn_message_<Candidate>_<Role>.txt`
-- `company_dossier.html` (responsive, mobile-friendly; Markdown source kept at `_prep/company_dossier.md`)
-- `_prep/` with all intermediate JSONs (`company_profile.json`, `role_candidates.json`, `selected_role.json`, `tailored_cv.json`, `letter.json`, `short_letter.json`, `linkedin.json`) + `company_dossier.md` + `raw_research.md`
-- `run_summary.json`
+- `company_dossier.html` (Markdown source kept in `_prep/`)
+- `run_summary.json`, plus every intermediate file in `_prep/`
 
 ### Step 10 — Record in job history
 
-Insert the generated pack into the shared `job_history.db` so it segments cleanly from offer-based applications. The shared DB is v3: `applications.source` (`'offer'` / `'cold'`), `applications.org_type` (the researched `company_profile.org_type`, cold-only), and `applications.company_profile_snapshot` (compact JSON subset of the company profile, which now includes `org_type`). Legacy v1/v2 DBs migrate in place on first open.
-
-Use the `record-application` wrapper. The `cold-` folder prefix tells it to take the cold-flow path: read `selected_role.json` + `company_profile.json`, build the snapshot subset, set `source='cold'`, and leave the offer-only scoring columns (`fit_*`, `direct_count`, `transferable_count`, `gap_count`) NULL. `job_skills` rows stay empty by design — the cold flow has no JD to extract requirements from.
-
 ```bash
-cd "$SKILL_BASE_TAILOR" && python scripts/cli.py record-application "$OUTPUT_DIR" --language "<fr|en>"
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py record-application "$OUTPUT_DIR"
 ```
 
-Pass the language explicitly — there is no JD to auto-detect from. Defaults to `fr` if omitted, matching the cold-flow default. The wrapper reads `company_profile.canonical_url` for `source_url`; pass `--url` if you want a different URL recorded (e.g. the leadership page used to anchor the outreach). See `$SKILL_BASE_TAILOR/references/commands.md` § Record Application for the full flag reference.
+The `cold-` prefix makes it record `source='cold'`, the `org_type`, and a compact company-profile snapshot, with the offer-only score columns left empty. Language comes from `selected_role.json`; `source_url` from `company_profile.canonical_url` (pass `--url` to record a different page, e.g. the leadership page used for outreach).
 
-**Re-prospecting a company that already has a pack.** The `cold-DDMMYYYY-` prefix carries the run date, so a second run on a later date lands in a *new* folder and, by default, records a *second* live row (the historical `#41` vs `#100` duplication). If this is a deliberate refresh of the same role — not a distinct role at the same company — add `--supersede`: it marks any prior live application to the **same company + same role** as `dropped` before recording the new one, leaving one active row per role. A different role at the same company is untouched. First check what already exists so you (and the user) choose deliberately:
+**Re-prospecting a company.** A run on a later date lands in a new folder and, by default, records a second live row. First check what exists:
 
 ```bash
 cd "$SKILL_BASE_TAILOR" && python scripts/cli.py list --company "<company>"
 ```
 
-**Note on `job-stats`.** Cold rows record their `source` (`cold`) and, when the profile classified it, their `org_type`. Segment any report with `--source cold` (or `offer`) and narrow to an organisation type with `--org-type esn|end_employer|staffing_agency|recruitment_agency|unknown` — available on `stats`, `skills`, `count`, and `list`, plus a `stats --type org` breakdown. See `job-stats`.
+If this is a deliberate refresh of the **same role**, add `--supersede` to `record-application`: it marks the earlier live application for that company + role as `dropped`, leaving one active row. A different role at the same company is untouched.
 
-After Step 10 completes, summarise back to the user: output folder path, selected role, source URLs referenced, any `research_gaps` the dossier flagged, and the application id for later status updates via `/job-status`.
-
-## Build status
-
-**Launch-ready.** `/job-cold-prospect <name>` runs fully end-to-end: research → role pick → tailored CV → motivation letter + short letter → LinkedIn messages → company dossier → history insert. Change history (phases A–G + later work) lives in the repo-root `CHANGELOG.md`.
+Finally, tell the user: output folder, selected role, source URLs referenced, any `research_gaps` the dossier flagged, and the application id (for `/job-status` updates). Cold rows can be segmented in `/job-stats` with `--source cold` and `--org-type`.

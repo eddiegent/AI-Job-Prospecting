@@ -274,6 +274,22 @@ def test_cold_flow_language_override(tmp_path: Path) -> None:
         db.close()
 
 
+def test_cold_flow_language_defaults_to_selected_role_language(tmp_path: Path) -> None:
+    folder = tmp_path / "cold-06052026-acme-sas"
+    folder.mkdir()
+    _write_cold_prep(folder)
+    role_path = folder / "_prep" / "selected_role.json"
+    role = json.loads(role_path.read_text(encoding="utf-8"))
+    role_path.write_text(json.dumps({**role, "language": "en"}), encoding="utf-8")
+
+    result = _run_cli(tmp_path / "history.db", str(folder), "--dry-run")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["detected_language"] == "en"
+
+    result = _run_cli(tmp_path / "history.db", str(folder), "--dry-run", "--language", "fr")
+    assert json.loads(result.stdout)["detected_language"] == "fr"
+
+
 # ---------------------------------------------------------------------------
 # --dry-run, --source override, error handling, integer id
 # ---------------------------------------------------------------------------

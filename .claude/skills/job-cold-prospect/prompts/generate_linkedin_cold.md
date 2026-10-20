@@ -1,7 +1,7 @@
 Write LinkedIn outreach messages for a **cold-call application** — there is no job posting, and the recipients are senior technical / hiring contacts the candidate is approaching unsolicited.
 
 You will receive:
-1. the structured CV fact base (positioning, strongest themes)
+1. the merged CV fact base (`cv_fact_base_merged.json` — positioning, strongest themes)
 2. `company_profile.json` — especially `leadership[]` for real contact names and LinkedIn URLs, plus `recent_news`, `mission_statement`, `products_services` for the hook
 3. `selected_role.json` — the angle the candidate has chosen to lead with
 4. the speculative motivation letter (already generated) — align the LinkedIn hook to the letter's hook so recipients see a coherent approach
@@ -67,7 +67,7 @@ Count characters including spaces and punctuation. If you're over budget, cut ad
 One sentence each:
 1. Greeting by first name (or `[Prénom]` if no name).
 2. The specific hook — one clause tying a company fact to a reason the candidate is reaching out.
-3. Who the candidate is in one line — seniority + primary track from the fact base (e.g. ".NET / Desktop & Services, ~25 ans, côté Acme Corp dernièrement").
+3. Who the candidate is in one line — seniority + primary track from the fact base (e.g. "C++ / outillage desktop, ~12 ans, côté Acme Corp dernièrement").
 4. One-line ask — "15 minutes pour échanger ?" / "open to a short chat?" For `end_employer`, avoid "would love to discuss opportunities" — it reads as vacancy-hunting. For an intermediary (`esn` / `staffing_agency` / `recruitment_agency`), referencing missions / opportunities is appropriate and expected — "échanger sur vos missions [domaine] ?" / "open to talk about [domain] missions?".
 
 ## Structure — direct message (post-acceptance)
@@ -109,14 +109,14 @@ Produce the connection-request variants first, then the direct-message variants,
 ```jsonc
 {
   "outreach_type": "cold",
-  "target_role": "Tech Lead .NET — Desktop & Services",
+  "target_role": "Tech Lead C++ — Simulation & Tooling",
   "variants": [
     {
       "target": "hiring_manager",
       "contact_name": "Marie Durand",
       "linkedin_url": "https://www.linkedin.com/in/marie-durand-cto/",
       "subject_hint": "Connection request",
-      "message": "Bonjour Marie, votre interview sur le scaling de la simulation m'a interpellé — j'arrive d'une longue tenure WPF / services côté Acme Corp. 15 minutes pour en discuter ? Bien cordialement, Jean"
+      "message": "Bonjour Marie, votre interview sur le scaling de la simulation m'a interpellé — j'arrive d'une longue tenure C++ / outillage desktop côté Acme Corp. 15 minutes pour en discuter ? Bien cordialement, Jean"
     },
     {
       "target": "hiring_manager",

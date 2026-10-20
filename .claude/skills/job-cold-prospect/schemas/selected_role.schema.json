@@ -42,6 +42,11 @@
     "company_name": {
       "type": "string",
       "description": "Sanity check against company_profile.json."
+    },
+    "language": {
+      "type": "string",
+      "enum": ["fr", "en"],
+      "description": "Language of the pack (codes as in config/languages.yaml). Optional: `cli.py regenerate-outputs` and `record-application` use it when --language is not passed, else default to fr."
     }
   },
   "required": ["title", "source", "seniority_band", "generated_at", "company_name"]

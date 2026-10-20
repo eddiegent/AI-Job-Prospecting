@@ -1,5 +1,5 @@
 Write a very concise introduction/motivation letter based on:
-1. a structured CV fact base
+1. the merged CV fact base (`cv_fact_base_merged.json`)
 2. a structured job offer analysis
 3. the full motivation letter (already generated) — distill it, don't start from scratch
 
@@ -27,7 +27,7 @@ Return valid JSON matching `schemas/letter.schema.json`. Omit `sender_address`, 
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
-- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé .NET Remoting/WCF par gRPC").
+- Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- `python scripts/claims_guard.py check "$PREP_DIR"` must pass before outputs are generated.
+- The CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — schema + forbidden title labels + claims check) must pass before outputs are generated.

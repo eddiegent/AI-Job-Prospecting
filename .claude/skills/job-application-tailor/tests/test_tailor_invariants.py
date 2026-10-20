@@ -1,4 +1,4 @@
-"""Regression tests for the rules documented in prompts/tailor_cv.md.
+"""Regression tests for the rules documented in prompts/cv_rules.md.
 
 These exercise the pure-Python validators in scripts/tailor_invariants.py
 against hand-built fixtures. They pin the rules at the JSON-shape level so

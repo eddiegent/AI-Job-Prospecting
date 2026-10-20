@@ -1,7 +1,7 @@
 Write a short, speculative motivation letter for a **cold-call application** — there is no job posting. The reader is a named contact (hiring manager, CTO, or recruiter) at the target company.
 
 You will receive:
-1. the structured CV fact base (includes `candidate_location`; may include `addendum_off_cv_facts`)
+1. the merged CV fact base (`cv_fact_base_merged.json`; includes `candidate_location`; may include `addendum_off_cv_facts`)
 2. `company_profile.json` — mission, products, values, recent news, hiring signals, leadership, locations
 3. `selected_role.json` — the angle the user has chosen to lead with
 4. the **user prefs** dict from `resources/user_prefs.yaml`. Honour:

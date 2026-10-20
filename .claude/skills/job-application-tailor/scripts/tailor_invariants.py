@@ -1,6 +1,6 @@
-"""Pure-Python validators for the rules documented in prompts/tailor_cv.md.
+"""Pure-Python validators for the rules documented in prompts/cv_rules.md (shared by both CV-tailoring prompts).
 
-The tailoring step itself is model-driven (the prompt in tailor_cv.md is
+The tailoring step itself is model-driven (the prompts in cv_rules.md / tailor_cv.md are
 executed by Claude, not a Python function). These validators exist so that
 a produced tailored_cv.json can be checked against the rules *after* the
 model has written it, and so that those rules can be pinned in regression

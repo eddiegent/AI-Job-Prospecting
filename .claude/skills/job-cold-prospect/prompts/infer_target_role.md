@@ -6,18 +6,18 @@ Produce 1–3 candidate roles, each with enough substance that the user can pick
 
 ## Inputs you will receive
 
-- **`cv_fact_base`** — the candidate's canonical skills, experience, methodologies. Source of truth for what they can actually claim.
+- **`cv_fact_base`** — the merged CV fact base (`cv_fact_base_merged.json`: master CV + addendum). The candidate's canonical skills, experience, methodologies. Source of truth for what they can actually claim.
 - **`company_profile`** — the target company's industry, size, mission, products, values, hiring signals, tech stack hints, leadership. Source of truth for what the company looks like.
 - **`user_prefs`** — `preferred_title_labels`, `forbidden_title_labels`, `tone_directives`, `default_language`. Respect both the prefers and the forbidden lists.
 - **Optional user hints** — free-form context the user added when invoking the skill. Treat as guidance, not facts.
 
 ## Hard rules
 
-- **Truthfulness first.** Every proposed role must be something the candidate can credibly hold given their fact base. Do not propose "Head of Data Science" for a .NET desktop developer because the company happens to want data people.
-- **No stack mirroring in candidate-side fields.** A tech may appear in `company_profile.tech_stack_hints` AND in `cv_fact_base` (technologies / skills / methodologies / experience details / addendum) — if so, naming it in `emphasis_areas` or rationale is fine. A tech that appears ONLY in the company hints is a fact about the company; it must not show up as a candidate strength in `emphasis_areas` or in rationale prose. Concrete failure to avoid: agap2's listing requires Entity Framework, but the candidate's fact base only has SQL Server + Dapper — write `"SQL Server"` in `emphasis_areas`, not `"SQL Server / Entity Framework"`. Same for Razor, ASP.NET MVC, Azure DevOps, Git when they aren't in the fact base. A deterministic post-check (`scripts/check_role_grounding.py`) runs after this prompt and will reject the output if any leak slips through.
+- **Truthfulness first.** Every proposed role must be something the candidate can credibly hold given their fact base. Do not propose "Head of Data Science" for a front-end web developer because the company happens to want data people.
+- **No stack mirroring in candidate-side fields.** A tech may appear in `company_profile.tech_stack_hints` AND in `cv_fact_base` (technologies / skills / methodologies / experience details / addendum) — if so, naming it in `emphasis_areas` or rationale is fine. A tech that appears ONLY in the company hints is a fact about the company; it must not show up as a candidate strength in `emphasis_areas` or in rationale prose. Concrete failure to avoid: a company's listing requires Hibernate, but the candidate's fact base only has PostgreSQL + plain JDBC — write `"PostgreSQL"` in `emphasis_areas`, not `"PostgreSQL / Hibernate"`. Same for any other framework, CI tool or platform the company lists that isn't in the fact base. A deterministic post-check (`scripts/check_role_grounding.py`) runs after this prompt and will reject the output if any leak slips through.
 - **Don't quote the company's stack verbatim in rationale.** Phrases like *"la stack listée — A, B, C, D, E — recouvre ligne pour ligne"* are an attractive nuisance: they invite copying the company's full tech list into the rationale where every entry implies candidate competence. Describe the alignment qualitatively instead, naming only techs that are in the candidate's fact base.
-- **Respect forbidden title labels.** If `user_prefs.forbidden_title_labels` contains a label (e.g. "Backend"), never produce a candidate title using it. Check after generation.
-- **Prefer label conventions.** If `user_prefs.preferred_title_labels` is set, lean on those labels where they fit (e.g. a candidate whose prefs say "Desktop & Services" must not be labelled "Backend").
+- **Respect forbidden title labels.** If `user_prefs.forbidden_title_labels` contains a label (e.g. "Frontend"), never produce a candidate title using it. Check after generation.
+- **Prefer label conventions.** If `user_prefs.preferred_title_labels` is set, lean on those labels where they fit (e.g. a candidate whose prefs say "Platform & Tooling" must not be labelled "Frontend").
 - **No fabrication about the company.** `rationale` must only reference company facts that appear in `company_profile` — hiring signals, mission, products, recent news, leadership, inferred pain points (clearly marked as inferred). Do not invent needs the company did not express.
 - **Honest risk notes.** Each candidate must list 1+ `risk_notes` unless the match is overwhelming. Gaps the user should know about before committing.
 - **At least one substantially different angle.** When proposing 2–3 candidates, make them genuinely distinct (e.g. IC lead vs. manager, or core product vs. tooling) — not three variations of the same title. If only one angle is credible, return just one candidate.
@@ -29,11 +29,11 @@ Read `company_profile.org_type` first. It changes what a candidate angle *is*:
 
 - **`end_employer`** — the default. A role is a job on the company's own teams, solving the company's own problems. Use the whole process below as written.
 - **`esn`, `staffing_agency`** — the candidate would be **employed by the intermediary and placed on client missions**. A "candidate angle" is therefore the **consultant profile** they would be sold as, not a job solving the ESN's own pain points. So:
-  - Title the angle as a placeable profile, e.g. `"Consultant .NET Senior — Desktop & Services"` or `"Ingénieur logiciel C++/.NET en régie"`, not `"Tech Lead at <ESN>"`.
+  - Title the angle as a placeable profile, e.g. `"Consultant Java Senior — Plateformes & APIs"` or `"Ingénieur logiciel Python en régie"`, not `"Tech Lead at <ESN>"`.
   - `rationale` ties to the **breadth and demand of missions the candidate fits** (the kinds of clients/projects the ESN staffs), to the candidate's mobility/adaptability, and to the ESN's positioning/sector — NOT to inferred pain points of the ESN itself (an ESN's driver is client demand, not its own roadmap).
   - Lean `allow_generalist: true` — intermediaries place broad, adaptable profiles.
   - A useful `risk_notes` here is often about scope of missions, mobility, or rate expectations, not domain gaps.
-- **`recruitment_agency`** — the cabinet does **not** employ the candidate; it brokers them into a permanent role **elsewhere**. The angle is the **kind of permanent role the candidate wants the cabinet to represent them for**, framed by the cabinet's specialisation (sector / seniority they recruit for). Title it as the target role the candidate seeks (e.g. `"Lead .NET — Desktop & Services (poste en CDI via cabinet)"`), and have `rationale` explain the fit between the candidate's profile and the cabinet's recruiting niche.
+- **`recruitment_agency`** — the cabinet does **not** employ the candidate; it brokers them into a permanent role **elsewhere**. The angle is the **kind of permanent role the candidate wants the cabinet to represent them for**, framed by the cabinet's specialisation (sector / seniority they recruit for). Title it as the target role the candidate seeks (e.g. `"Lead Java — Plateformes & APIs (poste en CDI via cabinet)"`), and have `rationale` explain the fit between the candidate's profile and the cabinet's recruiting niche.
 - **`unknown`** — treat as `end_employer` but keep angles broad, and let a `risk_notes` entry flag that the organisation type wasn't confirmed.
 
 Everything below still applies; the bullets above only re-point what the title and rationale should anchor on.
@@ -63,17 +63,17 @@ Return valid JSON conforming to `schemas/role_candidates.schema.json`.
 {
   "candidates": [
     {
-      "title": "Tech Lead .NET — Desktop & Services",
-      "rationale": "Acme's 2026 hiring plan (Series B news) calls out 'scaling the simulation tooling' — a WPF-heavy desktop product close to the candidate's 8+ years on a flagship desktop sync client. CTO Marie Durand's public interview names platform reliability as a priority, which maps to the candidate's service-architecture track. Fits their stated 'ingénierie française' positioning.",
+      "title": "Tech Lead C++ — Simulation & Tooling",
+      "rationale": "Acme's 2026 hiring plan (Series B news) calls out 'scaling the simulation tooling' — a C++ desktop product close to the candidate's 6+ years on a desktop CAD application. CTO Marie Durand's public interview names platform reliability as a priority, which maps to the candidate's test-automation track. Fits their stated 'ingénierie française' positioning.",
       "seniority_band": "lead",
-      "emphasis_areas": ["WPF Desktop", "service architecture", "team mentoring", "Windows integration"],
+      "emphasis_areas": ["C++ desktop", "test automation", "team mentoring", "performance profiling"],
       "risk_notes": ["no cloud-native / Kubernetes experience on record", "robotics-domain onboarding will take weeks"]
     },
     {
-      "title": "Senior .NET Engineer — Simulation Tooling",
-      "rationale": "If Acme prefers an IC hire, the 12 open engineering roles on their careers page (hiring_signals) include multiple simulation / tooling positions where the candidate's legacy-modernisation track (Fortran→C++) plus a long product tenure give credible specialist depth. Avoids committing to management.",
+      "title": "Senior C++ Engineer — Simulation Tooling",
+      "rationale": "If Acme prefers an IC hire, the 12 open engineering roles on their careers page (hiring_signals) include multiple simulation / tooling positions where the candidate's legacy-modernisation track (a Qt 4 → Qt 6 port) plus a long product tenure give credible specialist depth. Avoids committing to management.",
       "seniority_band": "senior",
-      "emphasis_areas": ["simulation tooling modernisation", "C++ interop", "performance-sensitive desktop"],
+      "emphasis_areas": ["simulation tooling modernisation", "Qt", "performance-sensitive desktop"],
       "risk_notes": ["narrower scope than the lead angle — may underclaim seniority if the company actually wants a lead"]
     }
   ],

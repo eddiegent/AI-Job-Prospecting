@@ -222,6 +222,22 @@ funnel [--since <since>] [--source <source>] [--org-type <org_type>] [--json]
 | `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 | `--json` | flag | Output as JSON |
 
+### `gate`
+
+Run all checks for one pipeline stage (schema, grounding, labels, claims) in one call
+
+**Signature:**
+
+```
+gate <stage> <folder> [--cv <cv>]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `stage` | positional | Pipeline stage to check — choices: `factbase`, `offer`, `match`, `cv`, `letters`, `linkedin`, `profile`, `roles`, `selected-role` |
+| `folder` | positional | Run output folder (or its _prep/ subfolder) |
+| `--cv` | optional | Master CV path (default: <user-data-dir>/MASTER_CV.docx) |
+
 ### `get`
 
 Get a single application
@@ -286,6 +302,20 @@ probe-url <url>
 | --- | --- | --- |
 | `url` | positional | Job-offer URL to probe with a HEAD request |
 
+### `read-cv`
+
+Print the master CV text (paragraphs as [<style>] <text>, then tables) for LLM extraction
+
+**Signature:**
+
+```
+read-cv [--cv <cv>]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--cv` | optional | Master CV path (default: <user-data-dir>/MASTER_CV.docx) |
+
 ### `record-application`
 
 Step 10 — read _prep/ artefacts and insert the history row
@@ -301,25 +331,27 @@ record-application <target> [--url <url>] [--source <source>] [--language <langu
 | `target` | positional | Application id (integer) or path to an output folder |
 | `--url` | optional | Override source URL when the offer JSON / profile lacks one |
 | `--source` | optional | Override the auto-detected flow (default: 'cold' for cold-* folders, 'offer' otherwise) — choices: `offer`, `cold` |
-| `--language` | optional | Detected language for cold flow (default: 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json. |
+| `--language` | optional | Detected language for cold flow (default: selected_role.language, else 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json. |
 | `--dry-run` | flag | Print the kwargs that would be inserted, then exit (no DB write) |
 | `--supersede` | flag | Mark any prior live application to the same company+role as 'dropped' before recording this one, so a re-prospect doesn't leave a parallel active row |
 
 ### `regenerate-outputs`
 
-Rebuild DOCX/PDF/TXT/MD from existing _prep/ JSONs (Step 9 only)
+Build or rebuild DOCX/PDF/TXT/HTML from _prep/ (offer or cold pack, flow from folder name)
 
 **Signature:**
 
 ```
-regenerate-outputs <target> [--check] [--skip-pdf]
+regenerate-outputs <target> [--check] [--skip-pdf] [--language <language>] [--job-title <job_title>]
 ```
 
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `target` | positional | Application id (integer) or path to an output folder |
-| `--check` | flag | Only report which _prep/ files are present or missing |
+| `--check` | flag | Only report which _prep/ files are present or missing for the detected flow |
 | `--skip-pdf` | flag | Skip PDF conversion (DOCX only) |
+| `--language` | optional | Override the output language (default: offer = job_offer_analysis.detected_language; cold = selected_role.language, else fr) — choices: `fr`, `en` |
+| `--job-title` | optional | Override the title used in filenames (default: offer = folder slug; cold = selected_role.title) |
 
 ### `rename-application`
 

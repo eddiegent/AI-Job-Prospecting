@@ -39,14 +39,15 @@ _ORDER = [
     # pipeline-support commands (no DB)
     "probe-url", "cache-raw-offer", "detect-platform", "rename-with-fit",
     "rename-cold-folder", "check-forbidden-labels", "save-cv-cache",
+    "read-cv", "gate",
 ]
 
 
 def all_commands() -> list[Command]:
-    from scripts.commands import admin, companies, pipeline, records, reporting, status
+    from scripts.commands import admin, companies, gate, pipeline, records, reporting, status
 
     by_name: dict[str, Command] = {}
-    for module in (reporting, status, companies, records, admin, pipeline):
+    for module in (reporting, status, companies, records, admin, pipeline, gate):
         for cmd in module.COMMANDS:
             if cmd.name in by_name:
                 raise RuntimeError(f"duplicate command name: {cmd.name}")

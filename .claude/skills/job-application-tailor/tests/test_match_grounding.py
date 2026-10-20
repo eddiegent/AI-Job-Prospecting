@@ -349,3 +349,53 @@ def test_gap_matches_never_flagged(tmp_path):
     target = _write(tmp_path, "ma.json", ma)
     errors, warnings = check(target, off, fb)
     assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# Merged fact base (claims_guard merge output)
+# ---------------------------------------------------------------------------
+
+
+def _merged_fact_base() -> dict:
+    fb = _fact_base()
+    fb["technologies"] = fb["technologies"] + ["ASP .Net Core", "Docker"]
+    fb["addendum_hidden_skills"] = ["Kubernetes (cluster perso, k3s)"]
+    fb["addendum_off_cv_facts"] = ["Formation Entity Framework suivie en 2024"]
+    fb["addendum_skill_calibration"] = ["**WCF** maintenance only"]
+    fb["familiar_only_skills"] = ["ASP .Net Core", "Docker", "CI/CD"]
+    return fb
+
+
+def _single_direct(requirement: str) -> dict:
+    return {
+        "match_summary": {"direct_count": 1, "transferable_count": 0, "gap_count": 0, "overall_fit_pct": 100},
+        "matches": [{"requirement": requirement, "category": "required_skill",
+                     "match_type": "direct", "evidence": "x"}],
+    }
+
+
+def test_merged_fact_base_grounds_addendum_only_skill(tmp_path):
+    fb = _write(tmp_path, "fb.json", _merged_fact_base())
+    off = _write(tmp_path, "off.json", _offer_with_kubernetes())
+    target = _write(tmp_path, "ma.json", _single_direct("Kubernetes"))
+    errors, _ = check(target, off, fb)
+    assert errors == []
+
+
+def test_familiar_only_skill_cannot_be_direct(tmp_path):
+    fb = _write(tmp_path, "fb.json", _merged_fact_base())
+    off = _write(tmp_path, "off.json", {**_offer_with_kubernetes(), "technologies": ["ASP.NET Core", "Docker"]})
+    for req in ("ASP.NET Core", "Docker", "CI/CD"):
+        target = _write(tmp_path, "ma.json", _single_direct(req))
+        errors, _ = check(target, off, fb)
+        assert any("familiar-only" in e for e in errors), req
+
+
+def test_familiar_only_skill_as_transferable_is_fine(tmp_path):
+    fb = _write(tmp_path, "fb.json", _merged_fact_base())
+    off = _write(tmp_path, "off.json", _offer_with_kubernetes())
+    ma = _single_direct("Docker")
+    ma["matches"][0].update(match_type="transferable", notes="Docker en usage ponctuel")
+    target = _write(tmp_path, "ma.json", ma)
+    errors, warnings = check(target, off, fb)
+    assert errors == [] and warnings == []

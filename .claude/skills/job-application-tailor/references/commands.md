@@ -63,7 +63,7 @@ After Step 3 produces `job_offer_analysis.json`, probe the company name against 
 cd "$SKILL_BASE" && python scripts/cli.py detect-platform "$OUTPUT_DIR"
 ```
 
-After the user supplies the real client, patch `job_offer_analysis.json` directly (read, update `company_name`, set `source_platform` to the old value and `company_is_aggregator` to `false`, re-save, re-validate).
+After the user supplies the real client, patch `job_offer_analysis.json` directly (read, update `company_name`, set `source_platform` to the old value and `company_is_aggregator` to `false`, re-save, then re-run `gate offer`).
 
 ## CV Caching
 
@@ -81,90 +81,36 @@ Runs the metric-drift consistency guard first and refuses (exit 1) if the fact b
 
 ### Read master CV text
 ```bash
-python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from docx import Document
-doc = Document(sys.argv[1])
-for p in doc.paragraphs:
-    if p.text.strip(): print(f'[{p.style.name}] {p.text}')
-for ti, t in enumerate(doc.tables):
-    print(f'--- TABLE {ti} ---')
-    for r in t.rows: print(' | '.join(c.text.strip() for c in r.cells))
-" "$MASTER_CV"
+cd "$SKILL_BASE" && python scripts/cli.py read-cv --cv "$MASTER_CV"
 ```
 
-## Verify Fact Base Against Raw CV
+Prints every paragraph as `[<style>] <text>`, then each table as `--- TABLE n ---` rows. `--cv` defaults to the resolved user-data dir's `MASTER_CV.docx`.
 
-### Catch contamination from job offer keywords and metric drift
-```bash
-cd "$SKILL_BASE" && python scripts/verify_fact_base.py "$MASTER_CV" "$PREP_DIR/cv_fact_base.json"
-```
+## Gates
 
-If this fails (exit code 1), either a technology/methodology was fabricated
-(`[technologies]` / `[methodologies]`) or a salient numeric metric drifted from
-the CV (`[metric]`). Remove a fabricated tech/methodology; for a `[metric]`
-failure re-extract or correct the figure to match the CV — do not delete the
-number blindly and do not refresh `.cv_hash` by hand. Re-run verification before
-proceeding. Warnings about skills are non-blocking — review them but they may be
-valid abstractions.
-
-## Recount Match Summary
-
-After writing `match_analysis.json`, run this before validation. Overwrites
-`match_summary` with deterministically counted values from `matches[]`.
-Idempotent — safe to run on already-correct data.
+Each pipeline stage has one gate that runs all of its deterministic checks and reports every problem at once. `<folder>` is `$OUTPUT_DIR` (or `$PREP_DIR`).
 
 ```bash
-cd "$SKILL_BASE" && python scripts/recount_match_summary.py "$PREP_DIR/match_analysis.json"
+cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
 ```
 
-Prints `OK (already correct)` when the LLM-authored summary was already
-in sync, or `Updated match_summary: <before> -> <after>` when the script
-fixed a drift. Exit code 0 on success.
+| Stage | After writing | Checks |
+|---|---|---|
+| `factbase` | `cv_fact_base.json` | schema → verify against the master CV (fabricated tech/methodology, metric drift; skill warnings non-blocking). `--cv` overrides the CV path |
+| `offer` | `job_offer_analysis.json` | schema |
+| `match` | `match_analysis.json` | recount `match_summary` in place → schema → grounding (a `direct` match needs evidence in the fact base) |
+| `cv` | `tailored_cv.json` | schema → forbidden title labels (`user_prefs.yaml`) → claims check |
+| `letters` | `letter.json` + `short_letter.json` | schema → claims check |
+| `linkedin` | `linkedin.json` | schema → claims check |
+| `profile` | `company_profile.json` (cold) | schema |
+| `roles` | `role_candidates.json` (cold) | schema → forbidden title labels → stack grounding |
+| `selected-role` | `selected_role.json` (cold) | schema → stack grounding |
 
-## Match Grounding Check
+Exit 0 = pass, 1 = at least one check failed (each failure is listed under its check), 2 = bad folder. A failed schema check stops the stage; otherwise every check runs. The claims check flags unsourced intensity wording ("quotidien"…), familiar-only skills used as strengths, skills absent from the master CV/addendum, dropped skill qualifiers, a malformed "Earlier experience" line, and technologies from the job posting (offer) or the company's `tech_stack_hints` (cold) that the CV doesn't support.
 
-After validating `match_analysis.json`, run this guard against false-direct
-claims — `match_type: "direct"` requires the requirement's tech tokens to
-actually appear in `cv_fact_base.json`. If the LLM marked something direct
-without grounding (e.g. a JD asks for Kubernetes and there is no Kubernetes
-evidence in the fact base), the script flags it and exits 1.
+**On failure, fix the generated file and re-run.** Never edit the master CV, the addendum or `.cv_hash` to make a gate pass. Match grounding failure → downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`. Fact-base `[metric]` failure → re-extract the figure from the CV, don't delete it.
 
-```bash
-cd "$SKILL_BASE" && python scripts/check_match_grounding.py \
-  --match-analysis "$PREP_DIR/match_analysis.json" \
-  --job-offer "$PREP_DIR/job_offer_analysis.json" \
-  --cv-fact-base "$PREP_DIR/cv_fact_base.json"
-```
-
-On violation: regenerate Step 4 with the offending requirements surfaced
-to the prompt. Downgrade unfounded `direct` claims to `transferable` (with
-a concrete `notes` explanation) or to `gap`. Do not proceed to Step 5 with
-false directs — the inflated `overall_fit_pct` may push a low-fit role
-through the 50% gate, and the tailored CV will inherit the unfounded
-claim.
-
-Warnings about transferable matches with empty `notes` are non-blocking
-but should be addressed — `match_analysis.md` requires the explanation.
-
-## Validation
-
-### Validate any JSON against its schema
-```bash
-cd "$SKILL_BASE" && python scripts/validate.py "<json-path>" "schemas/<schema-name>.schema.json"
-```
-
-Schema mapping:
-| File | Schema |
-|------|--------|
-| `cv_fact_base.json` | `cv_fact_base.schema.json` |
-| `job_offer_analysis.json` | `job_offer_analysis.schema.json` |
-| `match_analysis.json` | `match_analysis.schema.json` |
-| `tailored_cv.json` | `tailored_cv.schema.json` |
-| `letter.json` | `letter.schema.json` |
-| `short_letter.json` | `letter.schema.json` |
-| `linkedin.json` | `linkedin.schema.json` |
+The individual scripts (`validate.py`, `recount_match_summary.py`, `check_match_grounding.py`, `check_role_grounding.py`, `verify_fact_base.py`, `claims_guard.py check`) still work on their own for debugging.
 
 ## Folder Rename (after match analysis)
 
@@ -233,28 +179,14 @@ Accepts either a filesystem path or an integer application id (resolved via the 
 
 On success the command prints `Recorded application #<id>` on stdout, preceded by one `Superseded #<id> … -> dropped` line per row it retired. Exit codes: `0` = inserted (or dry-run completed), `1` = unknown id, `2` = missing/invalid `_prep/` artefacts.
 
-## Generate Final Output Files
+## Build / Regenerate Outputs
 
-```bash
-cd "$SKILL_BASE/scripts" && python generate_outputs.py \
-  --tailored-cv-json "$PREP_DIR/tailored_cv.json" \
-  --letter-json "$PREP_DIR/letter.json" \
-  --short-letter-json "$PREP_DIR/short_letter.json" \
-  --linkedin-json "$PREP_DIR/linkedin.json" \
-  --interview-markdown "$PREP_DIR/interview_prep.md" \
-  --match-analysis-json "$PREP_DIR/match_analysis.json" \
-  --output-dir "$OUTPUT_DIR" \
-  --job-title "<detected job title>" \
-  --settings "$SKILL_BASE/config/settings.default.yaml" \
-  --naming-rules "$SKILL_BASE/config/naming_rules.yaml" \
-  --language "<detected language>"
-```
+`regenerate-outputs` builds the final files from `_prep/` — on the first run and on every rebuild, for both flows. The folder prefix picks the flow:
 
-Pass `--skip-pdf` to produce DOCX only.
+- **offer** — title and language from `_prep/job_offer_analysis.json`; renders `interview_prep.md` to HTML; passes `match_analysis.json` for the run summary.
+- **cold** (`cold-…`) — title from `selected_role.title`, language from `selected_role.language` (default `fr`); renders `company_dossier.md` to HTML instead of interview prep.
 
-## Regenerate Outputs
-
-For subsequent runs against an existing folder, `regenerate-outputs` is the one-line wrapper. It reads `job_title` and `detected_language` from `_prep/job_offer_analysis.json` and invokes `generate_outputs.py` with all ten flags already composed. Use this for Step 9 regeneration (deterministic doc rebuilding); steps 5-8 still need the skill's LLM flow.
+Offer filenames use the folder slug (title + company), so every rebuild overwrites the same files. Packs built before this command was the first-build path may carry different names (the raw job title, or a hand-shortened cold title); pass `--job-title "<old title>"` to rebuild under the old names instead of creating a second set. `--language` overrides the language. It only rebuilds documents — steps that generate content still need the skill's LLM flow.
 
 ```bash
 cd "$SKILL_BASE" && python scripts/cli.py regenerate-outputs "$OUTPUT_DIR"

@@ -1,7 +1,9 @@
 You must tailor a candidate CV to a specific job offer.
 
+**First, read `prompts/cv_rules.md` (in this skill: `$SKILL_BASE/prompts/cv_rules.md`). ALL of its rules apply to this prompt** — fact-base input, candidate location, summary sourcing, learning language, skill sections, training, personal projects, earlier-experience compression and wording, structural consistency, evidence ledger, forbidden list, shared self-checks, output format, language and style. Follow its **(offer flow)** notes. This file adds only the offer-flow inputs and rules.
+
 You will receive:
-1. a structured CV fact base (with the user's addendum already merged in — the extra bullets appear as normal `experience[*].details` entries, and hidden skills / off-CV facts appear under the keys `addendum_hidden_skills` and `addendum_off_cv_facts` when present)
+1. the **merged CV fact base** `$PREP_DIR/cv_fact_base_merged.json` (produced by `scripts/claims_guard.py merge` — the cached fact base with the user's addendum already merged in: the extra bullets appear as normal `experience[*].details` entries, hidden skills / off-CV facts appear under the keys `addendum_hidden_skills` and `addendum_off_cv_facts` when present, plus `addendum_skill_calibration` and `familiar_only_skills`)
 2. a structured analysis of the job offer (including `company_size` field)
 3. the match analysis (direct/transferable/gap for each requirement)
 4. company research (if available) — use this to confirm company size and understand what the company values
@@ -21,27 +23,11 @@ Adapt the level of detail based on company size. This matters because small comp
 - **Mid-size company (50–500)**: balance depth and breadth. Emphasize the core technical match but also highlight collaboration, integration, and autonomy.
 - **Large company / ESN (> 500)**: focus on depth. Emphasize technical expertise, methodology (SOLID, tests, CI/CD), and the ability to work within structured teams and processes.
 
-## Candidate location
-Include the candidate's residential location (from `candidate_location` in the CV fact base) in the `contact_line` field alongside email, phone, and LinkedIn. Location is valuable on a CV — it tells the recruiter at a glance whether the candidate is local, nearby, or would need to relocate. Keep the original format from the CV (e.g. "Lyon (69)", "London, UK").
-
 ## Allowed changes
 - **Adjust** the title / headline / summary to highlight the most relevant aspects of the candidate's actual profile — but the core identity must come from the master CV and from `user_prefs.yaml` (`preferred_title_labels` / `forbidden_title_labels`), not from the job offer. If the master CV uses a specific self-description and the user's prefs reinforce it, do not replace that with a different specialisation label just because the job offer uses different words. You may reorder or emphasise existing terms, drop less relevant ones, or add a qualifier that is evidenced in the CV — but never inject a specialisation label that the candidate doesn't use to describe themselves, and never use any label listed in `forbidden_title_labels`.
 - Reorder skills to lead with the most relevant
 - Tighten wording, emphasize relevant responsibilities and technologies
-- Compress less relevant older detail to fewer bullets
-
-## Summary sourcing — every clause must be traceable
-
-`summary_paragraphs` is the freest-form prose in the CV and is where embellishment most easily creeps in. Every clause you write in the summary must be traceable to one of:
-
-- `cv_fact_base.summary`
-- a concrete fact already present in `cv_fact_base.experience[*].details`
-- `cv_fact_base.transition_signals` (for forward-looking / in-progress language)
-- `cv_fact_base.addendum_hidden_skills` or `cv_fact_base.addendum_off_cv_facts`
-
-If a clause cannot be traced to one of those sources, drop it. Do not infer it from the job offer, from the match analysis's `requirement` field, or from what would make the candidate "sound better for this role". The summary is prose, not a wishlist.
-
-Applies equally to the `tagline`: each bullet-point in the tagline must point back to a fact-base source, not to job-offer vocabulary.
+- Compress less relevant older detail to fewer bullets (per `cv_rules.md` § Earlier-experience compression)
 
 ## Gap honesty — how to handle `match_analysis` gaps and qualified matches
 
@@ -49,7 +35,7 @@ The match analysis is the source of truth for what the candidate actually has vs
 
 **When a requirement is `gap`:**
 - The CV must not state or imply current competence, production use, recent exposure, or active learning in that area.
-- Do not introduce tense/phase language for the gap technology — phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, *"ramping up on X"* — unless that specific technology appears by name in `cv_fact_base.transition_signals`. Transition signals come from the candidate; they are not inferred from the job offer's requirement list.
+- Do not introduce tense/phase language for the gap technology (*"en apprentissage"*, *"learning X"*, …) unless that specific technology appears by name in `cv_fact_base.transition_signals` — see `cv_rules.md` § Active-learning / in-progress phrasing. Transition signals come from the candidate; they are not inferred from the job offer's requirement list.
 - The safe move for a gap is silence. The motivation letter is the place to address gaps honestly; the CV is not.
 
 **When a requirement is `direct` or `transferable` but its `notes` field narrows the scope:**
@@ -57,140 +43,11 @@ The match analysis is the source of truth for what the candidate actually has vs
 - Prefer the wording already in `match_analysis.notes` or `evidence` over reinvented phrasing. Those fields were written with the caveats intact.
 
 **When the match analysis classifies a fact under one label but the job offer uses a different label:**
-- Keep the fact's original framing from the fact base. Don't relabel an experience to match the job's vocabulary (e.g. *"migration de données entre services cloud"* must not become *"intégration de systèmes tiers"* just because the job uses that exact phrase). Keyword coverage belongs in the skills section, not in reworded experience bullets.
+- Keep the fact's original framing from the fact base. Don't relabel an experience to match the job's vocabulary (e.g. *"migration d'une base de données vers PostgreSQL"* must not become *"intégration de systèmes tiers"* just because the job uses that exact phrase). Keyword coverage belongs in the skills section, not in reworded experience bullets.
 
-## Preserving skill sections
-The master CV may contain dedicated skill/competency sections beyond the main technical skills table (e.g. "Développement assisté par IA", "Leadership", "Domain expertise"). These sections are part of the candidate's professional identity. Every such section must appear in the tailored CV's `skills_sections` array — you may reorder them for relevance but never drop them entirely. Check the CV fact base `technologies` and the raw CV structure to ensure no dedicated section is lost.
-
-## Training periods belong in Education, not Work Experience
-The master CV keeps Formation (training) and Expérience Professionnelle (work experience) as two separate sections. The tailored CV must mirror that. When building the `experience` array, skip any entry in the fact base whose `type` field is `"training"` (e.g. "École Cube — Product Builder No-Code", "Innovaco Formation — Analyse & Programmation"). Those entries appear only in the `education` array.
-
-This matters because a line like *"Product Builder No-Code / Low-Code (Formation temps plein) — École Cube"* under Work Experience reads to a recruiter as a mislabeled employment row even when the "(Formation temps plein)" tag is there. The human reader expects Work Experience to be paid employment. Training stays in Education, where it signals recent upskilling exactly as intended.
-
-Small visible timeline gaps in the experience section are acceptable; mixing training into Work Experience is not. Note: the fact base extraction step (`prompts/extract_cv_data.md`) deliberately adds training periods to the fact base `experience` array for internal timeline analysis — that's a different layer, and this rule only governs the *tailored CV output*.
-
-## Personal projects — passthrough with light filtering
-
-If `cv_fact_base.projects` is present and non-empty, build a `projects` array in the tailored CV from it. Each item has:
-- `name` — project name, verbatim from the fact base.
-- `metadata_line` — a single line combining dates and link. Build it from the fact base fields: if both `dates` and `link` are present, use `"<dates> | <link>"`; if only one is present, use that one alone; if neither, omit the field entirely.
-- `bullets` — the project's description points.
-
-**Allowed:**
-- Reorder bullets within a project to lead with the most relevant for the target job.
-- Drop individual bullets that are tangential to the target role.
-- Drop an entire project if it is **clearly unrelated** to the target role's domain (e.g. a cooking blog for a back-end infra role). The default is to keep every project — personal projects are a strong authenticity signal for mid-to-senior candidates, and dropping one is the exception, not the rule.
-
-**Forbidden:**
-- Inventing a project, a bullet, a date, or a link that isn't in the fact base.
-- Rewording a bullet to inject job-offer vocabulary (same rule as work experience — keyword coverage belongs in the skills section).
-- Promoting work done inside a paid role into a "personal project" entry.
-
-If `cv_fact_base.projects` is absent or empty, **omit the `projects` field entirely** from the tailored CV. Many candidates don't have a side-projects section; the renderer collapses the whole Projects section cleanly when the field is absent.
-
-## Earlier-experience compression
-
-Senior profiles can carry 20+ years of history. Recruiters rarely read past the first page. To respect that attention budget — without ever hiding evidence the job actually relies on — apply this rule before writing the `experience` array:
-
-### Step 1 — Split the roles at the cutoff
-
-Let `CUTOFF` be the value of `experience_compression_cutoff_year` passed in as context. If it is `null`, skip this whole section and keep every role full.
-
-For each role in the CV fact base:
-- If the role's **end date** is January `CUTOFF` or later → **recent role**. Always kept full.
-- If the role's end date is strictly before January `CUTOFF` → **pre-cutoff role**. Candidate for consolidation, check load-bearing criteria below.
-
-Use the end date, not the start date. A role that straddles the cutoff (e.g. start 2003, end 2008 with cutoff 2005) counts as a recent role.
-
-### Step 2 — Decide which pre-cutoff roles are load-bearing
-
-A pre-cutoff role is **load-bearing** if *any* of these are true. If yes, keep it in the experience list with its normal bullets. If no, set it aside for consolidation.
-
-**Criterion A — Evidence anchoring.** Search `match_analysis.json` for any match of type `direct` or `transferable` whose `evidence` field mentions this role's company name or its date range. If found, the role is load-bearing — the match analysis is pointing directly at it.
-
-**Criterion B — Unique technology overlap.** Does the role's technology stack intersect with the job's `required_skills` or `preferred_skills` for a technology that is **not** already amply covered by a recent (post-cutoff) role?
-- Example: C++ MFC is only in pre-2005 roles → if the job asks for C++, those roles are load-bearing.
-- Counter-example: C# appears briefly in a pre-2005 role, but the candidate has 15 years of C# in a post-cutoff role → the pre-cutoff exposure is redundant, not load-bearing on its own.
-
-**Criterion C — Unique responsibility coverage.** Is the role the best or only evidence for a key responsibility the job explicitly calls out (e.g. reverse engineering, a specific legacy-language migration, a domain-specific pattern, experience writing technical specifications for clients)?
-- Example: "Fortran → C++ conversions at JFC" is the best evidence for a Fortran migration responsibility → load-bearing.
-- If the same responsibility is better evidenced by a post-cutoff role, the pre-cutoff role fails this criterion.
-
-If none of A, B, C apply, the role goes into the consolidated line.
-
-### Step 3 — Build the consolidated line (if any role was set aside)
-
-If any pre-cutoff roles were set aside in Step 2, append **one single entry** to the end of the `experience` array, after the last recent or load-bearing role. The entry must:
-
-- Put a language-appropriate heading in `role_line`:
-  - French: `"Expériences antérieures"`
-  - English: `"Earlier experience"`
-  - Other target languages: translate the heading appropriately. The rest of the CV already tells you which language to write in.
-- Put the **pipe-separated company names only** in `metadata_line`, with **no dates** (e.g. `"Peaktime SAS | JFC Informatique & Média"`). Dateless on purpose: presents earlier experience as context without inviting age-based filtering.
-- Contain **one single bullet** in `bullets` that summarises the aggregate scope of the consolidated roles: the core tech (C++ STL / MFC, etc.), the general domain (e.g. media, advertising data), and the high-level contribution (development, project coordination, writing specifications). Keep it under 2 lines in the rendered output. Write it in the same language as the rest of the CV.
-
-Companies in the consolidated line appear in reverse-chronological order to match the rest of the experience section.
-
-### Step 4 — Edge cases
-
-- **All pre-cutoff roles are load-bearing.** Do nothing special — no consolidated line is produced. This is what happens when the job leans heavily on older experience (e.g. a C++ migration role for a candidate whose C++ decade was pre-cutoff).
-- **No pre-cutoff roles exist at all.** Do nothing. The rule is a no-op.
-- **Mixed: some load-bearing, some not.** Keep the load-bearing ones as normal entries in their chronological position, and add the consolidated line after the last recent/load-bearing entry. The result is a mostly-compact experience section with a couple of older entries surfaced where they matter.
-
-### Why this exists
-
-Senior candidates lose recruiter attention before they reach their best match when early-career roles take up half the experience section. Compression moves the reader's eye to what actually matters for this job. Load-bearing roles still surface in full because hiding them would defeat the point of tailoring. Dateless consolidation acknowledges prior depth without anchoring the reader to an exact starting year — a small but real mitigation against age-based filtering.
-
-The rule is load-bearing-aware, not hard-capped: it trusts the match analysis to tell the truth about which older roles this specific job needs. That means the quality of the match analysis directly drives the quality of the compression.
-
-## Structural consistency — these formats must never vary between runs
-
-The following formatting rules are derived from the master CV and must be applied identically regardless of the target job:
-
-### Contact line
-Use the labeled format from the master CV:
-`Email: <email> | Tel: <phone> | LinkedIn: <linkedin> | <location>`
-
-If `cv_fact_base.contact.github` is present, insert `| GitHub: <github>` between the LinkedIn segment and the location:
-`Email: <email> | Tel: <phone> | LinkedIn: <linkedin> | GitHub: <github> | <location>`
-
-If `contact.github` is absent from the fact base, omit the GitHub segment entirely — do not leave a dangling label and do not invent a URL. The renderer auto-splits long contact lines across two centered lines at the midpoint, so adding GitHub is safe.
-
-### Skills sections
-Preserve the master CV's granular skill categories as separate `skills_sections` entries. Each category from the skills table becomes its own section with its own heading (e.g. "Langages", "Plateformes & Frameworks", "Services & Communication", "Données", "Tests", "Outils & Environnements", "Architecture & Méthodes", "Systèmes"). Do not consolidate multiple categories into a single section. Dedicated sections outside the table (e.g. "Développement assisté par IA") are also preserved as separate entries. You may reorder sections for relevance but never merge or drop them.
-
-**Proficiency honesty — `technologies_to_deepen`.** Items in `cv_fact_base.technologies_to_deepen` are familiar-but-not-mastered (or only evaluated, not adopted). They must NEVER be mixed into a core skills group. If some are relevant to the target role, surface them only in a single clearly-labelled trailing section — heading `"Familier / à approfondir"` (FR) or `"Familiar / exploring"` (EN) — after the core skill sections; otherwise omit them. Never present an evaluated-not-adopted technology (e.g. Kafka when the candidate chose RabbitMQ) as a held skill anywhere in the CV.
-
-### Experience line format
-Each experience entry has two separate fields:
-- `role_line` — the role/job title **only** (e.g. `"IT Project Manager"`, `"R&D Engineer"`, `"Development Manager"`). No company, no dates. Rendered bold on its own line.
-- `metadata_line` — a single pipe-separated string `"Company | Location | Month YYYY – Month YYYY"` (e.g. `"Acme Corp | Paris | July 2010 – March 2025"`). Rendered italic-gray on its own line directly under the role.
-
-This matches how ATS parsers expect to find role, employer, and dates — each on its own clear line rather than merged.
-
-### Date format
-Use `Month YYYY – Month YYYY` consistently across the `experience` array (e.g. `"July 2010 – March 2025"`). Use the full month name in the target language (`"July"` in English, `"juillet"` in French). Use an en-dash ` – ` (not a hyphen `-`). Never abbreviate months. Never mix formats inside the CV.
-
-For the consolidated `Earlier experience` entry (if any), the `metadata_line` is intentionally dateless: put only the pipe-separated company names there (e.g. `"Peaktime SAS | JFC Informatique & Média"`). The `role_line` stays `"Earlier experience"` (or the target-language equivalent from § Earlier-experience compression).
-
-### Education dates
-Reproduce date formatting as it appears in the master CV. Do not reformat dates (e.g. don't expand 2-digit years to 4-digit, don't change separators).
-
-### Languages
-Reproduce the languages section as it appears in the master CV. If the CV uses a single consolidated line (e.g. "Bilingue Français / Anglais"), keep it as one entry. Do not split into separate entries.
-
-## Forbidden
-- Inventing projects, achievements, tools, certifications, or leadership claims
-- Adding keywords not evidenced in the CV
-- **Injecting adjectives not in the fact base** — do not attach modifiers like *"cloud-native"*, *"event-driven"*, *"distributed"*, *"mission-critical"*, etc. to an existing fact unless that exact adjective (or a clear equivalent) is already in the fact base. Promoting *"architectures backend"* to *"architectures backend cloud-native"* is invention, not emphasis.
-- **Relabeling experience to match job-offer vocabulary** — if the fact base describes a piece of work one way (e.g. *"migration de données entre services cloud"*) and the job offer calls it something else (e.g. *"intégration de systèmes tiers"*), keep the fact base's framing. Keyword coverage belongs in the skills section, not in reworded bullets. The match analysis already records the correspondence; the CV does not need to force-align the vocabulary.
-- **Claiming active learning or in-progress competence for a gap technology** — see § Gap honesty. Phrases like *"en apprentissage"*, *"en cours de formation"*, *"en montée en compétences sur X"*, *"learning X"*, *"ramping up on X"* are only permitted when the specific technology appears in `cv_fact_base.transition_signals`.
+## Forbidden — offer-flow additions
+Everything in `cv_rules.md` § Forbidden, plus:
 - **Contradicting `match_analysis.notes` qualifiers** — if a match's `notes` field narrows the scope of an experience ("not for production orchestration", "conceptual knowledge only", "not labelled as such internally"), the CV must stay inside that narrowing.
-- **Dropping dedicated skill sections** from the master CV — if the original CV has a section like "Développement assisté par IA" or "Automation & Low-Code", it must appear in the tailored output even if it's not directly relevant to the job offer. These sections reflect the candidate's identity and differentiators.
-- **Replacing the candidate's professional identity with job offer language** — the title and tagline must reflect how the candidate actually describes themselves, as evidenced in the master CV and reinforced by `user_prefs.yaml` → `preferred_title_labels`. Any label listed in `forbidden_title_labels` is an immediate disqualification for the title, even if the job offer uses that exact term.
-- **Reordering experiences** — strict reverse chronological order
-- **Creating timeline gaps between recent roles** — roles more recent than the compression cutoff must all appear individually. Only pre-cutoff roles may be folded into the consolidated "Earlier experience" line per § Earlier-experience compression, and only if they fail the load-bearing criteria.
-- **Dropping a load-bearing pre-cutoff role** — if the match analysis or the job's required skills point at it, it stays full. Consolidation is for roles the target job genuinely doesn't lean on.
 
 ## Final self-check before returning
 
@@ -198,64 +55,9 @@ Before emitting the JSON, run these checks in order. If any fails, fix the draft
 
 1. **Gap check** — for every row in `match_analysis.matches` with `match_type: "gap"`, read the `requirement`. Confirm that requirement does **not** appear in `summary_paragraphs`, `tagline`, or any `experience[*].bullets` entry framed as a current, recent, or in-progress capability. If it appears only inside a neutral factual bullet already in the fact base, that's fine; if it appears as a bridging claim ("en apprentissage sur X", "familiarité avec X", "exposition à X"), remove it unless `cv_fact_base.transition_signals` supports it by name.
 2. **Qualifier check** — for every row with `match_type: "direct"` or `"transferable"` whose `notes` field narrows scope, confirm that no CV claim on that topic exceeds the narrowing. Prefer the `notes` or `evidence` wording when in doubt.
-3. **Summary traceability** — read each clause of `summary_paragraphs` and the `tagline`. For each clause, silently point to the fact-base location (`summary` / a specific `experience[*].details` entry / `transition_signals` / addendum). If you can't, drop the clause.
-4. **Adjective audit** — scan `summary_paragraphs` and `experience[*].bullets` for qualifiers that don't appear in the fact base (e.g. *"cloud-native"*, *"mission-critical"*, *"distributed"*). Strip any that aren't grounded.
-5. **JD-stack contagion check** — `job_offer_analysis.{required_skills, technologies, ats_keywords}` describes what the company wants. Do not promote a tech named there into `summary_paragraphs`, `tagline`, `skills_sections`, or `experience[*].bullets` unless that exact tech (or a close synonym) also appears in `cv_fact_base.{technologies, skills, methodologies}` or in `experience[*].details`. The Step-4 grounding check should have already scrubbed `match_analysis`, but this is the last line of defence before the CV ships. Concrete failure to avoid: the JD lists Kubernetes; the candidate has Docker but not K8s; the CV's `skills_sections.Outils` must not list "Kubernetes" just because the JD wanted it.
+3. **Summary traceability** — as defined in `cv_rules.md` § Final self-check.
+4. **Learning-language check** — as defined in `cv_rules.md` § Final self-check.
+5. **Adjective audit** — as defined in `cv_rules.md` § Final self-check.
+6. **JD-stack contagion check** — `job_offer_analysis.{required_skills, technologies, ats_keywords}` describes what the company wants. Do not promote a tech named there into `summary_paragraphs`, `tagline`, `skills_sections`, or `experience[*].bullets` unless that exact tech (or a close synonym) also appears in `cv_fact_base.{technologies, skills, methodologies}` or in `experience[*].details`. The Step-4 grounding check should have already scrubbed `match_analysis`, but this is the last line of defence before the CV ships. Concrete failure to avoid: the JD lists Kubernetes; the candidate has Docker but not K8s; the CV's `skills_sections.Outils` must not list "Kubernetes" just because the JD wanted it.
 
-## Output format
-Return valid JSON matching `schemas/tailored_cv.schema.json`. Read that schema file for the exact structure.
-
-**Example structure** (abbreviated):
-```json
-{
-  "candidate_name": "Jane Doe",
-  "title": "Ingénieur Logiciel Senior C# / .NET",
-  "contact_line": "Email: jane@example.com | Tel: +33 6 00 00 00 00 | LinkedIn: linkedin.com/in/janedoe | GitHub: github.com/janedoe | Paris (75)",
-  "tagline": "Applications critiques • Architecture de services • Qualité logicielle",
-  "summary_paragraphs": ["Paragraph 1...", "Paragraph 2..."],
-  "skills_sections": [
-    {"heading": "Langages", "items": ["C#", "Java", "SQL"]},
-    {"heading": "Plateformes & Frameworks", "items": [".NET", ".NET Core", "WPF"]}
-  ],
-  "experience": [
-    {"role_line": "Senior Developer", "metadata_line": "Acme Corp | Paris | January 2020 – Present", "bullets": ["Developed...", "Migrated..."]}
-  ],
-  "projects": [
-    {"name": "My side project", "metadata_line": "2024 – ongoing | github.com/janedoe/my-project", "bullets": ["What it does", "Stack used"]}
-  ],
-  "education": ["2015 : University X – MSc Computer Science"],
-  "languages": ["Bilingue Français / Anglais"]
-}
-```
-
-## Language
-- Write all CV content in the same language as the job offer, unless a target language is explicitly specified
-- JSON field names must remain in English
-
-## Style
-ATS-friendly, clear, professional, concise, realistic — no inflated language.
-
-## Evidence ledger — no claim without a source (added after an over-claiming incident)
-
-Read `$PREP_DIR/cv_fact_base_merged.json` (produced by `scripts/claims_guard.py merge`), NOT the plain fact base. It contains the user's addendum bullets, `addendum_skill_calibration` and `familiar_only_skills`.
-
-- **Every skill, tool, claim and bullet must trace to the master CV or the addendum.** Never add a technology to `skills_sections` because the job posting lists it or because it "feels adjacent". Do not add skills that are absent from the master CV's skills table (e.g. Oracle, Assembleur, Notion, plain "Git") unless the addendum states them.
-- **Copy the master skills table as written, then only reorder.** Keep qualifiers verbatim: `Python (lecture/adaptation de scripts)`, `Clean Architecture (usage pragmatique)`.
-- **`familiar_only_skills` (the master's "Familier / à approfondir" row) may appear ONLY in a trailing section headed "Familier / à approfondir"** — never in a core skills section, tagline, title or summary.
-- **No intensity / frequency / duration wording unless a source states it.** Forbidden unless sourced: "pratique quotidienne", "au quotidien", "tous les jours", "depuis N ans" attached to a specific technology, "expert", "maîtrise". The only durations allowed are those in the master CV (e.g. "15+ ans en C#/.NET").
-- **Describe what was done, not how often.** "Remplacement de .NET Remoting / WCF par gRPC" is a fact; "pratique de WCF" is an invention. A technology that only appears in a skills table without a described use is listed as a skill — it is not described as practised.
-- **Respect `addendum_skill_calibration`**: it records the real scope of each skill (employer, team vs solo, tuning vs design). Wording must stay inside it.
-- **Use the addendum.** Pick the bullets that support this job's real requirements (support, production follow-up, documentation, migrations, team context) and phrase them as written there.
-- **Tagline/summary come from the master CV's own profile text**, lightly reordered. Do not copy job-posting vocabulary into them.
-
-After writing `tailored_cv.json`, run `python scripts/claims_guard.py check "$PREP_DIR"` (see SKILL.md Step 5.5). Exit 1 = fix the wording and re-run. Never "fix" a failure by editing the master CV or the addendum.
-
-## Earlier-experience line — wording rules (added after a blended-line incident)
-
-The single bullet of the consolidated "Expériences antérieures" / "Earlier experience" entry must read as a short, natural sentence, never as a keyword list.
-
-- **One clause per employer, in the same order as the company names in `metadata_line`** (reverse-chronological), each introduced by the employer's short name and a colon.
-- **Attach each language, tool and system only to the employer(s) where the fact base / addendum says it was used.** Read the per-employer notes in the merged fact base (`experience[*].details`) and `addendum_skill_calibration` first. Never write a combined phrase like "C++ (MFC) et C sous Unix" that spreads a technology across several employers. An opening phrase may name only technologies that the listed employers genuinely share.
-- **Disambiguate same-name employers.** If the same company name also appears as a full entry elsewhere in the CV (e.g. "JFC Informatique & Média (Kantar)" vs the Asnières role), add the location in the heading line: "JFC Informatique & Média (Asnières)".
-- Keep it dateless (company names only in `metadata_line`) and keep it to one bullet of about three lines.
-- Template: `<Parcours général, une phrase>. <Employeur 1> : <ce qui y a été fait>. <Employeur 2> : <…>. <Employeur 3> : <…>.`
+Then write `tailored_cv.json` and run the CV gate (`python scripts/cli.py gate cv "$PREP_DIR"` — see `cv_rules.md` § Evidence ledger and SKILL.md).

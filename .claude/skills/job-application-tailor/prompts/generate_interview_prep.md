@@ -1,7 +1,7 @@
 Create an interview preparation pack from:
 1. the tailored CV
 2. the job offer analysis
-3. the original CV fact base
+3. the merged CV fact base (`cv_fact_base_merged.json`)
 4. the match analysis (including `overall_fit_pct`)
 5. company research (if available)
 
