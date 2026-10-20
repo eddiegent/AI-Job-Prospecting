@@ -140,6 +140,4 @@ Honest, short, list-format. Copy every entry from `company_profile.research_gaps
 
 ## Output format
 
-Return pure markdown. No JSON wrapper, no code-fence around the whole document. The SKILL.md step writes your output to `$OUTPUT_DIR/company_dossier.md` directly.
-
-Filename constraint: the dossier lives at the output root (`company_dossier.md`), not in `_prep/`. It is a first-class deliverable the user opens before a call — the research JSON stays in `_prep/` as the audit trail.
+Return pure markdown. No JSON wrapper, no code-fence around the whole document. Write it to `$PREP_DIR/company_dossier.md`; Step 9 (`regenerate-outputs`) renders it to `$OUTPUT_DIR/company_dossier.html`, the first-class deliverable the user opens before a call.

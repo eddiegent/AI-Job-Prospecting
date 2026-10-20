@@ -133,7 +133,7 @@ Which one?
 
 Wait for the reply. Do not continue without one.
 
-**4c. Save the selection** as `$PREP_DIR/selected_role.json`, with `language` set to `$PACK_LANG`:
+**4c. Save the selection** as `$PREP_DIR/selected_role.json`, with `language` set to `$PACK_LANG`, `company_name` from the profile and `generated_at` (ISO 8601) — all three are required:
 
 | User reply | `source` | `title` | `candidate_index` | Other fields |
 |---|---|---|---|---|
