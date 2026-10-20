@@ -1,7 +1,7 @@
 ---
 name: job-application-tailor
 description: Generate a complete, tailored application pack (CV, motivation letter, short letter, LinkedIn messages, interview prep with fit score) from a job offer and a master CV. Triggers whenever the user provides a job offer URL, pastes a job description, asks to apply for a position, wants to check their fit for a role, or requests any combination of tailored CV, cover letter, or application materials. Also triggers for "prepare my application", "help me apply", "write a cover letter", "match my CV to this offer", "tailor my CV", "how well do I fit this job", "prepare my candidature", or any request in French or English involving a specific job posting and the user's CV. Does NOT trigger for editing an existing CV without a target job, general interview coaching, salary research, job searching/scraping, or writing job descriptions.
-argument-hint: [job-offer-text-or-url]
+argument-hint: "[job-offer-text-or-url]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, Agent
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: job-stats
 description: Show job application statistics, reports, and trends from the history database. Use this skill whenever the user asks about their application stats, wants a summary of their job search, asks about skill gaps or trends, wants to see their application pipeline, or asks to export their applications to CSV/Excel. Also triggers for "how many applications", "what companies have I applied to", "what skills am I missing", or "export my applications".
-argument-hint: [report-type]
+argument-hint: "[report-type]"
 allowed-tools: Read, Bash, Write, Glob
 ---
 

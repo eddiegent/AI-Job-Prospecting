@@ -5,8 +5,9 @@ This file documents the **workflow** — the bash blocks in pipeline order, with
 All commands assume these variables are set:
 - `PROJECT_ROOT` — the git repo root or current working directory
 - `SKILL_BASE` — `$PROJECT_ROOT/.claude/skills/job-application-tailor`
-- `OUTPUT_DIR` — the output folder for this run (set in Step 0d)
+- `OUTPUT_DIR` — the output folder for this run (`output_dir` from preflight)
 - `PREP_DIR` — `$OUTPUT_DIR/_prep`
+- `MASTER_CV` — the master CV path (`master_cv_path` from preflight). Never assume `resources/MASTER_CV.docx`: the user data dir may be `JOB_TAILOR_HOME` or the OS app-data dir.
 
 **Important — paths with spaces**: These paths may contain spaces (e.g. `Job Prospecting`). Always double-quote variable references in bash (`"$PROJECT_ROOT"`, `"$SKILL_BASE"`, etc.). Never store compound commands in a variable — write the full command inline instead.
 
@@ -24,26 +25,9 @@ fi
 If neither directory exists, stop and tell the user the toolkit is not
 installed correctly.
 
-### Check dependencies
-```bash
-cd "$SKILL_BASE" && python -c "import docx, yaml, jsonschema; print('OK')"
-```
-If this fails: `pip install -r "$SKILL_BASE/requirements.txt"`
-
-### Create output folder
-```bash
-cd "$SKILL_BASE" && python -u -c "
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-from scripts.common import slug_for_filename, ensure_dir, current_date_ddmmyyyy
-from pathlib import Path
-date = current_date_ddmmyyyy()
-slug = slug_for_filename('<job-title-slug>')
-folder = Path('$PROJECT_ROOT/output') / f'{date}-{slug}'
-ensure_dir(folder / '_prep')
-print(folder)
-"
-```
+Dependency checks, output-folder creation and history-DB initialisation are all
+done by `scripts/preflight.py` (see `job-prep-cv/SKILL.md`) — there is no
+separate command to run for them.
 
 ## URL Probe (before WebFetch)
 
@@ -101,20 +85,20 @@ python -u -c "
 import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from docx import Document
-doc = Document('$PROJECT_ROOT/resources/MASTER_CV.docx')
+doc = Document(sys.argv[1])
 for p in doc.paragraphs:
     if p.text.strip(): print(f'[{p.style.name}] {p.text}')
 for ti, t in enumerate(doc.tables):
     print(f'--- TABLE {ti} ---')
     for r in t.rows: print(' | '.join(c.text.strip() for c in r.cells))
-"
+" "$MASTER_CV"
 ```
 
 ## Verify Fact Base Against Raw CV
 
 ### Catch contamination from job offer keywords and metric drift
 ```bash
-cd "$SKILL_BASE" && python scripts/verify_fact_base.py "$PROJECT_ROOT/resources/MASTER_CV.docx" "$PREP_DIR/cv_fact_base.json"
+cd "$SKILL_BASE" && python scripts/verify_fact_base.py "$MASTER_CV" "$PREP_DIR/cv_fact_base.json"
 ```
 
 If this fails (exit code 1), either a technology/methodology was fabricated
@@ -210,24 +194,6 @@ cd "$SKILL_BASE" && python scripts/cli.py rename-cold-folder "$OUTPUT_DIR"
 ```
 
 ## Job History Database
-
-### Initialise database (and backfill if needed)
-```bash
-cd "$SKILL_BASE" && python -c "
-from scripts.job_history_db import JobHistoryDB
-db = JobHistoryDB('$PROJECT_ROOT/resources/job_history.db')
-count = db.total_count()
-db.close()
-print(f'DB ready: {count} applications')
-"
-```
-
-If count is 0 and output folders exist:
-```bash
-cd "$SKILL_BASE" && python scripts/backfill_history.py \
-  --output-dir "$PROJECT_ROOT/output" \
-  --db-path "$PROJECT_ROOT/resources/job_history.db"
-```
 
 ### Duplicate Detection
 

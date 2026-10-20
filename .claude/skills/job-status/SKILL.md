@@ -1,7 +1,7 @@
 ---
 name: job-status
 description: Update the status of a job application (generated, applied, rejected, interview, offer, dropped), list recent applications and their statuses, or manage the company blacklist/whitelist. Use this skill whenever the user wants to update an application status, check application progress, mark a job as applied/rejected/interview/offer/dropped, add or remove a company from the blacklist or whitelist, or asks about their application pipeline.
-argument-hint: [company-or-id] [status]
+argument-hint: "[company-or-id] [status]"
 allowed-tools: Read, Bash, Glob
 ---
 

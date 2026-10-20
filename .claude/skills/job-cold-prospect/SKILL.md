@@ -1,7 +1,7 @@
 ---
 name: job-cold-prospect
 description: Generate a speculative (cold-call) application pack from a company name or URL — no job offer required. Triggers when the user wants to reach out to a specific company without an advertised vacancy, asks for "cold application", "speculative application", "candidature spontanée", "prospect this company", "reach out to [company]", or supplies a company name/URL and asks for an application pack. Does NOT trigger when a job offer is supplied (use job-application-tailor instead), or for generic company research without an application intent.
-argument-hint: [company-name-or-url]
+argument-hint: "[company-name-or-url]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, Agent
 ---
 

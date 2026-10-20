@@ -35,7 +35,7 @@ resources/MASTER_CV.docx
 
 This is the source document the skill reads from. Include everything — all roles, education, skills, certifications. The skill handles trimming and emphasis for each application.
 
-If your CV has a different name, you can configure the filename keyword in `config/settings.yaml` under `behaviour.cv_filename_keyword`.
+The file must be named exactly `MASTER_CV.docx`.
 
 ## Step 3 — Run your first application
 
