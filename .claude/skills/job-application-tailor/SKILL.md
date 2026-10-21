@@ -123,18 +123,15 @@ Save `$PREP_DIR/company_research.md` with a `## Contacts` section. If research r
 
 Follow `prompts/tailor_cv.md` (it starts by loading `prompts/cv_rules.md`). Pass it the merged fact base, the match analysis, the company research, `$CUSTOMIZATION["prefs"]`, and the `experience_compression_cutoff_year` from settings. Write `tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels from `user_prefs.yaml` + claims check). Build no DOCX/PDF until it passes.
 
-### Steps 6, 7 — Letter and LinkedIn (parallel agents)
+### Steps 6, 7, 8 — Letters, LinkedIn, interview prep (parallel agents)
 
-Once the CV passes its gate these two are independent. **Spawn two Agent subagents at the same time.** Give each the paths to the merged fact base, `job_offer_analysis.json`, `match_analysis.json`, `company_research.md`, `$SKILL_BASE` and `$OUTPUT_DIR`, plus `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` (the letter honours `tone_directives` and `team_context_companies`; LinkedIn honours `tone_directives`).
+Once the CV passes its gate these three are independent: each reads the CV and the analyses, none reads another's output. **Spawn three Agent subagents at the same time.** Give each the paths to the merged fact base, `tailored_cv.json`, `job_offer_analysis.json`, `match_analysis.json`, `company_research.md`, `$SKILL_BASE` and `$OUTPUT_DIR`, plus `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` (the letter honours `tone_directives` and `team_context_companies`; LinkedIn honours `tone_directives`).
 
 - **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters). Run **`gate letters`**.
 - **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Run **`gate linkedin`**.
+- **Subagent 3 — interview prep.** Follow `prompts/generate_interview_prep.md` → `$PREP_DIR/interview_prep.md` (Step 9 renders it as mobile-friendly HTML). It can't see `$ARGUMENTS`, so pass the **job URL, the output folder path and today's date** for the Quick Reference block. Run **`gate interview`**.
 
-Each subagent returns only once its gate passes. Wait for both, then **run `gate letters` and `gate linkedin` yourself** — don't take a subagent's word for it, and never build files from JSON that hasn't passed its gate in this context. If a subagent couldn't write into `_prep/`, see `references/troubleshooting.md`.
-
-### Step 8 — Interview prep (foreground)
-
-Generate this in the main context, not a background agent — background agents can hit permission issues that fail silently, and this step has no gate to catch it. Follow `prompts/generate_interview_prep.md` with all the context above. Include a quick reference block (job URL from `$ARGUMENTS`, output folder path, application date), the fit score banner, and a company context section. Save `$PREP_DIR/interview_prep.md`; Step 9 renders it as mobile-friendly HTML.
+Each subagent returns only once its gate passes. Wait for all three, then **run `gate letters`, `gate linkedin` and `gate interview` yourself** — don't take a subagent's word for it, and never build files from output that hasn't passed its gate in this context. `gate interview` is what catches a silently failed or truncated prep: it has no schema, so without the gate a missing section would ship unnoticed. If a subagent couldn't write into `_prep/`, see `references/troubleshooting.md`.
 
 ### Step 9 — Build the output files
 
@@ -181,7 +178,7 @@ When the user asks to redo one output ("redo the LinkedIn messages", "regenerate
 | letter, cover letter, motivation letter | 6 | `letter.json` + `short_letter.json` | `letters` |
 | short letter, short version | 6 (short part) | `short_letter.json` | `letters` |
 | LinkedIn, messages, InMail | 7 | `linkedin.json` | `linkedin` |
-| interview, prep | 8 | `interview_prep.md` | — |
+| interview, prep | 8 | `interview_prep.md` | `interview` |
 | "all outputs", "everything" (files only) | — | — | — |
 
 4. Run Step 9 (`regenerate-outputs`) to rebuild the files.

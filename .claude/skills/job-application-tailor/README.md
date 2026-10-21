@@ -39,8 +39,7 @@ The skill runs a ~10-step pipeline (step numbers as in `SKILL.md`):
 - **Step 4 — Match/gap analysis** — requirement-by-requirement matrix, fit score. Below 50% = stop
 - **Step 4.5 — Research company** — web search for size, culture, tech stack, key contacts; runs after the fit gate, so a stopped run or a dry run makes no searches
 - **Step 5 — Tailor CV** — restructure emphasis based on match analysis and company size (`prompts/tailor_cv.md` + the shared `prompts/cv_rules.md`)
-- **Steps 6, 7 — Letter + short letter, LinkedIn messages** (two parallel subagents)
-- **Step 8 — Interview prep**
+- **Steps 6, 7, 8 — Letter + short letter, LinkedIn messages, interview prep** (three parallel subagents; `gate interview` catches a missing or truncated prep, which has no schema)
 - **Step 9 — Generate output files** — `cli.py regenerate-outputs`: CV rendered from a DOCX template via `docxtpl`; letters, LinkedIn, interview prep via Python scripts. The same command rebuilds a pack later
 - **Step 10 — Record in database** — store for future duplicate detection and reporting
 

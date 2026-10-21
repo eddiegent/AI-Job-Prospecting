@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -221,6 +222,47 @@ def _linkedin_lengths(ctx: Ctx) -> Result:
     return r
 
 
+# Interview prep is Markdown with no schema, and it is written by a parallel
+# subagent, so a failed or truncated generation would otherwise go unnoticed.
+# Calibrated on 117 real packs (2026-10-21): the smallest was 6,137 characters,
+# all had 10-13 '## ' sections and a Quick Reference block, and every fit banner
+# was within 0.43 points of match_summary.overall_fit_pct.
+INTERVIEW_MIN_CHARS = 3000
+INTERVIEW_MIN_SECTIONS = 8
+FIT_BANNER_TOLERANCE = 1.0
+_QUICK_REFERENCE = re.compile(r"^#{1,3}\s*(?:Quick Reference|R[ée]f[ée]rences?\s+rapides?)", re.M | re.I)
+_FIT_BANNER = re.compile(r"^#{1,3}\s*(?:Fit Score|Score\b[^:\n]{0,30}?)\s*:\s*\**(\d+(?:[.,]\d+)?)\s*%",
+                         re.M | re.I)
+_SECTION = re.compile(r"^## ", re.M)
+
+
+def _interview_prep(ctx: Ctx) -> Result:
+    r = Result("interview prep completeness")
+    r.errors = _missing(ctx, "interview_prep.md", "match_analysis.json")
+    if r.errors:
+        return r
+    text = ctx.path("interview_prep.md").read_text(encoding="utf-8")
+    if len(text) < INTERVIEW_MIN_CHARS:
+        r.errors.append(f"{len(text)} characters - a complete prep is 6,000+; the generation "
+                        "probably stopped early")
+    sections = len(_SECTION.findall(text))
+    if sections < INTERVIEW_MIN_SECTIONS:
+        r.errors.append(f"{sections} '## ' sections, expected at least {INTERVIEW_MIN_SECTIONS}")
+    if not _QUICK_REFERENCE.search(text):
+        r.errors.append("no Quick Reference section (it carries the job URL and output folder)")
+    banner = _FIT_BANNER.search(text)
+    if not banner:
+        r.errors.append("no fit score banner ('## Fit Score: XX% — LEVEL')")
+    else:
+        stated = float(banner.group(1).replace(",", "."))
+        summary = json.loads(ctx.path("match_analysis.json").read_text(encoding="utf-8")).get("match_summary") or {}
+        actual = summary.get("overall_fit_pct")
+        if actual is not None and abs(float(actual) - stated) >= FIT_BANNER_TOLERANCE:
+            r.errors.append(f"fit score banner says {banner.group(1)}% but match_analysis.json says "
+                            f"{actual}% - the prep is stale or from another run")
+    return r
+
+
 def _role_grounding(filename: str, kind: str) -> Callable[[Ctx], Result]:
     def run(ctx: Ctx) -> Result:
         from scripts.check_role_grounding import check
@@ -266,6 +308,9 @@ STAGES: dict[str, list[Step]] = {
         (_schema("linkedin.json", TAILOR_SCHEMAS / "linkedin.schema.json"), True),
         (_linkedin_lengths, False),
         (_claims("linkedin.json"), False),
+    ],
+    "interview": [
+        (_interview_prep, False),
     ],
     "profile": [
         (_schema("company_profile.json", COLD_SCHEMAS / "company_profile.schema.json"), True),
@@ -333,7 +378,9 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "cv (schema + forbidden labels + claims on tailored_cv.json), letters "
         "(letter + short_letter schemas + claims on those two), linkedin (schema + "
         "message lengths: connection request <= 300, direct message <= 700 + "
-        "claims on linkedin.json), profile (cold schema), "
+        "claims on linkedin.json), interview (interview_prep.md is complete: "
+        "length, sections, Quick Reference, fit banner matching match_analysis.json), "
+        "profile (cold schema), "
         "roles (cold schema + forbidden labels + role grounding), "
         "selected-role (cold schema + role grounding). Grounding (match, roles, "
         "selected-role) requires cv_fact_base_merged.json - run "

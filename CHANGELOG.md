@@ -7,6 +7,14 @@ within each section.
 
 ## Unreleased
 
+- **Interview prep runs in parallel, behind a new gate (2026-10-21)** —
+  offer-flow Step 8 joins Steps 6 and 7 as a third parallel subagent, taking
+  a serial LLM generation off the critical path. Interview prep is Markdown
+  with no schema, so a new `cli.py gate interview` catches a missing,
+  truncated or stale prep: at least 3,000 characters and 8 `##` sections, a
+  Quick Reference block, and a fit-score banner within 1 point of
+  `match_summary.overall_fit_pct`. Calibrated on 117 real packs, all of
+  which pass. Speedup 2 of `docs/roadmaps/PIPELINE_SPEEDUPS_ROADMAP.md`.
 - **Company research runs after the fit gate (2026-10-21)** — offer-flow
   Step 3.6 is now Step 4.5, between the fit gate and CV tailoring. Nothing up
   to Step 4 reads the research, so a run stopped below 50% and every dry run

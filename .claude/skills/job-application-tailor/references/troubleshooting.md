@@ -68,17 +68,17 @@ Run `cli.py regenerate-outputs "$OUTPUT_DIR" --check` — it lists which `_prep/
 inputs are missing. Re-run the step that produces the missing file, then build
 again.
 
-## Subagent reports "Write permission denied" for `output/**/_prep/*.json`
+## Subagent reports "Write permission denied" for `output/**/_prep/*`
 
 The project's tracked `.claude/settings.json` pre-approves `Edit(output/**)` so
 subagents can write into `_prep/`. It must be an `Edit()` rule: Claude Code does
 not match `Write()` permission rules, and `Edit()` rules cover the Write tool too.
 
 1. Confirm the allow rule is still present in `.claude/settings.json`.
-2. If a subagent returned the generated JSON in its final message instead of
-   saving it, save it yourself from the main context — don't re-run the
-   subagent — then run that file's gate (`gate letters` / `gate linkedin`) and
-   fix it until it passes before continuing.
+2. If a subagent returned the generated JSON or Markdown in its final message
+   instead of saving it, save it yourself from the main context — don't re-run
+   the subagent — then run that file's gate (`gate letters` / `gate linkedin` /
+   `gate interview`) and fix it until it passes before continuing.
 
 ## Fact base verification fails
 

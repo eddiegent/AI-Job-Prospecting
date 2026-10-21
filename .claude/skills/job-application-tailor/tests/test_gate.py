@@ -275,3 +275,62 @@ def test_gate_linkedin_offer_messages_only_warn_over_500(tmp_path, home, capsys)
     assert code == 0, out
     assert "[WARN] linkedin message lengths (non-blocking)" in out
     assert "620 characters - the prompt prefers at most 500" in out
+
+
+def _interview_md(*, fit: str = "72", banner: str = "## Fit Score: {fit}% — GOOD",
+                  quick: str = "## Quick Reference", sections: int = 10, filler: int = 600) -> str:
+    parts = ["# Interview Preparation", quick, "- **Job offer**: https://example.com/job",
+             banner.format(fit=fit), "Direct matches: 5 | Transferable: 3 | Gaps: 2"]
+    for i in range(sections):
+        parts += [f"## Section {i}", "x" * filler]
+    return "\n\n".join(parts) + "\n"
+
+
+def _interview_run(tmp_path: Path, md: str | None, fit_pct: float = 72.4) -> Path:
+    ma = load_fixture("sample_match_analysis.json")
+    ma["match_summary"]["overall_fit_pct"] = fit_pct
+    run = _run(tmp_path, {"match_analysis.json": ma})
+    if md is not None:
+        (run / "_prep" / "interview_prep.md").write_text(md, encoding="utf-8")
+    return run
+
+
+def test_gate_interview_passes_a_complete_prep(tmp_path, home, capsys):
+    code, out = _gate("interview", _interview_run(tmp_path, _interview_md()), capsys)
+    assert code == 0, out
+    assert "[PASS] interview prep completeness" in out
+
+
+def test_gate_interview_accepts_french_headings_and_decimal_fit(tmp_path, home, capsys):
+    md = _interview_md(fit="72,4", banner="## Score d'adéquation : {fit} % — BON",
+                       quick="## Références rapides")
+    code, out = _gate("interview", _interview_run(tmp_path, md), capsys)
+    assert code == 0, out
+
+
+def test_gate_interview_fails_when_the_file_is_missing(tmp_path, home, capsys):
+    code, out = _gate("interview", _interview_run(tmp_path, None), capsys)
+    assert code == 1
+    assert "interview_prep.md not found" in out
+
+
+def test_gate_interview_reports_every_sign_of_truncation(tmp_path, home, capsys):
+    md = _interview_md(quick="## Overview", sections=3, filler=50)
+    code, out = _gate("interview", _interview_run(tmp_path, md), capsys)
+    assert code == 1
+    assert "characters - a complete prep is 6,000+" in out
+    assert "5 '## ' sections, expected at least 8" in out
+    assert "no Quick Reference section" in out
+
+
+def test_gate_interview_fails_on_a_fit_score_from_another_run(tmp_path, home, capsys):
+    code, out = _gate("interview", _interview_run(tmp_path, _interview_md(fit="58"), fit_pct=72.4), capsys)
+    assert code == 1
+    assert "fit score banner says 58% but match_analysis.json says 72.4%" in out
+
+
+def test_gate_interview_fails_without_a_fit_banner(tmp_path, home, capsys):
+    md = _interview_md(banner="## Summary")
+    code, out = _gate("interview", _interview_run(tmp_path, md), capsys)
+    assert code == 1
+    assert "no fit score banner" in out

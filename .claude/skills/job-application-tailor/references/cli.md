@@ -234,7 +234,7 @@ gate <stage> <folder> [--cv <cv>]
 
 | Arg | Kind | Description |
 | --- | --- | --- |
-| `stage` | positional | Pipeline stage to check — choices: `factbase`, `offer`, `match`, `cv`, `letters`, `linkedin`, `profile`, `roles`, `selected-role` |
+| `stage` | positional | Pipeline stage to check — choices: `factbase`, `offer`, `match`, `cv`, `letters`, `linkedin`, `interview`, `profile`, `roles`, `selected-role` |
 | `folder` | positional | Run output folder (or its _prep/ subfolder) |
 | `--cv` | optional | Master CV path (default: <user-data-dir>/MASTER_CV.docx) |
 

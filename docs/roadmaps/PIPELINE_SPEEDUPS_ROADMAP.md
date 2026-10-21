@@ -1,6 +1,6 @@
 # Pipeline Speedups Roadmap
 
-> **Status: item 1 shipped 2026-10-21; item 2 not started.** Drafted 2026-07-28; re-verified 2026-10-05 against
+> **Status: both items shipped 2026-10-21.** Drafted 2026-07-28; re-verified 2026-10-05 against
 > the current SKILL.md and prompts (line numbers, figures and the permission
 > rule corrected; claims-guard interactions added). Two independent changes to the
 > `job-application-tailor` run order. Either can ship alone.
@@ -18,7 +18,8 @@ needs a guard built first — do it second.
 
 - [x] **1. Move company research to after the fit gate** — shipped 2026-10-21
   (SKILL.md Step 3.6 → Step 4.5; tech reference and overview pages, EN + FR)
-- [ ] **2. Run interview prep alongside the letter and LinkedIn**
+- [x] **2. Run interview prep alongside the letter and LinkedIn** — shipped
+  2026-10-21 (Steps 6, 7, 8 are one batch of three agents; new `gate interview`)
 
 ---
 
@@ -69,6 +70,12 @@ move does not affect it — the new order is 3.5 → 3.9 → 4 → 3.6 → 5.
 ---
 
 ## 2. Run interview prep alongside the letter and LinkedIn
+
+> **Shipped 2026-10-21.** The detection guard became `cli.py gate interview`:
+> length, `##` section count, a Quick Reference block, and a fit banner that
+> matches `match_summary.overall_fit_pct`. Calibrated on 117 real packs (all
+> pass). The subagent also needs the job URL, output folder and date passed
+> in, since it cannot see `$ARGUMENTS`. Analysis kept below as the record.
 
 **Where:** `SKILL.md` — Steps 6/7 (~line 171) and Step 8 (~line 187).
 
