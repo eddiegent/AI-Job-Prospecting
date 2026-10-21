@@ -7,6 +7,12 @@ within each section.
 
 ## Unreleased
 
+- **Company research runs after the fit gate (2026-10-21)** — offer-flow
+  Step 3.6 is now Step 4.5, between the fit gate and CV tailoring. Nothing up
+  to Step 4 reads the research, so a run stopped below 50% and every dry run
+  no longer pay for web searches whose results were thrown away. The
+  `company_size` back-fill still lands before Step 5 reads it. Speedup 1 of
+  `docs/roadmaps/PIPELINE_SPEEDUPS_ROADMAP.md`.
 - **Docs fixes (2026-10-20)** — the addendum's `## Skill calibration` section
   is now documented (template, README, technical reference); the overview no
   longer claims a PDF motivation letter (only the CV gets a PDF) and its pack

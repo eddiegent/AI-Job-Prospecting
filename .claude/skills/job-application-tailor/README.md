@@ -35,9 +35,9 @@ The skill runs a ~10-step pipeline (step numbers as in `SKILL.md`):
 - **Steps 0–2.5 — CV preparation** (shared `job-prep-cv` sub-skill) — preflight (dependencies, history DB, customization, output folder); on a cache miss, read the master CV (`cli.py read-cv`), extract the fact base, verify it against the CV, and cache it by file hash
 - **Step 3 — Analyse job offer** — extract requirements, skills, signals, detect language, flag job boards posting for a real client
 - **Step 3.5 — Duplicate & history check** — query the SQLite database (URL match, company+title match, 80% skill overlap) and the blacklist
-- **Step 3.6 — Research company** — web search for size, culture, tech stack, key contacts
 - **Step 3.9 — Merged fact base** — `claims_guard.py merge` writes the per-run `cv_fact_base_merged.json` (CV + addendum + skill calibration + familiar-only skills); every later step reads it
 - **Step 4 — Match/gap analysis** — requirement-by-requirement matrix, fit score. Below 50% = stop
+- **Step 4.5 — Research company** — web search for size, culture, tech stack, key contacts; runs after the fit gate, so a stopped run or a dry run makes no searches
 - **Step 5 — Tailor CV** — restructure emphasis based on match analysis and company size (`prompts/tailor_cv.md` + the shared `prompts/cv_rules.md`)
 - **Steps 6, 7 — Letter + short letter, LinkedIn messages** (two parallel subagents)
 - **Step 8 — Interview prep**

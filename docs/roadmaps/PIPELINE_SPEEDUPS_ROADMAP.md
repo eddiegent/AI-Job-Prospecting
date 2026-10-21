@@ -1,6 +1,6 @@
 # Pipeline Speedups Roadmap
 
-> **Status: not started.** Drafted 2026-07-28; re-verified 2026-10-05 against
+> **Status: item 1 shipped 2026-10-21; item 2 not started.** Drafted 2026-07-28; re-verified 2026-10-05 against
 > the current SKILL.md and prompts (line numbers, figures and the permission
 > rule corrected; claims-guard interactions added). Two independent changes to the
 > `job-application-tailor` run order. Either can ship alone.
@@ -16,12 +16,16 @@ moved since.
 Item 1 is low-risk and self-contained. Item 2 removes more wall-clock but
 needs a guard built first — do it second.
 
-- [ ] **1. Move company research to after the fit gate**
+- [x] **1. Move company research to after the fit gate** — shipped 2026-10-21
+  (SKILL.md Step 3.6 → Step 4.5; tech reference and overview pages, EN + FR)
 - [ ] **2. Run interview prep alongside the letter and LinkedIn**
 
 ---
 
 ## 1. Move company research to after the fit gate
+
+> **Shipped 2026-10-21.** The step is now Step 4.5 in SKILL.md. The analysis
+> below is kept as the record of why the move was safe.
 
 **Where:** `.claude/skills/job-application-tailor/SKILL.md` — Step 3.6 (~line
 103) moves to sit between Step 4 (~line 123) and Step 5 (~line 139).

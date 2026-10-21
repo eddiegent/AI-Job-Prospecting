@@ -89,12 +89,6 @@ cd "$SKILL_BASE" && python scripts/cli.py check-duplicate "$PREP_DIR" --url "<jo
 - Exit 1, output starts `[!] BLACKLIST` → stop unless the user explicitly overrides.
 - Exit 0 with an `Other applications to …` block → mention the earlier applications as context ("You applied to X on [date] for [title], [fit]% fit — this is a different role") and continue.
 
-### Step 3.6 — Research the company
-
-Skip if `behaviour.skip_company_research` is `true`, or if WebSearch is unavailable (note it; LinkedIn messages then use placeholder names like "Hiring Manager"; everything else works). Otherwise use **WebSearch in the foreground** (background agents can't get web-tool approval) for size, ownership, recent news, culture signals, tech stack, and **key contacts** (names, titles, LinkedIn URLs of recruiters, hiring managers, tech leads).
-
-Save `$PREP_DIR/company_research.md` with a `## Contacts` section. If research reveals a company size the offer didn't state, update `company_size` in `job_offer_analysis.json` — CV tailoring uses it (small companies value versatility, large ones depth).
-
 ### Step 3.9 — Build the merged fact base (never skip)
 
 ```bash
@@ -118,6 +112,12 @@ Set `$OUTPUT_DIR` to the printed path and `$PREP_DIR` to `$OUTPUT_DIR/_prep`.
 **If `overall_fit_pct` is below 50%, stop.** Tell the user the score, summarise the key gaps, and explain why no pack was generated. The analysis and renamed folder are kept for review.
 
 **Dry run** — if `behaviour.dry_run` is `true`, or the user said "dry run" / "just the score", stop here after showing the fit score and match summary, then record the application (Step 10). Useful for scanning several offers before committing to full generation.
+
+### Step 4.5 — Research the company
+
+This comes after the fit gate on purpose: nothing up to Step 4 reads the research, so a run stopped by the gate or a dry run costs no web searches. Skip if `behaviour.skip_company_research` is `true`, or if WebSearch is unavailable (note it; LinkedIn messages then use placeholder names like "Hiring Manager"; everything else works). Otherwise use **WebSearch in the foreground** (background agents can't get web-tool approval) for size, ownership, recent news, culture signals, tech stack, and **key contacts** (names, titles, LinkedIn URLs of recruiters, hiring managers, tech leads).
+
+Save `$PREP_DIR/company_research.md` with a `## Contacts` section. If research reveals a company size the offer didn't state, update `company_size` in `job_offer_analysis.json` and re-run `gate offer` — this must happen before Step 5, because CV tailoring uses it (small companies value versatility, large ones depth).
 
 ### Step 5 — Tailor the CV
 
