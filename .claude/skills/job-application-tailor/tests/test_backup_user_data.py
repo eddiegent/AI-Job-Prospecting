@@ -144,3 +144,24 @@ def test_verify_backup_clean_install_returns_empty(fake_user_data: Path, tmp_pat
     backup_root = tmp_path / "backups"
     created = backup(fake_user_data, backup_root, timestamp="2026-04-10-1200")
     assert verify_backup(created) == []
+
+
+@pytest.mark.skipif(__import__("sys").platform != "win32", reason="Windows MAX_PATH only")
+def test_backup_copies_files_whose_backup_path_exceeds_max_path(tmp_path: Path):
+    """A source path under 260 chars can exceed it once nested in the backup
+    folder (real incident: deep output/ pack names, WinError 3)."""
+    root = tmp_path / "project"
+    pack = root / "output"
+    pack.mkdir(parents=True)
+    # Fill the path up to ~240 chars: fine as a source, too long as a copy.
+    name = "x" * max(1, 240 - len(str(pack)) - 1 - len(".txt")) + ".txt"
+    src_file = pack / name
+    src_file.write_text("deep", encoding="utf-8")
+    assert len(str(src_file)) < 260
+
+    target = backup(root, tmp_path / "backups", timestamp="2026-11-02-0000")
+
+    assert verify_backup(target) == []
+    assert not str(target).startswith("\\\\?\\")  # callers get a normal path
+    copied = Path("\\\\?\\" + str(target)) / "output" / name
+    assert copied.read_text(encoding="utf-8") == "deep"

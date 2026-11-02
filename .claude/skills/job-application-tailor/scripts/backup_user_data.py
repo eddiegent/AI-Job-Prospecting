@@ -23,6 +23,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 import sys
@@ -50,8 +51,8 @@ def backup(
     a backup with the same timestamp already exists — the caller must pick
     a new timestamp rather than silently overwriting a previous backup.
     """
-    source_root = Path(source_root)
-    backup_root = Path(backup_root)
+    source_root = _fs_path(source_root)
+    backup_root = _fs_path(backup_root)
 
     if timestamp is None:
         timestamp = datetime.now().strftime("%Y-%m-%d-%H%M")
@@ -88,9 +89,11 @@ def backup(
     )
 
     readme_path = target / "README.txt"
-    readme_path.write_text(_readme_text(source_root, timestamp), encoding="utf-8")
+    readme_path.write_text(
+        _readme_text(_display_path(source_root), timestamp), encoding="utf-8"
+    )
 
-    return target
+    return _display_path(target)
 
 
 def verify_backup(backup_dir: Path) -> list[str]:
@@ -99,10 +102,10 @@ def verify_backup(backup_dir: Path) -> list[str]:
     Returns a list of violation messages. An empty list means the backup
     is intact.
     """
-    backup_dir = Path(backup_dir)
+    backup_dir = _fs_path(backup_dir)
     manifest_path = backup_dir / "manifest.json"
     if not manifest_path.exists():
-        return [f"manifest.json missing under {backup_dir}"]
+        return [f"manifest.json missing under {_display_path(backup_dir)}"]
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     violations: list[str] = []
@@ -123,6 +126,40 @@ def verify_backup(backup_dir: Path) -> list[str]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+_LONG_PREFIX = "\\\\?\\"        # \\?\  — Windows extended-length path
+_LONG_UNC_PREFIX = "\\\\?\\UNC\\"  # \\?\UNC\ — same, for \\server\share
+
+
+def _fs_path(path: Path | str) -> Path:
+    """Return ``path`` in a form the filesystem calls accept at any length.
+
+    On Windows a path over 260 characters fails with WinError 3 unless it
+    carries the ``\\\\?\\`` prefix. The backup nests every file one folder
+    deeper than its source, so deep ``output/`` packs crossed that limit.
+    Elsewhere the path is returned unchanged.
+    """
+    path = Path(path)
+    if sys.platform != "win32":
+        return path
+    text = str(path)
+    if text.startswith(_LONG_PREFIX):
+        return path
+    text = os.path.abspath(text)
+    if text.startswith("\\\\"):
+        return Path(_LONG_UNC_PREFIX + text[2:])
+    return Path(_LONG_PREFIX + text)
+
+
+def _display_path(path: Path) -> Path:
+    """Strip the ``_fs_path`` prefix so messages and callers see a normal path."""
+    text = str(path)
+    if text.startswith(_LONG_UNC_PREFIX):
+        return Path("\\\\" + text[len(_LONG_UNC_PREFIX):])
+    if text.startswith(_LONG_PREFIX):
+        return Path(text[len(_LONG_PREFIX):])
+    return path
+
 
 def _sha256_of(path: Path) -> str:
     h = hashlib.sha256()
