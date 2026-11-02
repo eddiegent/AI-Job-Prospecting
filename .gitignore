@@ -30,6 +30,8 @@ resources/cv_fact_base.json
 resources/cv_addendum.md
 resources/old_cv_addendum.md
 resources/user_prefs.yaml
+# Training syllabi (École Cube) — personal reference for interview prep
+resources/Compétences*.md
 
 # First-run seeds copied by scripts/init.py into the user data dir (Phase 4)
 resources/cv_addendum.template.md
