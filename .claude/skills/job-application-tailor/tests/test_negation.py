@@ -59,3 +59,18 @@ def test_sentence_scope_drops_the_whole_rule_sentence():
     text = "**Kafka — évalué, pas retenu.** RabbitMQ est l'outil maîtrisé."
     assert affirmative_sentences(text) == ["RabbitMQ est l'outil maîtrisé."]
     assert "Kafka" in affirmative_clauses(text)[0]  # clause scope would keep it
+
+
+@pytest.mark.parametrize("text", [
+    "je n'utilise que Docker", "je ne fais que du C#", "non seulement Docker", "pas seulement Docker",
+    "not only Docker", "not just Docker",
+])
+def test_restrictive_and_additive_forms_are_not_negations(text):
+    assert not is_negated(text)
+
+
+@pytest.mark.parametrize("text", [
+    "je ne pense pas que Docker suffise", "je n'ai jamais dit que Docker",
+])
+def test_ne_que_around_a_real_negation_stays_negated(text):
+    assert is_negated(text)

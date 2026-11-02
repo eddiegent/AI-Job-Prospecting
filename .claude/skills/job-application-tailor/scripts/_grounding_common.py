@@ -22,6 +22,7 @@ SYNONYMS: dict[str, list[str]] = {
     "winforms": ["winforms", "windows forms", "win forms"],
     "entity framework": ["entity framework", "ef core", "entityframework"],
     "sql server": ["sql server", "mssql", "ms sql server", "ms-sql"],
+    "rest apis": ["rest apis", "rest api", "api rest", "apis rest"],
     "javascript": ["javascript"],
     "typescript": ["typescript"],
 }
@@ -178,6 +179,8 @@ def candidate_has(canon: str, vocab: set[str], prose: str) -> bool:
 # research step and is already tech-only, so no shape gate is needed there.
 _ALL_CAPS_ACRONYM = re.compile(r"^[A-Z][A-Z0-9]{1,7}$")
 _CAMEL_CASE = re.compile(r"[a-z][A-Z]")
+# French degree levels ("Bac+3", "Bac +5") carry a '+' but are not tech.
+_DEGREE_LEVEL = re.compile(r"\bbac\s*\+\s*\d", re.IGNORECASE)
 
 
 def is_tech_shaped(token: str) -> bool:
@@ -195,7 +198,7 @@ def is_tech_shaped(token: str) -> bool:
     warnings, not blockers.
     """
     s = token.strip()
-    if not s:
+    if not s or _DEGREE_LEVEL.search(s):
         return False
     if canonical(s) in SYNONYMS:
         return True

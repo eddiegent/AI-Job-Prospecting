@@ -192,6 +192,71 @@ def _claims(*filenames: str) -> Callable[[Ctx], Result]:
     return run
 
 
+def _pack_language(ctx: Ctx) -> str:
+    """The pack's language: the offer's detected_language, or the cold flow's
+    selected_role.language. Empty when neither file is there."""
+    for name, key in (("job_offer_analysis.json", "detected_language"), ("selected_role.json", "language")):
+        if ctx.path(name).exists():
+            return json.loads(ctx.path(name).read_text(encoding="utf-8")).get(key) or ""
+    return ""
+
+
+def _cv_timeline(ctx: Ctx) -> Result:
+    """The cv_rules.md timeline rules (scripts/tailor_invariants.py). Blocking:
+    recent roles in full, no training in experience, a dateless
+    earlier-experience line in the pack's language. Warnings only: the
+    load-bearing checks, which model criterion A alone and fire on passing
+    mentions ("fluent English: five years in the UK at ROCC")."""
+    from scripts.paths import load_settings
+    from scripts.tailor_invariants import (
+        find_consolidated_line_issues, find_missing_load_bearing_roles, find_missing_recent_roles,
+        find_non_consolidated_non_load_bearing_roles, find_training_entries_in_experience,
+    )
+
+    r = Result("cv timeline (recent roles, compression, training)")
+    fb_path = next((p for p in (ctx.merged_fact_base(), ctx.path(PLAIN_FACT_BASE)) if p.exists()), None)
+    if fb_path is None:
+        r.errors.append(f"neither {MERGED_FACT_BASE} nor {PLAIN_FACT_BASE} found in {ctx.prep}")
+        return r
+    fb = json.loads(fb_path.read_text(encoding="utf-8"))
+    cv = json.loads(ctx.path("tailored_cv.json").read_text(encoding="utf-8"))
+    cutoff = (load_settings().get("behaviour") or {}).get("experience_compression_cutoff_year")
+
+    r.errors = (find_missing_recent_roles(cv, fb, cutoff)
+                + find_training_entries_in_experience(cv, fb)
+                + find_consolidated_line_issues(cv, _pack_language(ctx)))
+    if ctx.path("match_analysis.json").exists():  # offer flow only
+        ma = json.loads(ctx.path("match_analysis.json").read_text(encoding="utf-8"))
+        r.warnings = [f"{w} - match evidence names it; keep it full unless that is a passing mention"
+                      for w in find_missing_load_bearing_roles(cv, fb, ma, cutoff)]
+        r.warnings += [f"{w} - fine if it is load-bearing by technology or responsibility "
+                       f"(cv_rules.md criteria B/C)"
+                       for w in find_non_consolidated_non_load_bearing_roles(cv, fb, ma, cutoff)]
+    return r
+
+
+# Both short-letter prompts make 500-750 characters of body a hard constraint.
+# Measured as the paragraphs summed (greeting and sign-off excluded). Of 123
+# packs on 2026-10-21, two were short (486, 496) and none long.
+SHORT_LETTER_MIN = 500
+SHORT_LETTER_MAX = 750
+
+
+def _short_letter_length(ctx: Ctx) -> Result:
+    r = Result("short letter length")
+    paragraphs = json.loads(ctx.path("short_letter.json").read_text(encoding="utf-8")).get("paragraphs", [])
+    n = sum(len(p) for p in paragraphs)
+    if n < SHORT_LETTER_MIN:
+        r.errors.append(f"short_letter.json body is {n} characters, minimum {SHORT_LETTER_MIN} - "
+                        f"add {SHORT_LETTER_MIN - n}")
+    elif n > SHORT_LETTER_MAX:
+        r.errors.append(f"short_letter.json body is {n} characters, maximum {SHORT_LETTER_MAX} - "
+                        f"cut {n - SHORT_LETTER_MAX}")
+    else:
+        r.note = f"{n} characters"
+    return r
+
+
 # LinkedIn limits. A connection note over 300 characters is silently truncated
 # by LinkedIn; the cold prompt caps the post-acceptance message at 700. Offer-
 # flow messages have no template type, so only the prompt's soft 500 applies.
@@ -297,11 +362,13 @@ STAGES: dict[str, list[Step]] = {
     "cv": [
         (_schema("tailored_cv.json", TAILOR_SCHEMAS / "tailored_cv.schema.json"), True),
         (_forbidden_labels("tailored_cv.json"), False),
+        (_cv_timeline, False),
         (_claims("tailored_cv.json"), False),
     ],
     "letters": [
         (_schema("letter.json", TAILOR_SCHEMAS / "letter.schema.json"), True),
         (_schema("short_letter.json", TAILOR_SCHEMAS / "letter.schema.json"), True),
+        (_short_letter_length, False),
         (_claims("letter.json", "short_letter.json"), False),
     ],
     "linkedin": [
@@ -375,8 +442,11 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "Run every deterministic check for one pipeline stage. Stages: "
         "factbase (schema + verify vs master CV), offer (schema), "
         "match (recount in place + schema + grounding), "
-        "cv (schema + forbidden labels + claims on tailored_cv.json), letters "
-        "(letter + short_letter schemas + claims on those two), linkedin (schema + "
+        "cv (schema + forbidden labels + timeline: every role ending in or after "
+        "the compression cutoff is a full entry, no training in experience, a dateless "
+        "earlier-experience line + claims on tailored_cv.json), letters "
+        "(letter + short_letter schemas + short-letter body 500-750 characters + claims "
+        "on those two), linkedin (schema + "
         "message lengths: connection request <= 300, direct message <= 700 + "
         "claims on linkedin.json), interview (interview_prep.md is complete: "
         "length, sections, Quick Reference, fit banner matching match_analysis.json), "

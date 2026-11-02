@@ -18,7 +18,9 @@ Two subcommands:
        ("quotidien", "au quotidien", "tous les jours", "daily", "every day").
     2. Skills listed as familiar-only in the master CV (e.g. Docker, RabbitMQ,
        CI/CD, Entity Framework) may appear in the skills section ONLY under the
-       "Familier / a approfondir" heading, and never in tagline/summary/letters.
+       "Familier / a approfondir" heading, and never in tagline/summary/letters -
+       except named as a gap, in a negated clause ("n8n reste à apprendre",
+       "pas encore de Docker en production").
     3. Every item in a (non-familiar) skills section must appear literally in the
        master CV or the addendum - no invented skills. Negated addendum clauses
        ("never Hibernate", "no Go in this role") are not a source
@@ -465,10 +467,15 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
     for name in ("letter.json", "short_letter.json", "linkedin.json"):
         for s in _strings(docs.get(name, {})):
             narrative.append((name, s))
+    from scripts._negation import affirmative_clauses
+
     for where, text in narrative:
+        # a mention inside a negated clause admits the gap ("n8n reste à apprendre")
+        claimed = _norm(" | ".join(affirmative_clauses(text)))
         for f in familiar:
-            if len(f) > 2 and _tok_in(f, _norm(text)):
-                errors.append(f"[familiar] {where}: mentions familiar-only skill '{f}' - keep it out of headline/summary/letters")
+            if len(f) > 2 and _tok_in(f, claimed):
+                errors.append(f"[familiar] {where}: mentions familiar-only skill '{f}' - keep it out of "
+                              f"headline/summary/letters, or name it as a gap (\"{f} reste à apprendre\")")
 
     if offer:
         techs, label, origin = offer.get("technologies", []), "jd-contagion", "the job posting"
@@ -478,8 +485,6 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
         techs, label, origin = [], "", ""
     techs = [t for t in techs if t and not _tok_in(t, source)]
     if techs:
-        from scripts._negation import affirmative_clauses
-
         for name, d in docs.items():
             for text in _strings(d):
                 # a mention inside a negated clause admits the gap ("no Terraform yet")

@@ -70,10 +70,43 @@ def _end_year_from_dates(dates: str) -> int | None:
     return max(years) if years else None
 
 
+def _is_consolidated(item: dict[str, Any]) -> bool:
+    return any(h in item.get("role_line", "") for h in CONSOLIDATED_HEADINGS.values())
+
+
+_PARENTHETICAL = re.compile(r"\([^)]*\)")
+# How far after an ambiguous company mention its years may sit:
+# "JFC Informatique & Média, Asnières (1994–2001)".
+_YEAR_WINDOW = 40
+_LEGAL_FORM = re.compile(r"\s+(?:sas|sa|sarl|ltd|limited|inc|gmbh|llc|plc)\.?$")
+
+
+def _company_core(name: str) -> str:
+    """Company name without a parenthetical or a trailing legal form, so
+    ``JFC Informatique & Média (Kantar)`` and ``Oodrive SAS`` still match a CV
+    line that writes ``JFC Informatique & Média`` or ``Oodrive SA``."""
+    s = " ".join(_PARENTHETICAL.sub(" ", name.lower()).split())
+    return _LEGAL_FORM.sub("", s).strip(" ,.")
+
+
+def _shows_role(item: dict[str, Any], entry: dict[str, Any]) -> bool:
+    """True when a tailored experience item is this fact-base role: it names
+    the company and the role's end year. The year tells apart roles whose
+    company names overlap (``Peaktime SAS`` / ``Telmar Peaktime SAS``, the
+    two JFC roles)."""
+    core = _company_core(entry.get("company", ""))
+    line = " ".join(_combined_line(item).lower().split())
+    if not core or core not in line:
+        return False
+    end_year = _end_year_from_dates(entry.get("dates", ""))
+    return end_year is None or str(end_year) in line
+
+
 def _role_is_load_bearing(
     company: str,
     dates: str,
     match_analysis: dict[str, Any],
+    companies: list[str] | tuple[str, ...] = (),
 ) -> bool:
     """Criterion A only: match analysis evidence names the company or date.
 
@@ -81,14 +114,29 @@ def _role_is_load_bearing(
     require the job offer analysis and are not modelled here — the tests
     in this phase construct fixtures that only exercise criterion A, which
     is the criterion the prompt relies on most heavily in practice.
+
+    ``companies`` lists every fact-base company. Longer names that contain
+    this one are blanked out of the evidence first ("Telmar Peaktime" is not
+    "Peaktime"). When another role's name still overlaps (the two JFC roles),
+    a mention only counts with one of this role's years right after it:
+    "JFC Informatique & Média (2002–2005)" is the Kantar role, not the
+    1994–2001 one.
     """
-    company_l = company.strip().lower()
+    core = _company_core(company)
+    cores = [c for c in map(_company_core, companies) if c]
+    longer = [c for c in cores if core and core in c and c != core]
+    ambiguous = sum(1 for c in cores if core and (c == core or c in core)) > 1
+    years = {str(y) for y in re.findall(r"(19\d{2}|20\d{2})", dates or "")}
     for match in match_analysis.get("matches", []):
         if match.get("match_type") not in {"direct", "transferable"}:
             continue
         evidence = (match.get("evidence") or "").lower()
-        if company_l and company_l in evidence:
-            return True
+        for name in longer:
+            evidence = evidence.replace(name, " ")
+        for m in re.finditer(re.escape(core), evidence) if core else ():
+            after = evidence[m.end():m.end() + _YEAR_WINDOW]
+            if not ambiguous or any(y in after for y in years):
+                return True
         if dates and dates.lower() in evidence:
             return True
     return False
@@ -111,16 +159,9 @@ def find_missing_load_bearing_roles(
         return []
 
     # Load-bearing roles must appear as standalone entries, not folded into
-    # the consolidated "Earlier experience" line. Exclude that line from the
-    # haystack so a folded role registers as missing.
-    tailored_lines = " \n ".join(
-        _combined_line(item)
-        for item in tailored_cv.get("experience", [])
-        if not any(
-            h in item.get("role_line", "")
-            for h in CONSOLIDATED_HEADINGS.values()
-        )
-    ).lower()
+    # the consolidated "Earlier experience" line, so that line is excluded.
+    standalone = [i for i in tailored_cv.get("experience", []) if not _is_consolidated(i)]
+    companies = [e.get("company", "") for e in fact_base.get("experience", [])]
 
     violations: list[str] = []
     for entry in fact_base.get("experience", []):
@@ -130,13 +171,43 @@ def find_missing_load_bearing_roles(
         if end_year is None or end_year >= cutoff_year:
             continue
         company = entry.get("company", "")
-        if not _role_is_load_bearing(company, entry.get("dates", ""), match_analysis):
+        if not _role_is_load_bearing(company, entry.get("dates", ""), match_analysis, companies):
             continue
-        if company.lower() not in tailored_lines:
+        if not any(_shows_role(item, entry) for item in standalone):
             violations.append(
                 f"Load-bearing pre-cutoff role {company!r} ({entry.get('dates')}) "
                 f"is missing from tailored experience"
             )
+    return violations
+
+
+def find_missing_recent_roles(
+    tailored_cv: dict[str, Any],
+    fact_base: dict[str, Any],
+    cutoff_year: int | None,
+) -> list[str]:
+    """Return violations for roles ending in or after ``cutoff_year`` that are
+    not a full experience entry — dropped, or folded into the consolidated
+    "Earlier experience" line. Only pre-cutoff roles may be folded, so with
+    ``cutoff_year`` None (compression disabled) every role must appear.
+    """
+    standalone = [i for i in tailored_cv.get("experience", []) if not _is_consolidated(i)]
+    violations: list[str] = []
+    for entry in fact_base.get("experience", []):
+        if entry.get("type") == "training":
+            continue
+        if cutoff_year is not None:
+            end_year = _end_year_from_dates(entry.get("dates", ""))
+            if end_year is None or end_year < cutoff_year:
+                continue
+        if any(_shows_role(item, entry) for item in standalone):
+            continue
+        rule = (f"it ends in or after the {cutoff_year} cutoff" if cutoff_year is not None
+                else "compression is off")
+        violations.append(
+            f"Role {entry.get('company')!r} ({entry.get('dates')}) is not a full experience "
+            f"entry - {rule}, so it must not be dropped or folded into the earlier-experience line"
+        )
     return violations
 
 
@@ -153,6 +224,7 @@ def find_non_consolidated_non_load_bearing_roles(
     if cutoff_year is None:
         return []
 
+    companies = [e.get("company", "") for e in fact_base.get("experience", [])]
     violations: list[str] = []
     for entry in fact_base.get("experience", []):
         if entry.get("type") == "training":
@@ -161,13 +233,13 @@ def find_non_consolidated_non_load_bearing_roles(
         if end_year is None or end_year >= cutoff_year:
             continue
         company = entry.get("company", "")
-        if _role_is_load_bearing(company, entry.get("dates", ""), match_analysis):
+        if _role_is_load_bearing(company, entry.get("dates", ""), match_analysis, companies):
             continue
         for item in tailored_cv.get("experience", []):
-            if any(h in item.get("role_line", "") for h in CONSOLIDATED_HEADINGS.values()):
+            if _is_consolidated(item):
                 continue
             line = _combined_line(item)
-            if company.lower() in line.lower():
+            if _shows_role(item, entry):
                 violations.append(
                     f"Non-load-bearing pre-cutoff role {company!r} should be "
                     f"consolidated but appears as a standalone entry: {line!r}"
@@ -188,7 +260,7 @@ def find_consolidated_line_issues(
     expected_heading = CONSOLIDATED_HEADINGS.get(expected_language)
     for item in tailored_cv.get("experience", []):
         role_line = item.get("role_line", "")
-        if not any(h in role_line for h in CONSOLIDATED_HEADINGS.values()):
+        if not _is_consolidated(item):
             continue
         meta = item.get("metadata_line", "")
         if year_re.search(meta):

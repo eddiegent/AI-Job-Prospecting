@@ -44,6 +44,11 @@ def _offer_with_kubernetes() -> dict:
     }
 
 
+def _other(warnings: list[str]) -> list[str]:
+    """Warnings other than the missing-technology gap-row one (tested on its own below)."""
+    return [w for w in warnings if "offer technology" not in w]
+
+
 def _write(tmp_path: Path, name: str, payload: dict) -> Path:
     p = tmp_path / name
     p.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
@@ -90,7 +95,7 @@ def test_transferable_with_notes_passes(tmp_path):
     target = _write(tmp_path, "ma.json", ma)
     errors, warnings = check(target, off, fb)
     assert errors == []
-    assert warnings == []
+    assert _other(warnings) == []
 
 
 # ---------------------------------------------------------------------------
@@ -277,8 +282,8 @@ def test_transferable_without_notes_warns(tmp_path):
     target = _write(tmp_path, "ma.json", ma)
     errors, warnings = check(target, off, fb)
     assert errors == []
-    assert len(warnings) == 1
-    assert "Docker" in warnings[0]
+    assert len(_other(warnings)) == 1
+    assert "Docker" in _other(warnings)[0]
 
 
 def test_versioned_tech_grounded_by_unversioned_fact_base(tmp_path):
@@ -398,4 +403,117 @@ def test_familiar_only_skill_as_transferable_is_fine(tmp_path):
     ma["matches"][0].update(match_type="transferable", notes="Docker en usage ponctuel")
     target = _write(tmp_path, "ma.json", ma)
     errors, warnings = check(target, off, fb)
-    assert errors == [] and warnings == []
+    assert errors == [] and _other(warnings) == []
+
+
+# ---------------------------------------------------------------------------
+# Alternatives lists ("X, Y ou équivalents")
+# ---------------------------------------------------------------------------
+
+
+def _automation_fact_base() -> dict:
+    fb = _merged_fact_base()
+    fb["technologies"] = fb["technologies"] + ["Make", "Claude Code", "n8n"]
+    fb["familiar_only_skills"] = fb["familiar_only_skills"] + ["n8n"]
+    return fb
+
+
+def _automation_offer() -> dict:
+    return {**_offer_with_kubernetes(),
+            "technologies": ["Make", "Zapier", "n8n", "Cursor", "Claude Code", "Codex", "Supabase", "Kubernetes"],
+            "required_skills": ["Make, Zapier, n8n ou équivalents", "Formation Bac+3 à Bac+5 en informatique"]}
+
+
+def _direct_errors(tmp_path, requirement: str) -> tuple[list[str], list[str]]:
+    fb = _write(tmp_path, "fb.json", _automation_fact_base())
+    off = _write(tmp_path, "off.json", _automation_offer())
+    return check(_write(tmp_path, "ma.json", _single_direct(requirement)), off, fb)
+
+
+@pytest.mark.parametrize("requirement", [
+    "Make, Zapier, n8n ou équivalents",       # Make covers Zapier; n8n is not the member relied on
+    "Cursor, Claude Code, Codex ou équivalents",
+    "Zapier or Make",
+    "Make ou Zapier",
+])
+def test_alternatives_list_is_satisfied_by_one_grounded_member(tmp_path, requirement):
+    errors, warnings = _direct_errors(tmp_path, requirement)
+    assert errors == [], errors
+    assert _other(warnings) == [], warnings
+
+
+def test_alternatives_list_with_no_grounded_member_still_fails(tmp_path):
+    errors, _ = _direct_errors(tmp_path, "Zapier ou Cursor")
+    assert len(errors) == 1 and "'zapier'" in errors[0] and "'cursor'" in errors[0]
+
+
+def test_familiar_only_member_cannot_satisfy_an_alternatives_list(tmp_path):
+    errors, _ = _direct_errors(tmp_path, "n8n ou Zapier")
+    assert any("'n8n' is familiar-only" in e for e in errors)
+    assert any("'zapier'" in e for e in errors)
+
+
+def test_alternatives_do_not_cross_an_and(tmp_path):
+    errors, _ = _direct_errors(tmp_path, "Make ou Zapier, et Supabase")
+    assert len(errors) == 1 and "'supabase'" in errors[0] and "zapier" not in errors[0]
+
+
+def test_unnamed_equivalents_warn_instead_of_blocking(tmp_path):
+    errors, warnings = _direct_errors(tmp_path, "Bases de données relationnelles (Supabase ou alternatives)")
+    assert errors == []
+    assert any("none of 'supabase' is in cv_fact_base" in w and "accepts equivalents" in w for w in warnings)
+
+
+def test_degree_level_is_not_a_tech_token(tmp_path):
+    errors, warnings = _direct_errors(tmp_path, "Formation Bac+3 à Bac+5 en informatique")
+    assert errors == []
+    assert any("bac+3" in w for w in warnings)  # still surfaced, as a soft token
+
+
+# ---------------------------------------------------------------------------
+# A missing offer technology needs its own gap row
+# ---------------------------------------------------------------------------
+
+
+def _rows(*rows) -> dict:
+    return {"match_summary": {"direct_count": 0, "transferable_count": 0, "gap_count": 0, "overall_fit_pct": 0},
+            "matches": [{"requirement": r, "category": "preferred_skill", "match_type": t, "evidence": "x", "notes": "x"}
+                        for r, t in rows]}
+
+
+def _tech_warnings(tmp_path, offer_techs, *rows) -> list[str]:
+    fb = _write(tmp_path, "fb.json", _automation_fact_base())
+    off = _write(tmp_path, "off.json", {**_automation_offer(), "technologies": offer_techs})
+    _, warnings = check(_write(tmp_path, "ma.json", _rows(*rows)), off, fb)
+    return [w for w in warnings if "offer technology" in w]
+
+
+def test_missing_tech_folded_into_a_transferable_row_warns(tmp_path):
+    w = _tech_warnings(tmp_path, ["SQL Server", "Edge Functions"],
+                       ("SQL Server, Edge Functions, modélisation de données", "transferable"))
+    assert len(w) == 1 and "'Edge Functions'" in w[0] and "matches[0] (transferable)" in w[0]
+
+
+def test_missing_tech_with_its_own_gap_row_is_fine(tmp_path):
+    assert _tech_warnings(tmp_path, ["Edge Functions"],
+                          ("PostgreSQL, Edge Functions, modélisation de données", "transferable"),
+                          ("Edge Functions", "gap")) == []
+
+
+def test_missing_tech_no_row_at_all_warns(tmp_path):
+    w = _tech_warnings(tmp_path, ["Supabase"], ("Make", "direct"))
+    assert len(w) == 1 and "no row assesses it" in w[0]
+
+
+@pytest.mark.parametrize("tech", ["Make", "REST", "Claude", "n8n"])
+def test_held_partially_named_or_familiar_tech_is_not_flagged(tmp_path, tech):
+    # Make is held; REST / Claude sit inside "REST APIs" / "Claude Code"; n8n is familiar-only.
+    fb = _automation_fact_base()
+    fb["technologies"] = fb["technologies"] + ["REST APIs"]
+    off = _write(tmp_path, "off.json", {**_automation_offer(), "technologies": [tech]})
+    _, warnings = check(_write(tmp_path, "ma.json", _rows((tech, "transferable"))), off, _write(tmp_path, "fb.json", fb))
+    assert not [x for x in warnings if "offer technology" in x]
+
+
+def test_member_of_a_satisfied_alternatives_list_is_not_flagged(tmp_path):
+    assert _tech_warnings(tmp_path, ["Make", "Zapier"], ("Make, Zapier ou équivalents", "direct")) == []

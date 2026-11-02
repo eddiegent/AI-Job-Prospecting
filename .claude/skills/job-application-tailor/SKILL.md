@@ -121,13 +121,13 @@ Save `$PREP_DIR/company_research.md` with a `## Contacts` section. If research r
 
 ### Step 5 — Tailor the CV
 
-Follow `prompts/tailor_cv.md` (it starts by loading `prompts/cv_rules.md`). Pass it the merged fact base, the match analysis, the company research, `$CUSTOMIZATION["prefs"]`, and the `experience_compression_cutoff_year` from settings. Write `tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels from `user_prefs.yaml` + claims check). Build no DOCX/PDF until it passes.
+Follow `prompts/tailor_cv.md` (it starts by loading `prompts/cv_rules.md`). Pass it the merged fact base, the match analysis, the company research, `$CUSTOMIZATION["prefs"]`, and the `experience_compression_cutoff_year` from settings. Write `tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels from `user_prefs.yaml` + timeline: every role ending in or after the cutoff is a full entry, no training in experience + claims check). Build no DOCX/PDF until it passes.
 
 ### Steps 6, 7, 8 — Letters, LinkedIn, interview prep (parallel agents)
 
 Once the CV passes its gate these three are independent: each reads the CV and the analyses, none reads another's output. **Spawn three Agent subagents at the same time.** Give each the paths to the merged fact base, `tailored_cv.json`, `job_offer_analysis.json`, `match_analysis.json`, `company_research.md`, `$SKILL_BASE` and `$OUTPUT_DIR`, plus `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` (the letter honours `tone_directives` and `team_context_companies`; LinkedIn honours `tone_directives`).
 
-- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters). Run **`gate letters`**.
+- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters; `gate letters` blocks outside that range). Run **`gate letters`**.
 - **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Run **`gate linkedin`**.
 - **Subagent 3 — interview prep.** Follow `prompts/generate_interview_prep.md` → `$PREP_DIR/interview_prep.md` (Step 9 renders it as mobile-friendly HTML). It can't see `$ARGUMENTS`, so pass the **job URL, the output folder path and today's date** for the Quick Reference block. Run **`gate interview`**.
 

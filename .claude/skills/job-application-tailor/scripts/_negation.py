@@ -3,7 +3,8 @@
 Used by:
 - claims_guard.py — addendum text is a SOURCE for the claims check only where
   it is affirmative ("No Kubernetes in this role" must not source
-  Kubernetes); also the rule-6 gap-admission exemption.
+  Kubernetes); also the gap-admission exemptions of rule 2 (a familiar-only
+  skill named as a gap: "n8n reste à apprendre") and rule 6.
 - _grounding_common.py — fact-base prose (experience details, including the
   addendum bullets merged into them, summary, off-CV facts) grounds a match /
   role claim only through its affirmative clauses.
@@ -17,7 +18,8 @@ Semantics (one definition, so the checks cannot drift):
   ne, n', ni, non, aucun, sans, no, not, never, without, n't, ...; "à
   apprendre", "reste à", "to learn", ...). A negation word directly followed
   by a hyphen is part of a compound, not a negation: "no-code", "non-profit",
-  "pas-à-pas".
+  "pas-à-pas". Restrictive / additive forms are not negations either: "je
+  n'utilise que X", "non seulement X", "not only X" all assert X.
 - Only negated clauses are dropped; the rest of the sentence stays evidence.
   Two cases where the negation predicates something outside its own clause
   extend it to that short subject (at most ``SHORT_ITEM_WORDS`` words each):
@@ -53,6 +55,17 @@ NEGATION_RE = re.compile(
     r"|\wn't\b"                    # English contraction: don't, isn't, wasn't
 )
 
+# Restrictive and additive constructions look like negations but assert the
+# skill: "je n'utilise que Docker" (only Docker), "non seulement Docker",
+# "not only Docker". They are blanked before NEGATION_RE runs. "ne ... que"
+# only counts when no real negation sits between the two words ("je ne pense
+# pas que" stays negated).
+_NOT_A_NEGATION = re.compile(
+    r"(?<![\w-])(?:ne\s+|n')(?:(?!pas\b|jamais\b|plus\b|rien\b|personne\b|aucun)\S+\s+){0,3}?qu(?:e\b|')"
+    r"|(?<![\w-])(?:pas|non)\s+seulement\b"
+    r"|(?<![\w-])not\s+(?:only|just)\b"
+)
+
 SHORT_ITEM_WORDS = 4
 
 _SENTENCE_SPLIT = re.compile(r"\n|;|(?<=[.!?])[*_)\]'\"»]*\s+")
@@ -71,7 +84,7 @@ def fold(text: str) -> str:
 
 def is_negated(text: str) -> bool:
     """True when ``text`` (a clause or a sentence) contains a negation / gap word."""
-    return NEGATION_RE.search(fold(text)) is not None
+    return NEGATION_RE.search(_NOT_A_NEGATION.sub(" ", fold(text))) is not None
 
 
 def _starts_negated(clause: str) -> bool:

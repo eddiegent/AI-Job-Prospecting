@@ -149,7 +149,7 @@ Run **`gate selected-role`**. An override (or an edited rationale) can reintrodu
 
 ### Step 5 — Tailor the CV
 
-Follow `prompts/tailor_cv_cold.md` (it starts by loading `$SKILL_BASE_TAILOR/prompts/cv_rules.md`, the same CV rules the offer flow uses). Anchor = `selected_role.json` + `company_profile.json`. Pass the merged fact base, `$CUSTOMIZATION["prefs"]` and the `experience_compression_cutoff_year` from settings. Write `$PREP_DIR/tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels + claims check, which here also blocks `tech_stack_hints` technologies absent from the CV).
+Follow `prompts/tailor_cv_cold.md` (it starts by loading `$SKILL_BASE_TAILOR/prompts/cv_rules.md`, the same CV rules the offer flow uses). Anchor = `selected_role.json` + `company_profile.json`. Pass the merged fact base, `$CUSTOMIZATION["prefs"]` and the `experience_compression_cutoff_year` from settings. Write `$PREP_DIR/tailored_cv.json` and run **`gate cv`** (schema + forbidden title labels + timeline: every role ending in or after the cutoff is a full entry + claims check, which here also blocks `tech_stack_hints` technologies absent from the CV).
 
 ### Step 6 — Speculative motivation letter + short letter
 
@@ -159,7 +159,7 @@ Follow `prompts/generate_motivation_letter_cold.md` with the merged fact base, c
 - frames the outreach explicitly as speculative — no posting reference;
 - sets `letter_type: "speculative"`.
 
-Save `letter.json`. Then follow `prompts/generate_short_letter_cold.md` with the full letter as context → `short_letter.json` (body 500–750 characters, same hook). Run **`gate letters`**.
+Save `letter.json`. Then follow `prompts/generate_short_letter_cold.md` with the full letter as context → `short_letter.json` (body 500–750 characters, same hook; `gate letters` blocks outside that range). Run **`gate letters`**.
 
 ### Step 7 — Cold LinkedIn outreach
 

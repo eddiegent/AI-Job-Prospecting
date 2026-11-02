@@ -1,6 +1,8 @@
 """Regression tests for scripts/claims_guard.py (anti-exaggeration guard)."""
 from __future__ import annotations
 
+import pytest
+
 from scripts.claims_guard import (
     _norm,
     calibration_bullets,
@@ -377,3 +379,23 @@ def test_offer_duration_quoted_outside_the_first_person_passes():
 def test_addendum_duration_counts_as_a_source():
     add = "## Off-CV facts to remember\n- 30+ années de carrière technique en langue seconde.\n"
     assert run_dur("Trente ans de carrière.", addendum=add) == []
+
+
+@pytest.mark.parametrize("text", [
+    "Docker reste à apprendre de mon côté.",
+    "Je n'ai pas encore utilisé RabbitMQ en production.",
+    "Orchestration : Make en mission. Docker : pas encore pratiqué.",
+])
+def test_familiar_skill_named_as_a_gap_is_allowed(text):
+    errs = run(letter={"paragraphs": [text]})
+    assert not any(e.startswith("[familiar]") for e in errs), errs
+
+
+@pytest.mark.parametrize("text", [
+    "Je n'utilise que Docker pour mes déploiements.",
+    "Non seulement Docker, mais aussi Kubernetes.",
+    "Not only Docker but also RabbitMQ.",
+    "J'utilise Docker, pas Kubernetes.",
+])
+def test_familiar_skill_claimed_despite_a_negation_word_is_flagged(text):
+    assert any(e.startswith("[familiar]") for e in run(letter={"paragraphs": [text]}))

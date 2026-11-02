@@ -11,6 +11,7 @@ from __future__ import annotations
 from scripts.tailor_invariants import (
     find_consolidated_line_issues,
     find_missing_load_bearing_roles,
+    find_missing_recent_roles,
     find_non_consolidated_non_load_bearing_roles,
     find_training_entries_in_experience,
 )
@@ -85,3 +86,91 @@ def test_consolidated_line_with_date_is_flagged():
     dated = load_fixture("tailored_cv_consolidated_dated.json")
     violations = find_consolidated_line_issues(dated, expected_language="fr")
     assert any("dateless" in v for v in violations)
+
+
+# --- Recent roles always appear in full ------------------------------------
+
+def test_recent_roles_all_present(sample_fact_base):
+    good = load_fixture("tailored_cv_good.json")
+    assert find_missing_recent_roles(good, sample_fact_base, cutoff_year=2005) == []
+
+
+def test_recent_role_folded_into_consolidated_line_is_flagged(sample_fact_base):
+    cv = load_fixture("tailored_cv_good.json")
+    midway = cv["experience"].pop(1)
+    cv["experience"][-1]["metadata_line"] = "Midway Systems | TinyShop"
+    violations = find_missing_recent_roles(cv, sample_fact_base, cutoff_year=2005)
+    assert len(violations) == 1 and "Midway Systems" in violations[0]
+    assert midway["metadata_line"].startswith("Midway Systems")
+
+
+def test_recent_role_cutoff_null_requires_every_role(sample_fact_base):
+    good = load_fixture("tailored_cv_good.json")
+    violations = find_missing_recent_roles(good, sample_fact_base, cutoff_year=None)
+    assert len(violations) == 1 and "TinyShop" in violations[0]
+
+
+def _nested_fact_base() -> dict:
+    return {"experience": [
+        {"type": "role", "company": "Telmar Peaktime SAS", "dates": "Mars 2005 – Juin 2010"},
+        {"type": "role", "company": "JFC Informatique & Média (Kantar)", "dates": "Décembre 2002 – Mars 2005"},
+        {"type": "role", "company": "Peaktime SAS", "dates": "Mai 2001 – Décembre 2002"},
+        {"type": "role", "company": "JFC Informatique & Média", "dates": "Octobre 1994 – Mai 2001"},
+    ]}
+
+
+def _entry(role: str, meta: str) -> dict:
+    return {"role_line": role, "metadata_line": meta, "bullets": []}
+
+
+def test_recent_role_matching_tells_nested_company_names_apart():
+    # The 2002-2005 JFC role is folded; the 1994-2001 JFC line must not
+    # stand in for it, nor Telmar Peaktime for Peaktime.
+    cv = {"experience": [
+        _entry("Development Manager", "Telmar Peaktime SAS | Paris | Mars 2005 – Juin 2010"),
+        _entry("Analyste", "JFC Informatique & Média | Asnières | Octobre 1994 – Mai 2001"),
+        _entry("Expériences antérieures", "JFC Informatique & Média (Kantar) | Peaktime SAS"),
+    ]}
+    violations = find_missing_recent_roles(cv, _nested_fact_base(), cutoff_year=2005)
+    assert len(violations) == 1 and "(Kantar)" in violations[0]
+
+
+def test_recent_role_matching_tolerates_moved_parenthetical_and_legal_form():
+    fb = {"experience": [{"type": "role", "company": "Oodrive SAS", "dates": "Juillet 2010 – Mars 2025"},
+                         *_nested_fact_base()["experience"]]}
+    cv = {"experience": [
+        _entry("R&D", "Oodrive SA | Paris | Juillet 2010 – Mars 2025"),
+        _entry("Development Manager", "Telmar Peaktime SAS | Paris | Mars 2005 – Juin 2010"),
+        _entry("Chef de Projet (Kantar)", "JFC Informatique & Média | Paris | Décembre 2002 – Mars 2005"),
+    ]}
+    assert find_missing_recent_roles(cv, fb, cutoff_year=2005) == []
+
+
+def test_load_bearing_ambiguous_company_needs_the_roles_years():
+    fb = _nested_fact_base()
+    cv = {"experience": [
+        _entry("Development Manager", "Telmar Peaktime SAS | Paris | Mars 2005 – Juin 2010"),
+        _entry("Chef de Projet", "JFC Informatique & Média (Kantar) | Paris | Décembre 2002 – Mars 2005"),
+        _entry("Expériences antérieures", "Peaktime SAS | JFC Informatique & Média"),
+    ]}
+    kantar_only = {"matches": [{"match_type": "direct",
+                                "evidence": "UK parent at JFC Informatique & Média (2002–2005)"}]}
+    assert find_missing_load_bearing_roles(cv, fb, kantar_only, cutoff_year=2005) == []
+    asnieres = {"matches": [{"match_type": "direct",
+                             "evidence": "Fortran to C++ at JFC Informatique & Média (1994–2001)"}]}
+    violations = find_missing_load_bearing_roles(cv, fb, asnieres, cutoff_year=2005)
+    assert len(violations) == 1 and "'JFC Informatique & Média'" in violations[0]
+
+
+def test_load_bearing_ignores_a_longer_name_and_a_year_belonging_to_another_role():
+    # "Peaktime" here is Telmar Peaktime, and 2002 belongs to the Kantar role.
+    fb = _nested_fact_base()
+    cv = {"experience": [
+        _entry("Development Manager", "Telmar Peaktime SAS | Paris | Mars 2005 – Juin 2010"),
+        _entry("Chef de Projet", "JFC Informatique & Média (Kantar) | Paris | Décembre 2002 – Mars 2005"),
+        _entry("Analyste", "JFC Informatique & Média | Asnières | Octobre 1994 – Mai 2001"),
+        _entry("Expériences antérieures", "Peaktime SAS"),
+    ]}
+    ma = {"matches": [{"match_type": "transferable", "evidence":
+                       "Outils presse chez JFC Informatique & Média (Kantar) (2002–2005) et M6 chez Telmar Peaktime SAS."}]}
+    assert find_missing_load_bearing_roles(cv, fb, ma, cutoff_year=2005) == []

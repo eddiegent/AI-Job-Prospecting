@@ -152,14 +152,19 @@ def test_gate_role_grounding_fails_without_merged_fact_base(tmp_path, home, caps
     assert "cv_fact_base_merged.json not found" in out and "claims_guard.py merge" in out
 
 
+def _fact_base() -> dict[str, dict]:
+    return {"cv_fact_base_merged.json": load_fixture("sample_fact_base.json")}
+
+
 def test_gate_cv_reports_every_failure_together(tmp_path, home, capsys):
     (home / "user_prefs.yaml").write_text('forbidden_title_labels:\n  - "Backend"\n', encoding="utf-8")
     cv = load_fixture("tailored_cv_good.json")
     cv["title"] = "Backend Engineer"
     cv["skills_sections"] = [{"heading": "Langages", "items": ["C++", "Python"]}]
-    code, out = _gate("cv", _run(tmp_path, {"tailored_cv.json": cv}), capsys)
+    code, out = _gate("cv", _run(tmp_path, {"tailored_cv.json": cv, **_fact_base()}), capsys)
     assert code == 1
     assert "[PASS] schema tailored_cv.json" in out
+    assert "[PASS] cv timeline" in out
     assert "[FAIL] forbidden title labels in tailored_cv.json" in out
     assert "[FAIL] claims check (tailored_cv.json)" in out
     assert "tailored_cv.json: 'Python' must keep the master qualifier '(scripts)'" in out
@@ -171,6 +176,43 @@ def test_gate_cv_schema_failure_stops_stage(tmp_path, home, capsys):
     assert code == 1
     assert "[FAIL] schema tailored_cv.json" in out
     assert "claims check" not in out
+
+
+def test_gate_cv_fails_when_a_recent_role_is_folded(tmp_path, home, capsys):
+    cv = _clean_cv()
+    del cv["experience"][1]  # Midway Systems, 2010-2017
+    cv["experience"][-1]["metadata_line"] = "Midway Systems | TinyShop"
+    code, out = _gate("cv", _run(tmp_path, {"tailored_cv.json": cv, **_fact_base()}), capsys)
+    assert code == 1
+    assert "[FAIL] cv timeline" in out
+    assert "'Midway Systems' (2010 - 2017) is not a full experience entry" in out
+
+
+def test_gate_cv_load_bearing_role_folded_only_warns(tmp_path, home, capsys):
+    cv = _clean_cv()
+    del cv["experience"][2]  # OldCo Media, named by the match evidence
+    cv["experience"][-1]["metadata_line"] = "OldCo Media | TinyShop"
+    cv["experience"][-1]["bullets"] = ["OldCo Media : développement C++. TinyShop : premiers postes (C++)."]
+    files = {"tailored_cv.json": cv, **_fact_base(),
+             "match_analysis.json": load_fixture("sample_match_analysis.json")}
+    code, out = _gate("cv", _run(tmp_path, files), capsys)
+    assert code == 0, out
+    assert "[PASS] cv timeline" in out
+    assert "[WARN] cv timeline" in out and "'OldCo Media'" in out
+
+
+def test_gate_cv_timeline_checks_the_heading_language(tmp_path, home, capsys):
+    files = {"tailored_cv.json": _clean_cv(), **_fact_base(),
+             "job_offer_analysis.json": {**_offer(), "detected_language": "en"}}
+    code, out = _gate("cv", _run(tmp_path, files), capsys)
+    assert code == 1
+    assert "should contain 'Earlier experience'" in out
+
+
+def test_gate_cv_timeline_needs_a_fact_base(tmp_path, home, capsys):
+    code, out = _gate("cv", _run(tmp_path, {"tailored_cv.json": _clean_cv()}), capsys)
+    assert code == 1
+    assert "neither cv_fact_base_merged.json nor cv_fact_base.json found" in out
 
 
 def _clean_cv() -> dict:
@@ -193,6 +235,32 @@ def _letter(par: str) -> dict:
     return {"greeting": "Bonjour,", "paragraphs": [par], "signoff": "Cordialement,", "name": "Alex Dupont"}
 
 
+def _short_letter(chars: int = 600) -> dict:
+    """A short letter whose body is exactly ``chars`` characters."""
+    return _letter(("Je développe des outils C++ pour des équipes métier. " * 20)[:chars])
+
+
+@pytest.mark.parametrize("chars,passes", [(499, False), (500, True), (750, True), (751, False)])
+def test_gate_letters_short_letter_length_bounds(tmp_path, home, capsys, chars, passes):
+    files = {"letter.json": _letter("Bonjour."), "short_letter.json": _short_letter(chars)}
+    code, out = _gate("letters", _run(tmp_path, files), capsys)
+    assert (code == 0) is passes, out
+    if passes:
+        assert f"[PASS] short letter length: {chars} characters" in out
+    else:
+        verb = "add 1" if chars < 500 else "cut 1"
+        assert f"short_letter.json body is {chars} characters" in out and verb in out
+
+
+def test_gate_letters_short_letter_length_sums_the_paragraphs(tmp_path, home, capsys):
+    short = _letter("x" * 300)
+    short["paragraphs"].append("y" * 199)
+    code, out = _gate("letters", _run(tmp_path, {"letter.json": _letter("Bonjour."), "short_letter.json": short}),
+                      capsys)
+    assert code == 1
+    assert "body is 499 characters" in out
+
+
 def test_gate_linkedin_ignores_problems_in_other_stages_files(tmp_path, home, capsys):
     run = _run(tmp_path, {"tailored_cv.json": _bad_cv(), "linkedin.json": _linkedin(),
                           "letter.json": _letter("J'utilise Docker au travail.")})
@@ -202,8 +270,8 @@ def test_gate_linkedin_ignores_problems_in_other_stages_files(tmp_path, home, ca
 
 
 def test_gate_cv_ignores_letter_problems_and_letters_ignore_cv(tmp_path, home, capsys):
-    files = {"tailored_cv.json": _clean_cv(),
-             "letter.json": _letter("J'utilise Docker au travail."), "short_letter.json": _letter("Bonjour.")}
+    files = {"tailored_cv.json": _clean_cv(), **_fact_base(),
+             "letter.json": _letter("J'utilise Docker au travail."), "short_letter.json": _short_letter()}
     run = _run(tmp_path, files)
     code, out = _gate("cv", run, capsys)
     assert code == 0, out
