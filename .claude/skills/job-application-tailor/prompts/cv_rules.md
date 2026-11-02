@@ -52,6 +52,15 @@ The master CV keeps Formation (training) and Expérience Professionnelle (work e
 
 This matters because a line like *"Data Analyst (Formation temps plein) — Acme Academy"* under Work Experience reads to a recruiter as a mislabeled employment row even when the "(Formation temps plein)" tag is there. The human reader expects Work Experience to be paid employment. Training stays in Education, where it signals recent upskilling exactly as intended.
 
+### Key-skill suffix on a training line
+
+`education` items are single strings. When the target role is close to a training programme's subject (e.g. a no-code, automation or AI-agent offer for a no-code / automation bootcamp), that programme's line may end with a short suffix naming **2–3 skill areas**: ` — compétences clés : X, Y, Z` (English CV: ` — key skills: X, Y, Z`). Rules:
+
+- Take the areas only from that training's own entry in the fact base (its `details` / `education` text) or from the addendum. Prefer what the addendum's skill calibration marks as practised over what it marks as only taught. A role-side input never supplies an area.
+- Keep the training's status as the fact base states it. An in-progress programme stays "en cours" / "certification prévue …"; never write "certifié" or add a certification code the fact base does not give that programme.
+- Name the programme's status, not a technology's: "AI Automation Builder (en cours)" is fine, and § Active-learning still governs phrases like "en apprentissage de n8n".
+- Otherwise reproduce the master CV's line unchanged (§ Education dates). For an unrelated role, or a training that is not a bootcamp, add no suffix.
+
 Small visible timeline gaps in the experience section are acceptable; mixing training into Work Experience is not. Note: the fact base extraction step (`prompts/extract_cv_data.md`) deliberately adds training periods to the fact base `experience` array for internal timeline analysis — that's a different layer, and this rule only governs the *tailored CV output*.
 
 ## Personal projects — passthrough with light filtering
