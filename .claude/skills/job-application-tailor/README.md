@@ -19,8 +19,8 @@ A Claude Code plugin that takes a job offer and a master CV, then generates a co
 | Motivation letter | DOCX + PDF | Full cover letter (3-4 paragraphs) |
 | Short motivation letter | TXT | Concise version (500-750 chars) for online forms |
 | LinkedIn messages | TXT | Personalised messages with real contact names and LinkedIn URLs |
-| Interview prep | HTML | Fit score, company context, anticipated questions, talking points |
-| Run summary | JSON | Fit %, match counts, file paths |
+| Interview prep | HTML | Fit score and required skills missing, company context, anticipated questions, talking points |
+| Run summary | JSON | Fit %, match counts, required skills missing, file paths |
 
 Output folders are prefixed with the fit level: `very_good-`, `good-`, `medium-`, or `low-`.
 
@@ -33,17 +33,19 @@ Output folders are prefixed with the fit level: `very_good-`, `good-`, `medium-`
 The skill runs a ~10-step pipeline (step numbers as in `SKILL.md`):
 
 - **Steps 0–2.5 — CV preparation** (shared `job-prep-cv` sub-skill) — preflight (dependencies, history DB, customization, output folder); on a cache miss, read the master CV (`cli.py read-cv`), extract the fact base, verify it against the CV, and cache it by file hash
-- **Step 3 — Analyse job offer** — extract requirements, skills, signals, detect language, flag job boards posting for a real client
+- **Step 3 — Analyse job offer** — extract requirements, skills, signals, detect language, flag job boards posting for a real client; every listed technology must be named in the cached offer text
 - **Step 3.5 — Duplicate & history check** — query the SQLite database (URL match, company+title match, 80% skill overlap) and the blacklist
 - **Step 3.9 — Merged fact base** — `claims_guard.py merge` writes the per-run `cv_fact_base_merged.json` (CV + addendum + skill calibration + familiar-only skills); every later step reads it
-- **Step 4 — Match/gap analysis** — requirement-by-requirement matrix, fit score. Below 50% = stop
+- **Step 4 — Match/gap analysis** — one row per offer item (`cli.py match-rows`), fit score, required skills missing. Below 50% = stop
 - **Step 4.5 — Research company** — web search for size, culture, tech stack, key contacts; runs after the fit gate, so a stopped run or a dry run makes no searches
 - **Step 5 — Tailor CV** — restructure emphasis based on match analysis and company size (`prompts/tailor_cv.md` + the shared `prompts/cv_rules.md`)
-- **Steps 6, 7, 8 — Letter + short letter, LinkedIn messages, interview prep** (three parallel subagents; `gate interview` catches a missing or truncated prep, which has no schema)
+- **Steps 6, 7, 8 — Letter + short letter, LinkedIn messages, interview prep** (three parallel subagents; letters and LinkedIn go through a humanizer style pass between a `--draft` gate and the final gate, whose humanizer guard blocks any added number or name; `gate interview` catches a missing or truncated prep, which has no schema)
 - **Step 9 — Generate output files** — `cli.py regenerate-outputs`: CV rendered from a DOCX template via `docxtpl`; letters, LinkedIn, interview prep via Python scripts. The same command rebuilds a pack later
 - **Step 10 — Record in database** — store for future duplicate detection and reporting
 
-After writing each intermediate file the skill runs `cli.py gate <stage>` — one command that runs every deterministic check for that stage (schema, match recount and grounding, forbidden title labels, and the claims check that blocks over-claimed skills and unsourced wording in the CV, letters and LinkedIn messages) and reports all failures at once. It never continues past a failing gate.
+After writing each intermediate file the skill runs `cli.py gate <stage>` — one command that runs every deterministic check for that stage (schema, match recount and grounding, forbidden title labels, and the claims check that blocks over-claimed skills, unsourced wording and figures the CV doesn't state in the CV, letters and LinkedIn messages) and reports all failures at once. It never continues past a failing gate.
+
+To rerun a whole pack in place (same folder, same history row), see `SKILL.md` § Rerunning a whole pack in place: `preflight --reuse-dir`, then `record-application --update <id>` instead of a new row.
 
 ## Job history database
 

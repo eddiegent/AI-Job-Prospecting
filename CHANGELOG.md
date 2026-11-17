@@ -7,6 +7,57 @@ within each section.
 
 ## Unreleased
 
+- **Cold flow: dossier gate, hook check, shared evidence rules (2026-11-17)** —
+  `gate dossier` blocks an incomplete company dossier (length, the nine
+  sections, Quick Reference / Why you / Research gaps, source links) and warns
+  when the letter's opening and the first connection request share too few
+  words to carry the same hook. The evidence rules now live once in
+  `prompts/evidence_discipline.md`, used by the offer and cold letter,
+  LinkedIn, interview-prep and dossier prompts (the cold ones had none).
+- **`gate offer` checks the analysis against the cached offer (2026-11-17)** —
+  a listed technology the offer never names ("C#" for a ".Net" offer, "GitHub
+  Copilot" for "Copilot") is blocked, since each one becomes a scored match
+  row; 14 of 102 packs since June had one. It also warns when an English offer
+  is analysed as French.
+- **Required skills missing, next to an unweighted fit score (2026-11-17)** —
+  weighting required skills was simulated on 144 packs: every scheme mostly
+  inflated scores and moved packs across the 50% cut-off, with no outcome data
+  behind it. The score stays unweighted; `match_summary.required_gaps` and a
+  "Required skills missing: N" line in the interview-prep banner carry the
+  screening risk instead.
+- **Match rows fixed by the offer analysis (2026-11-17)** — one row per
+  required skill, preferred skill, technology and responsibility
+  (`cli.py match-rows`); `gate match` blocks any other row set, and a
+  technology the candidate lacks must be a `gap`. Two independent runs on the
+  same offer now produce the same rows (64% / 67%; the spread is per-row
+  judgment, where it used to reach 13 points).
+- **Rerun a pack in place; stale folder paths (2026-11-17)** —
+  `preflight --reuse-dir` and `record-application --update <id>` rerun a pack
+  in its folder and refresh its history row without touching its status or
+  history. Commands that take an id find packs whose stored path came from
+  another machine; `repair-output-folders` (preview by default, `--apply`)
+  fixes the rows.
+- **Figures checked, humanizer pass fenced (2026-11-17)** — the claims check
+  blocks any number in the CV, letters or LinkedIn messages that the master CV
+  or addendum doesn't state. `gate letters|linkedin --draft` snapshots the
+  draft before the humanizer pass; the gate after it blocks an added number or
+  name or a changed field outside the prose.
+- **Letter PDF (2026-11-17)** — the rebuild converts the motivation letter to
+  PDF as well as the CV, so an old letter PDF can't sit next to a new DOCX.
+- **Humanizer pass (2026-11-17)** — letters and LinkedIn messages (both flows)
+  go through the `humanizer:humanizer` skill before their final gate; style
+  only, skipped when the plugin isn't installed.
+- **Backup: long paths (2026-11-02)** — `backup_user_data.py` copies files
+  whose backup path exceeds Windows MAX_PATH instead of failing partway.
+- **Bootcamp key skills on the education line (2026-11-02)** — a relevant
+  training's line may end with "— compétences clés : X, Y, Z", taken from that
+  training's own fact-base entry or the addendum.
+- **Four gate gaps closed (2026-11-02)** — found by regenerating packs
+  #144–#148: `gate cv` checks the timeline (recent roles in full, no training
+  in experience, dateless earlier-experience line), `gate letters` the
+  short-letter length, match grounding treats "X, Y ou équivalents" as
+  alternatives, and a familiar-only skill may be named as a gap.
+
 - **Interview prep runs in parallel, behind a new gate (2026-10-21)** —
   offer-flow Step 8 joins Steps 6 and 7 as a third parallel subagent, taking
   a serial LLM generation off the critical path. Interview prep is Markdown

@@ -95,6 +95,21 @@ Regenerating outputs...
 
 One command swaps the folder, DB row, `_prep/job_offer_analysis.json`, and `run_summary.json`, then rebuilds the DOCX/PDF filenames so they match the new slug. Add `--no-regenerate` to skip the doc rebuild.
 
+## Example: Repairing Folder Paths
+
+Rows recorded in another environment (a cloud session's `/sessions/...` path, an early relative path) point at a folder that doesn't exist here. Commands that take an id already fall back to `output/<folder name>`; to fix the rows themselves:
+
+```
+> /job-status repair folder paths
+
+Output folders (157 rows, looking under C:\...\Job Prospecting\output):
+  already fine          : 55
+  repairable (by name)  : 98
+  missing everywhere    : 4
+```
+
+`repair-output-folders` previews by default; `--apply` rewrites the repairable rows (the DB is snapshotted first). Rows whose pack is missing everywhere are listed and left alone: point them at the right folder with `update-output-folder`.
+
 ## Example: Blacklist / Whitelist
 
 ```

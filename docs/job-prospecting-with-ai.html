@@ -755,16 +755,16 @@
           <div class="phase__no">III</div>
           <div class="phase__body">
             <h3>Decide — the fit gate</h3>
-            <p>Score how well you match, requirement by requirement. <strong>If the fit is below 50%, it stops here</strong> and builds nothing — so your effort only goes where it counts.</p>
-            <div class="phase__steps"><span class="stepchip">match &amp; gap analysis</span><span class="stepchip">fit score</span><span class="stepchip">stop if &lt; 50%</span></div>
+            <p>Score how well you match, one line per requirement in the posting — so the same ad always gets the same lines — and name the required skills you're missing. <strong>If the fit is below 50%, it stops here</strong> and builds nothing — so your effort only goes where it counts.</p>
+            <div class="phase__steps"><span class="stepchip">match &amp; gap analysis</span><span class="stepchip">fit score</span><span class="stepchip">required skills missing</span><span class="stepchip">stop if &lt; 50%</span></div>
           </div>
         </div>
         <div class="phase reveal d2">
           <div class="phase__no">IV</div>
           <div class="phase__body">
             <h3>Create</h3>
-            <p>Research the company and its people — only now, so a role that fails the gate costs no searching. Then reshape the CV for the role, write the motivation letter and a short version for online forms, draft LinkedIn messages to real contacts, and prepare you for the interview.</p>
-            <div class="phase__steps"><span class="stepchip">research the company</span><span class="stepchip">tailor CV</span><span class="stepchip">letters</span><span class="stepchip">LinkedIn</span><span class="stepchip">interview prep</span></div>
+            <p>Research the company and its people — only now, so a role that fails the gate costs no searching. Then reshape the CV for the role, write the motivation letter and a short version for online forms, draft LinkedIn messages to real contacts, and prepare you for the interview. The letters and messages then get a style pass that strips the tell-tale AI phrasing — checked afterwards so it can't add a fact, a number or a name.</p>
+            <div class="phase__steps"><span class="stepchip">research the company</span><span class="stepchip">tailor CV</span><span class="stepchip">letters</span><span class="stepchip">LinkedIn</span><span class="stepchip">de-AI the wording</span><span class="stepchip">interview prep</span></div>
           </div>
         </div>
         <div class="phase reveal d3">
@@ -843,10 +843,10 @@
       <h2 class="reveal" style="margin-bottom:26px;">Everything you need to actually apply.</h2>
       <div class="deliverables">
         <div class="deliv reveal d1"><div class="fmt">Word · PDF</div><h3>Tailored CV</h3><p>Your CV, re-emphasised for this specific role — same facts, better aimed.</p></div>
-        <div class="deliv reveal d1"><div class="fmt">Word</div><h3>Motivation letter</h3><p>A natural, conversational cover letter — never stiff or formulaic.</p></div>
+        <div class="deliv reveal d1"><div class="fmt">Word · PDF</div><h3>Motivation letter</h3><p>A natural, conversational cover letter — never stiff or formulaic.</p></div>
         <div class="deliv reveal d2"><div class="fmt">Text</div><h3>Short letter</h3><p>A tight 500–750-character version for online application forms.</p></div>
         <div class="deliv reveal d2"><div class="fmt">Text</div><h3>LinkedIn messages</h3><p>Ready-to-send notes addressed to the real recruiter or manager, by name.</p></div>
-        <div class="deliv reveal d3"><div class="fmt">Web page</div><h3>Interview prep</h3><p>Likely questions, your talking points, company context — on your phone.</p></div>
+        <div class="deliv reveal d3"><div class="fmt">Web page</div><h3>Interview prep</h3><p>Your fit score and the required skills you're missing, likely questions, your talking points, company context — on your phone.</p></div>
         <div class="deliv reveal d3"><div class="fmt">Summary</div><h3>Run summary</h3><p>Your fit score and everything produced, filed in one place.</p></div>
       </div>
       <p class="kicker-note reveal d4" style="margin-top:22px;font-size:.9rem;">Files are named and written in the posting's language — <span class="mono">French or English</span> — automatically.</p>
@@ -877,7 +877,7 @@
     <div class="section__inner">
       <p class="eyebrow reveal"><b>09</b> The guardrail that makes it trustworthy</p>
       <h2 class="reveal" style="margin-bottom:16px;">Every sentence traces back to a fact.</h2>
-      <p class="kicker-note reveal d1" style="margin-bottom:22px;">Those facts come from your CV — plus an optional <span class="amber">addendum</span> for true things it doesn't mention. They're combined fresh on every run, and the verified CV extract is never overwritten. Each document is then checked the moment it's written, for a job posting and a cold approach alike: a skill your CV calls “familiar” sold as a strength, an “every day” no source supports, or a technology copied from the ad (or, when there's no ad, from the company's own tech stack) has to be fixed before any file is built.</p>
+      <p class="kicker-note reveal d1" style="margin-bottom:22px;">Those facts come from your CV — plus an optional <span class="amber">addendum</span> for true things it doesn't mention. They're combined fresh on every run, and the verified CV extract is never overwritten. Each document is then checked the moment it's written, for a job posting and a cold approach alike: a skill your CV calls “familiar” sold as a strength, an “every day” no source supports, a technology copied from the ad (or, when there's no ad, from the company's own tech stack), or a number your CV doesn't state has to be fixed before any file is built.</p>
       <div class="mergeflow reveal d1" style="margin-bottom:30px;">
         <div class="mf-src">
           <div class="mf-doc primary"><b>Master CV</b><span>.docx · verified source</span></div>
@@ -892,13 +892,14 @@
           <div class="line reveal d1"><span class="out">“Built C# services handling millions of records”</span><span class="arr">←</span><span class="fact">in your CV ✓</span></div>
           <div class="line reveal d2"><span class="out">“Led automation projects end-to-end”</span><span class="arr">←</span><span class="fact">in your CV ✓</span></div>
           <div class="line bad reveal d3"><span class="out">“Expert in Kubernetes”</span><span class="arr">←</span><span class="fact">not found ✕</span></div>
+            <div class="line bad reveal d3"><span class="out">“45,000+ backups a day”</span><span class="arr">←</span><span class="fact">CV says 17,000+ ✕</span></div>
           <div class="line bad reveal d3"><span class="out">“Used WCF every day”</span><span class="arr">←</span><span class="fact">no source ✕</span></div>
         </div>
         <div class="incident reveal d2">
           <div class="tag">A real bug this prevents</div>
           <p>Once, the CV was updated to say “100+ applications” but the fact list still held the old figure. The stale number nearly shipped.</p>
           <div class="drift"><span class="old">40+ applications</span> → <span class="new">100+ applications</span></div>
-          <div class="fix"><span class="ok">✓</span><span>Now a built-in check catches any number that doesn't match your CV and refuses to continue — so out-of-date facts can't slip through.</span></div>
+          <div class="fix"><span class="ok">✓</span><span>Now a built-in check catches any number that doesn't match your CV and refuses to continue — in the fact list, and in every CV, letter and message it writes — so out-of-date or inflated figures can't slip through.</span></div>
         </div>
       </div>
     </div>
@@ -914,7 +915,7 @@
         <div class="stat reveal d1"><div class="num">2</div><div class="lbl">ways in — reply to an ad, or reach out cold</div></div>
         <div class="stat reveal d1"><div class="num">~10</div><div class="lbl">steps per run, start to finish, automatic</div></div>
         <div class="stat reveal d1"><div class="num">50<span class="u">%</span></div><div class="lbl">minimum fit — below it, nothing is built</div></div>
-        <div class="stat reveal d2"><div class="num">130<span class="u">+</span></div><div class="lbl">application packs generated so far</div></div>
+        <div class="stat reveal d2"><div class="num">150<span class="u">+</span></div><div class="lbl">application packs generated so far</div></div>
         <div class="stat reveal d2"><div class="num">6</div><div class="lbl">statuses tracked, from draft to offer</div></div>
         <div class="stat reveal d2"><div class="num">2</div><div class="lbl">languages — French &amp; English, chosen automatically</div></div>
         <div class="stat reveal d2"><div class="num">0</div><div class="lbl">invented facts — the whole point</div></div>

@@ -9,12 +9,12 @@ Five [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills — fo
 `/job-application-tailor` takes a job offer (URL or pasted text) and your master CV, and produces:
 
 - **Tailored CV** (DOCX + PDF) — restructured for the specific role, every bullet grounded in your master CV
-- **Motivation letter** and a **short letter** — natural-voice, not template-generated
+- **Motivation letter** (DOCX + PDF) and a **short letter** — natural-voice, not template-generated, with a style pass that strips AI-sounding phrasing (and is checked so it can't add a fact)
 - **LinkedIn outreach messages** — with real recruiter/hiring-manager names when they can be found
 - **Interview prep guide** — company research, likely questions, talking points
-- **Fit score** — honest assessment, not a sales pitch
+- **Fit score** — honest assessment, not a sales pitch: one row per requirement in the posting, and the required skills you're missing listed next to it
 
-Nothing is invented. If a claim isn't in your master CV (or your `cv_addendum.md`), it doesn't appear in the output.
+Nothing is invented. If a claim isn't in your master CV (or your `cv_addendum.md`), it doesn't appear in the output — skills, wording and figures alike: a number your CV doesn't state is blocked.
 
 `/job-cold-prospect` does the same for companies with **no advertised vacancy**. Give it a company name or URL and it researches a company profile, helps you pick a target role, and produces a full speculative pack — tailored CV, motivation letter, short letter, LinkedIn outreach, and a company dossier with interview prep. Instead of a fit score (there's no job description to score against), the dossier gives you a narrative "angle of approach", and every factual claim about the company cites a source URL.
 
@@ -24,7 +24,7 @@ It also tells apart **real employers from intermediaries** — an ESN/SSII, an i
 
 | Skill | Description |
 |-------|-------------|
-| `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped) — backdate a change with `--at` so response-time stats stay honest, attach a note, view an application's full status history, filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job) |
+| `/job-status` | Update application statuses (applied, rejected, interview, offer, dropped) — backdate a change with `--at` so response-time stats stay honest, attach a note, view an application's full status history, filter by status/company, manage blacklist/whitelist, atomically rename an application when the real client surfaces post-fact (e.g. an aggregator-posted job), repair folder paths recorded on another machine |
 | `/job-stats` | Application statistics, weekly/monthly timeline trends, funnel conversion, employer response times, a follow-up list of applications gone quiet, skill gap analysis, exports |
 
 ## Documentation

@@ -1,6 +1,11 @@
 # Gate Gaps Roadmap
 
-> **Status: fixes 1–4 done and rerun done (2026-10-21, uncommitted); one open decision remains (language).** Written 2026-10-21 from a comparison run: the five
+> **Status: shipped — historical document.** Fixes 1–4 committed 2026-11-02 (`fa5383d`). Fix 5 (a missing
+> technology needs its own gap row) became blocking on 2026-11-17, when match rows were fixed to the offer's
+> items (`docs/roadmaps/SKILL_REVIEW_2026-11.md` item 3). The language decision below is still open; since
+> 2026-11-17 `gate offer` warns on it at Step 3. Later work is tracked in the repo-root `CHANGELOG.md`.
+>
+> Written 2026-10-21 from a comparison run: the five
 > latest offer packs (#144–#148) were regenerated with the v1.1.0 pipeline plus
 > both speedups, then compared with the originals. The plan is to fix the gaps
 > below, regenerate the same five packs again, and re-run the comparison.
