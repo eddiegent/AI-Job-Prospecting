@@ -7,6 +7,13 @@ within each section.
 
 ## Unreleased
 
+## v1.2.0 — 2026-11-17
+
+Third release (git tags `v1.2.0` and `job-prospecting--v1.2.0`): a humanizer pass on letters and LinkedIn
+messages behind a guard, figures checked against the CV, match rows fixed by the offer analysis with the
+required skills missing shown next to an unweighted fit score, `gate offer` and `gate dossier`, rerunning a
+pack in place, and letter PDFs. Everything below up to v1.1.0 is part of it.
+
 - **Comparison-run fixes: one row per fact, example lists, read-only audits
   (2026-11-17)** — rerunning the last five packs with all of the above found
   four problems, now fixed. A technology a skill item already names ("Jira"

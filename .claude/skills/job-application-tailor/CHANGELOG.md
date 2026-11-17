@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [plugin v1.2.0] - 2026-11-17
+
+Released as git tags `v1.2.0` / `job-prospecting--v1.2.0`. Sections headed `[plugin vX]` follow the plugin's releases; the older numbered ones were this skill's own versions.
+
 ### Fixed — comparison-run findings: double-counted rows, example lists, gates that wrote or depended on order (2026-11-17)
 - **Why.** The last five offer packs (#164–#168) were rerun on scratch copies with every change above. Four problems surfaced, each traced in the code.
 - **One fact, one row** (`scripts/match_rows.py`). A `technologies` item that a required or preferred skill item already names gets no row of its own: "Jira" and "Confluence" next to the required skill "Jira, Confluence", "Java" next to "Strong expertise in Java", "Claude" inside "Vibe coding avec … Replit ou Claude". The match is a whole term, plural allowed ("APIs" in "API design"); "Java" is not in "JavaScript", "C" not in "C#"; responsibilities absorb nothing. On #164 the duplicates alone had moved the pack from 67% (medium) to 71% (good).
@@ -79,6 +83,8 @@
 ### Added — humanizer pass on letters and LinkedIn messages (2026-11-17)
 - Letters, short letter and LinkedIn messages (offer and cold flows) go through the `humanizer:humanizer` skill after drafting and before their gate, per the shared `prompts/humanize_pass.md`. Style only: facts, length limits, team scope and the cold-flow hook are kept; skipped when the plugin isn't installed.
 
+## [plugin v1.1.0] - 2026-10-20
+
 ### Fixed — `list --company` required the full company name (2026-10-19)
 - `JobHistoryDB.list_applications(company=...)` compared `company_norm` with `=`, so `list --company "opus"` returned "No applications found." while "Opus Recruitment Solutions" was in the DB. Resolving an application by company before a status change (the `job-status` workflow) then fell back to scanning the whole list. It is now a substring `LIKE` on the normalised name. `%` and `_` in the query are escaped and match literally; a query that normalises to an empty string (e.g. `_`) still matches nothing rather than every row. A short query can now return several companies — `job-status` already asks the user to pick when a lookup is ambiguous.
 - **Tests** — `test_list_applications_company_matches_partial_name` in `tests/test_job_history_db_v3.py`.
@@ -99,6 +105,10 @@
 - **New reports** — `history <id>` (one application's timeline), `funnel` (applications that *ever reached* each stage, with conversion rates; legitimately larger than `stats --type status`, which can only see where things are *now*), `response-time` (days from applying to the employer's first move), `follow-up` (applications whose latest event is `applied` and that have gone quiet for 21+ days). `timeline` gains `--basis applied|generated` to bucket by when applications were *sent* rather than when packs were generated; the default is unchanged.
 - **Migration backfills what is still knowable, and marks it.** Each row gets a `generated` event at `created_at`; rows whose status moved get their current status at `updated_at`; rows past `applied` (`rejected`/`interview`/`offer`) get an inferred `applied` event, because they demonstrably were applied to even though that event was overwritten — without it the funnel undercounted badly (on the first real migration, "ever applied" read 49 against a true 77). Every backfilled row carries a bracketed `[backfill]` marker, and `response-time` excludes them: their dates were inferred from generation dates, so a duration measured against one describes how long a pack sat around, not how fast anyone replied. That report therefore starts empty on a migrated DB and fills with real measurements. The backfill is guarded on an empty table, so reopening never double-inserts.
 - **Tests** — `tests/test_job_history_db_v4.py`: migration shape per legacy row type, the inferred-`applied` rule (and that `dropped` is excluded from it, since dropping isn't applying), backfill marking and its exclusion from response times, a hand-typed note that can't masquerade as a backfill marker, idempotency, forward event recording, both backdating guards, follow-up selection, timeline basis, and FK cascade. The v3 suite's version assertions now track `_SCHEMA_VERSION` instead of a hard-coded `3`, so a future migration doesn't fail tests about v3.
+
+## [plugin v1.0.0] - 2026-07-15
+
+Entries below this heading, down to [1.9.0], shipped in plugin v1.0.0.
 
 ### Changed — reduce cross-document repetition in letters & LinkedIn messages (2026-06-16)
 - The motivation letter, short letter, and three LinkedIn variants tended to reach for the same hero facts (e.g. "15+ ans C#/.NET", a backup-throughput figure) and the LinkedIn variants read like copies of each other. Added prompt rules: `generate_linkedin_message.md` now requires each variant to take a distinct angle (recruiter → fit/availability; hiring_manager → one concrete technical proof; internal_contact → a genuine question) and to vary which fact leads; `generate_short_letter.md` must lead with a different hook than the cover letter and not reproduce its sentences verbatim; `generate_motivation_letter.md` must not headline the same metric/phrase in more than one paragraph. Applies to all future runs, including the daily scheduled task. Existing packs unchanged (regenerate on demand per pack).

@@ -1,6 +1,6 @@
 # Skill Review — November 2026
 
-> **Status: items 1–7, 9 and 15 shipped 2026-11-17 on branch `gate-gaps-and-bootcamp-rule`; 8, 10–14 and 16 open.**
+> **Status: items 1–7, 9, 14 and 15 shipped 2026-11-17 and released as v1.2.0; 8, 10–13 and 16 open.**
 > Written 2026-11-17 from a review of the five job skills, after the humanizer pass was added and three
 > packs were rerun with it. Each item records what was found, what shipped and what is left. Details of
 > each change are in `.claude/skills/job-application-tailor/CHANGELOG.md`.
@@ -29,12 +29,14 @@
   never names (14 of 102 packs since June had one) and warns on an English offer analysed as French.
   (`ef819a5`)
 - [x] **9. Evidence rules in one file.** `prompts/evidence_discipline.md`. (`5948122`)
+- [x] **14. Merge and release.** Branch merged into `main` and released as v1.2.0 (tags `v1.2.0`,
+  `job-prospecting--v1.2.0`), 2026-11-17.
 - [x] **15. Comparison-run fixes.** The last five packs (#164–#168) rerun on scratch copies with all of
   the above found four problems, fixed: a technology a skill item already names no longer gets its own
   row (it had moved #164 from 67% to 71%); "etc." / "e.g." / "such as" / "comme" lists count as "one of
   these" (#168 fell under 50% because of it); `gate --check` audits without writing (`gate match` rewrote
   the packs it inspected); `gate interview` counts required gaps from the rows, not from a field only
-  `gate match` writes. (uncommitted)
+  `gate match` writes. (`f070ecc`)
 
 ## Open
 
@@ -62,8 +64,6 @@
   - the humanizer guard can't tell a pass that never ran from one that changed nothing;
   - a rerun stopped under 50% renames the folder `low-` but leaves the old deliverables in it;
   - noisy soft-skill warnings (5–9 per run), "R&D" split on "&".
-- [ ] **14. Merge and release.** The branch carries the 2026-11-02 gate-gap fixes and everything above;
-  merge to `main`, bump the version (README, `docs/index.html`, plugin manifest) and tag.
 
 ## Open decisions (the user's)
 
