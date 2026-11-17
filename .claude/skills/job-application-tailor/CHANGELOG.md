@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [plugin v1.2.1] - 2026-11-17
+
+Released as git tags `v1.2.1` / `job-prospecting--v1.2.1`.
+
 ### Fixed — small bugs (review item 13, 2026-11-17)
 - **`doctor` latest backup / pruning** (`job_history_db.list_snapshots`, `snapshot_key`). Snapshots were sorted by name, so the hand-named `job_history-pre-v4-20260728-...` sorted after every `job_history-2026...` and `doctor` reported it as the latest. They are now ordered by the timestamp in the name (mtime if none). Pruning counts and deletes only automatic `<stem>-YYYYMMDD-HHMMSS.db` snapshots; hand-named ones are kept on purpose (before, by accident).
 - **"Applied on" → "Pack generated on"** in the interview prep's Quick Reference (`generate_interview_prep.md`): the pack is generated before the candidate applies; the application date lives in the history.

@@ -1,6 +1,6 @@
 # Skill Review — November 2026
 
-> **Status: items 1–7, 9, 14 and 15 shipped 2026-11-17 and released as v1.2.0; 13 and 16 shipped after it (unreleased); 8 and 10–12 open.**
+> **Status: items 1–7, 9, 14 and 15 shipped 2026-11-17 and released as v1.2.0; 13 and 16 released as v1.2.1; 8 and 10–12 open.**
 > Written 2026-11-17 from a review of the five job skills, after the humanizer pass was added and three
 > packs were rerun with it. Each item records what was found, what shipped and what is left. Details of
 > each change are in `.claude/skills/job-application-tailor/CHANGELOG.md`.

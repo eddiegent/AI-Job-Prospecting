@@ -7,6 +7,11 @@ within each section.
 
 ## Unreleased
 
+## v1.2.1 — 2026-11-17
+
+Patch release (git tags `v1.2.1` and `job-prospecting--v1.2.1`): the gate gaps the
+v1.2.0 comparison runs found, and small fixes. Everything below up to v1.2.0 is part of it.
+
 - **Small fixes (review item 13, 2026-11-17)** — `doctor` reports the newest DB
   backup by its timestamp (it showed a July snapshot in November), and pruning
   never deletes a hand-named backup; the interview prep says "Pack generated on",
