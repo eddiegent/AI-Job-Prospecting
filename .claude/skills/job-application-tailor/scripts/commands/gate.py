@@ -323,6 +323,8 @@ _QUICK_REFERENCE = re.compile(r"^#{1,3}\s*(?:Quick Reference|R[ée]f[ée]rences?
 _FIT_BANNER = re.compile(r"^#{1,3}\s*(?:Fit Score|Score\b[^:\n]{0,30}?)\s*:\s*\**(\d+(?:[.,]\d+)?)\s*%",
                          re.M | re.I)
 _SECTION = re.compile(r"^## ", re.M)
+_REQUIRED_GAPS_LINE = re.compile(
+    r"^\W*(?:Required skills missing|Comp[ée]tences requises manquantes)\W*:\W*(\d+)", re.M | re.I)
 
 
 def _interview_prep(ctx: Ctx) -> Result:
@@ -349,6 +351,15 @@ def _interview_prep(ctx: Ctx) -> Result:
         if actual is not None and abs(float(actual) - stated) >= FIT_BANNER_TOLERANCE:
             r.errors.append(f"fit score banner says {banner.group(1)}% but match_analysis.json says "
                             f"{actual}% - the prep is stale or from another run")
+        expected_gaps = summary.get("required_gap_count")
+        if expected_gaps is not None:  # packs analysed before 2026-11-17 have no count
+            line = _REQUIRED_GAPS_LINE.search(text)
+            if not line:
+                r.errors.append(f"no 'Required skills missing: {expected_gaps}' line under the fit banner "
+                                "(French: 'Compétences requises manquantes')")
+            elif int(line.group(1)) != expected_gaps:
+                r.errors.append(f"banner says {line.group(1)} required skills missing but match_analysis.json "
+                                f"says {expected_gaps} - the prep is stale or from another run")
     return r
 
 
@@ -554,7 +565,8 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "on those two + humanizer guard), linkedin (schema + "
         "message lengths: connection request <= 300, direct message <= 700 + "
         "claims on linkedin.json + humanizer guard), interview (interview_prep.md is complete: "
-        "length, sections, Quick Reference, fit banner matching match_analysis.json), "
+        "length, sections, Quick Reference, fit banner and required-skills-missing count "
+        "matching match_analysis.json), "
         "profile (cold schema), "
         "roles (cold schema + forbidden labels + role grounding), "
         "selected-role (cold schema + role grounding). Grounding (match, roles, "

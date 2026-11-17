@@ -109,7 +109,9 @@ cd "$SKILL_BASE" && python scripts/cli.py rename-with-fit "$OUTPUT_DIR"
 
 Set `$OUTPUT_DIR` to the printed path and `$PREP_DIR` to `$OUTPUT_DIR/_prep`.
 
-**If `overall_fit_pct` is below 50%, stop.** Tell the user the score, summarise the key gaps, and explain why no pack was generated. The analysis and renamed folder are kept for review.
+**If `overall_fit_pct` is below 50%, stop.** Tell the user the score, summarise the key gaps, and explain why no pack was generated.
+
+Whatever the score, tell the user `match_summary.required_gap_count` and name the `required_gaps`: the required skills rated `gap`, which a recruiter can screen out on. The score itself is unweighted (every row counts the same) on purpose; this count carries the knockout risk instead, and the interview-prep banner repeats it. The analysis and renamed folder are kept for review.
 
 **Dry run** — if `behaviour.dry_run` is `true`, or the user said "dry run" / "just the score", stop here after showing the fit score and match summary, then record the application (Step 10). Useful for scanning several offers before committing to full generation.
 

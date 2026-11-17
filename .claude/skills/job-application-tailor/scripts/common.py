@@ -29,12 +29,21 @@ def recount_match_summary(matches: Iterable[dict[str, Any]]) -> dict[str, Any]:
     ``overall_fit_pct`` formula matches ``prompts/match_analysis.md`` §
     ``overall_fit_pct``: ``(direct + transferable * 0.5) / total * 100``,
     rounded to the nearest integer. Empty matches array returns 0.
+
+    ``required_gaps`` lists the ``required_skill`` rows rated ``gap``: the
+    requirements a recruiter can screen out on. Shown next to the score
+    instead of weighting the score (decided 2026-11-17: on 144 packs every
+    weighting scheme mostly inflated scores, moved 5-8 packs across the 50%
+    cut-off, and had no outcome data to justify it).
     """
     counts = {"direct": 0, "transferable": 0, "gap": 0}
+    required_gaps: list[str] = []
     for m in matches:
         match_type = m.get("match_type") if isinstance(m, dict) else None
         if match_type in counts:
             counts[match_type] += 1
+        if match_type == "gap" and m.get("category") == "required_skill":
+            required_gaps.append(str(m.get("requirement", "")).strip())
     total = counts["direct"] + counts["transferable"] + counts["gap"]
     if total == 0:
         fit_pct = 0
@@ -47,6 +56,8 @@ def recount_match_summary(matches: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "transferable_count": counts["transferable"],
         "gap_count": counts["gap"],
         "overall_fit_pct": fit_pct,
+        "required_gap_count": len(required_gaps),
+        "required_gaps": required_gaps,
     }
 
 

@@ -542,3 +542,35 @@ def test_gate_interview_fails_without_a_fit_banner(tmp_path, home, capsys):
     code, out = _gate("interview", _interview_run(tmp_path, md), capsys)
     assert code == 1
     assert "no fit score banner" in out
+
+
+def _required_gaps_run(tmp_path: Path, md: str) -> Path:
+    run = _interview_run(tmp_path, md)
+    ma = json.loads((run / "_prep" / "match_analysis.json").read_text(encoding="utf-8"))
+    ma["match_summary"].update(required_gap_count=2, required_gaps=["Kubernetes", "Master's degree"])
+    (run / "_prep" / "match_analysis.json").write_text(json.dumps(ma), encoding="utf-8")
+    return run
+
+
+@pytest.mark.parametrize("line", [
+    "Required skills missing: 2 (Kubernetes, Master's degree)",
+    "**Compétences requises manquantes : 2** (Kubernetes, Master)",
+])
+def test_gate_interview_checks_the_required_skills_missing_line(tmp_path, home, capsys, line):
+    md = _interview_md().replace("Gaps: 2", "Gaps: 2\n" + line)
+    code, out = _gate("interview", _required_gaps_run(tmp_path, md), capsys)
+    assert code == 0, out
+
+
+def test_gate_interview_fails_on_a_missing_or_wrong_required_gaps_line(tmp_path, home, capsys):
+    code, out = _gate("interview", _required_gaps_run(tmp_path, _interview_md()), capsys)
+    assert code == 1 and "no 'Required skills missing: 2' line" in out
+    md = _interview_md().replace("Gaps: 2", "Gaps: 2\nRequired skills missing: 0")
+    code, out = _gate("interview", _required_gaps_run(tmp_path / "b", md), capsys)
+    assert code == 1 and "banner says 0 required skills missing but match_analysis.json says 2" in out
+
+
+def test_gate_interview_skips_the_line_for_packs_analysed_before_the_count(tmp_path, home, capsys):
+    # sample_match_analysis.json has no required_gap_count, like every pack before 2026-11-17
+    code, out = _gate("interview", _interview_run(tmp_path, _interview_md()), capsys)
+    assert code == 0, out

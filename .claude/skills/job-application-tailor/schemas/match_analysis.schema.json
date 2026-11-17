@@ -5,22 +5,61 @@
     "match_summary": {
       "type": "object",
       "properties": {
-        "direct_count": {"type": "integer"},
-        "transferable_count": {"type": "integer"},
-        "gap_count": {"type": "integer"},
-        "overall_fit_pct": {"type": "number", "minimum": 0, "maximum": 100}
+        "direct_count": {
+          "type": "integer"
+        },
+        "transferable_count": {
+          "type": "integer"
+        },
+        "gap_count": {
+          "type": "integer"
+        },
+        "overall_fit_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "required_gap_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "required_skill rows rated gap (computed by the gate's recount)"
+        },
+        "required_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "the requirement text of those rows, in row order"
+        }
       },
-      "required": ["direct_count", "transferable_count", "gap_count", "overall_fit_pct"]
+      "required": [
+        "direct_count",
+        "transferable_count",
+        "gap_count",
+        "overall_fit_pct"
+      ]
     },
     "location_analysis": {
       "type": "object",
       "description": "Geographic feasibility assessment comparing candidate and job locations",
       "properties": {
-        "candidate_location": {"type": "string"},
-        "job_location": {"type": "string"},
-        "work_mode": {"type": "string"},
-        "commute_assessment": {"type": "string", "description": "Brief assessment: easy commute, long commute, relocation needed, remote so N/A, etc."},
-        "notes": {"type": "string", "description": "Any relevant details — e.g. same metro area, different country, relocation considerations"}
+        "candidate_location": {
+          "type": "string"
+        },
+        "job_location": {
+          "type": "string"
+        },
+        "work_mode": {
+          "type": "string"
+        },
+        "commute_assessment": {
+          "type": "string",
+          "description": "Brief assessment: easy commute, long commute, relocation needed, remote so N/A, etc."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any relevant details — e.g. same metro area, different country, relocation considerations"
+        }
       }
     },
     "matches": {
@@ -28,15 +67,43 @@
       "items": {
         "type": "object",
         "properties": {
-          "requirement": {"type": "string"},
-          "category": {"type": "string", "enum": ["required_skill", "preferred_skill", "technology", "responsibility"]},
-          "match_type": {"type": "string", "enum": ["direct", "transferable", "gap"]},
-          "evidence": {"type": "string"},
-          "notes": {"type": "string"}
+          "requirement": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "required_skill",
+              "preferred_skill",
+              "technology",
+              "responsibility"
+            ]
+          },
+          "match_type": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "transferable",
+              "gap"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
         },
-        "required": ["requirement", "category", "match_type"]
+        "required": [
+          "requirement",
+          "category",
+          "match_type"
+        ]
       }
     }
   },
-  "required": ["match_summary", "matches"]
+  "required": [
+    "match_summary",
+    "matches"
+  ]
 }

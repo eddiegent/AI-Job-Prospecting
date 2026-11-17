@@ -5,6 +5,7 @@
 
 ## Fit Score: {overall_fit_pct}% — {fit_level}
 Direct matches: {direct_count} | Transferable: {transferable_count} | Gaps: {gap_count}
+Compétences requises manquantes : {required_gap_count}{required_gaps_list}
 
 ---
 

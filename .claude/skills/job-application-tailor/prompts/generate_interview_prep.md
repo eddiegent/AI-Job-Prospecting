@@ -26,7 +26,9 @@ Help the candidate walk into the interview confident and prepared. Every talking
    ```
    ## Fit Score: XX% — [LOW / MEDIUM / GOOD / VERY GOOD]
    Direct matches: X | Transferable: X | Gaps: X
+   Required skills missing: N (skill, skill)
    ```
+   The third line comes from `match_summary.required_gap_count` and `required_gaps`: the required skills rated `gap`, which a recruiter can screen out on. Write it even when N is 0 ("Required skills missing: 0"); list the skills in brackets when N > 0. In French: « Compétences requises manquantes : N (…) ». `gate interview` checks the count.
    Thresholds: < 50% = LOW, 50-69% = MEDIUM, 70-84% = GOOD, 85%+ = VERY GOOD. Use labels from `config/languages.yaml` if available.
 
 3. **Company context** (if research provided) — key facts, recent news, culture signals, and how to reference them naturally in conversation

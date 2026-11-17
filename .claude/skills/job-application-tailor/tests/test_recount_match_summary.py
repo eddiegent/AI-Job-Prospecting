@@ -23,6 +23,8 @@ def test_basic_counts() -> None:
         "transferable_count": 4,
         "gap_count": 6,
         "overall_fit_pct": 60,  # (10 + 4*0.5)/20 = 0.6
+        "required_gap_count": 0,  # no row carries a category here
+        "required_gaps": [],
     }
 
 
@@ -45,6 +47,8 @@ def test_empty_matches_returns_zero_pct() -> None:
         "transferable_count": 0,
         "gap_count": 0,
         "overall_fit_pct": 0,
+        "required_gap_count": 0,
+        "required_gaps": [],
     }
 
 
@@ -72,6 +76,8 @@ def test_real_world_ingeline_case() -> None:
         "transferable_count": 8,
         "gap_count": 7,
         "overall_fit_pct": 65,  # (16 + 4) / 31 * 100 = 64.5 -> 65
+        "required_gap_count": 0,
+        "required_gaps": [],
     }
 
 
@@ -82,3 +88,18 @@ def test_rounding_is_to_nearest_integer() -> None:
     assert recount_match_summary(_matches(2, 1, 0))["overall_fit_pct"] == 83
     # 1 direct + 0 transferable + 2 gap = 3 total, fit = 1/3 = 33.33 -> 33
     assert recount_match_summary(_matches(1, 0, 2))["overall_fit_pct"] == 33
+
+
+def test_required_gaps_are_the_required_skill_rows_rated_gap() -> None:
+    matches = [
+        {"requirement": "Kubernetes", "category": "required_skill", "match_type": "gap"},
+        {"requirement": "C#", "category": "required_skill", "match_type": "direct"},
+        {"requirement": "Docker", "category": "preferred_skill", "match_type": "gap"},
+        {"requirement": "Go", "category": "technology", "match_type": "gap"},
+        {"requirement": " Master's degree ", "category": "required_skill", "match_type": "gap"},
+    ]
+    out = recount_match_summary(matches)
+    assert out["required_gap_count"] == 2
+    assert out["required_gaps"] == ["Kubernetes", "Master's degree"]
+    # the score itself is unweighted: 1 direct of 5 rows
+    assert out["overall_fit_pct"] == 20

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added — required skills missing, shown next to the fit score (2026-11-17)
+- **Why, and why not weighting.** The question was whether required skills should weigh more in `overall_fit_pct`. Simulated on 144 offer packs: every scheme tried (required ×2; ×2 with preferred ×0.5; ×3 with preferred and responsibilities ×0.5) raised the mean score by 2–4 points, because the candidate matches required skills best (average credit 0.75 vs 0.49 for technologies); 19–44 packs changed fit level and 5–8 crossed the 50% cut-off. The outcome data (3 interviews, 27 rejections) can't tell the schemes apart, and one interview came with 4 required skills missing. Weighting would also amplify the model's required-vs-preferred call in Step 3 and invalidate the 50 / 70 / 85% thresholds. So the score stays unweighted and the knockout risk is shown on its own.
+- **`match_summary.required_gap_count` / `required_gaps`**, computed by the gate's recount (`common.recount_match_summary`): the `required_skill` rows rated `gap`. Optional in the schema; older packs gain them the next time `gate match` runs. They reach `run_summary.json` with the rest of `match_summary`.
+- **Interview prep.** The fit banner gains a line "Required skills missing: N (…)" (« Compétences requises manquantes : N (…) »); `gate interview` blocks a missing or wrong count, and skips packs analysed before the count existed. `SKILL.md` Step 4 has the count reported to the user with the score.
+- **Tests** — recount test for the new fields; four `gate interview` tests.
+
 ### Changed — match rows are fixed by the offer analysis (2026-11-17)
 - **Why.** `overall_fit_pct` = (direct + 0.5 × transferable) / rows, and the model chose the rows. On the 25 offer packs from 2026-10-21 to 2026-11-16 only 71% of the offer's skill / technology items had a row of their own; responsibility rows ranged from 1 of 6 to all of them; a missing technology folded into a transferable row earned half credit. The gate-gaps reruns saw the same offer move by up to 13 points.
 - **Rule** (`scripts/match_rows.py`): one row per item of `required_skills`, `preferred_skills`, `technologies` and `responsibilities` (all of them), in that order, the item's text as `requirement` and its list as `category`; an item listed twice gets one row, under the first list. New `match-rows <folder>` prints the rows; `gate match` gains a blocking `match rows = offer items` check (missing, extra, duplicated or recategorised rows).
