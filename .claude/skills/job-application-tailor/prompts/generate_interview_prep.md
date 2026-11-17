@@ -42,7 +42,7 @@ Help the candidate walk into the interview confident and prepared. Every talking
 11. **5 smart questions to ask** — informed by company research when available
 
 ## Rules
-- Ground everything in the source CV — do not fabricate stories
+- Ground everything in the source CV — do not fabricate stories. Follow `prompts/evidence_discipline.md`
 - Do not conceal gaps — frame them honestly and strategically
 - If company research is provided, weave relevant facts into talking points and smart questions
 - Write in the same language as the job offer

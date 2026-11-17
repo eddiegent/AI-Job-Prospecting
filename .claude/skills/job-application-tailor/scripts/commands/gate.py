@@ -452,6 +452,63 @@ def clear_draft_snapshot(stage: str, prep: Path) -> None:
         (_snapshot_dir(prep) / name).unlink(missing_ok=True)
 
 
+# Cold-flow company dossier: Markdown with no schema, like the interview prep.
+# Calibrated on the five cold packs with a dossier (2026-11-17): 11,822-16,874
+# characters, 9 '## ' sections each, 11-14 source links.
+DOSSIER_MIN_CHARS = 5000
+DOSSIER_MIN_SECTIONS = 9
+DOSSIER_MIN_LINKS = 3
+_WHY_YOU = re.compile(r"^#{1,3}\s*(?:Why you|Pourquoi vous)", re.M | re.I)
+_RESEARCH_GAPS = re.compile(r"^#{1,3}\s*(?:Research gaps|Lacunes de recherche|[ÉE]carts de recherche)", re.M | re.I)
+_LINK = re.compile(r"https?://")
+
+
+def _dossier(ctx: Ctx) -> Result:
+    r = Result("company dossier completeness")
+    r.errors = _missing(ctx, "company_dossier.md")
+    if r.errors:
+        return r
+    text = ctx.path("company_dossier.md").read_text(encoding="utf-8")
+    if len(text) < DOSSIER_MIN_CHARS:
+        r.errors.append(f"{len(text)} characters - a complete dossier is 10,000+; the generation probably stopped early")
+    sections = len(_SECTION.findall(text))
+    if sections < DOSSIER_MIN_SECTIONS:
+        r.errors.append(f"{sections} '## ' sections, expected {DOSSIER_MIN_SECTIONS} (prompts/generate_dossier_cold.md)")
+    for rx, name in ((_QUICK_REFERENCE, "Quick Reference"), (_WHY_YOU, "Why you, why them"),
+                     (_RESEARCH_GAPS, "Research gaps")):
+        if not rx.search(text):
+            r.errors.append(f"no '{name}' section")
+    links = len(_LINK.findall(text))
+    if links < DOSSIER_MIN_LINKS:
+        r.errors.append(f"{links} source link(s) - every company fact cites its source URL")
+    return r
+
+
+def _cold_hooks(ctx: Ctx) -> Result:
+    """The opening hook must match across the letter and the connection request
+    (scripts/cold_hooks.py). A warning: the measure is calibrated on 5 packs."""
+    from scripts.cold_hooks import HOOK_MIN_SHARED, hook_alignment
+
+    r = Result("hook alignment (letter / connection request)")
+    missing = _missing(ctx, "letter.json", "linkedin.json")
+    if missing:
+        r.note = "letter.json or linkedin.json not written yet - not checked"
+        return r
+    letter = json.loads(ctx.path("letter.json").read_text(encoding="utf-8"))
+    linkedin = json.loads(ctx.path("linkedin.json").read_text(encoding="utf-8"))
+    company = ""
+    if ctx.path("company_profile.json").exists():
+        company = json.loads(ctx.path("company_profile.json").read_text(encoding="utf-8")).get("company_name", "")
+    n, shared = hook_alignment(letter, linkedin, company)
+    if n < HOOK_MIN_SHARED:
+        r.warnings.append(f"the letter's opening and the first connection request share {n} distinctive word(s) "
+                          f"({', '.join(sorted(shared)) or 'none'}); aligned hooks share {HOOK_MIN_SHARED}+. "
+                          "Check they open on the same company observation, and regenerate the one that drifted")
+    else:
+        r.note = f"{n} shared words"
+    return r
+
+
 def _role_grounding(filename: str, kind: str) -> Callable[[Ctx], Result]:
     def run(ctx: Ctx) -> Result:
         from scripts.check_role_grounding import check
@@ -506,6 +563,10 @@ STAGES: dict[str, list[Step]] = {
     ],
     "interview": [
         (_interview_prep, False),
+    ],
+    "dossier": [
+        (_dossier, False),
+        (_cold_hooks, False),
     ],
     "profile": [
         (_schema("company_profile.json", COLD_SCHEMAS / "company_profile.schema.json"), True),
@@ -591,6 +652,9 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "claims on linkedin.json + humanizer guard), interview (interview_prep.md is complete: "
         "length, sections, Quick Reference, fit banner and required-skills-missing count "
         "matching match_analysis.json), "
+        "dossier (cold: company_dossier.md is complete - length, 9 sections, Quick Reference, "
+        "Why you, Research gaps, source links - plus a warning when the letter's opening and the first "
+        "connection request share few words), "
         "profile (cold schema), "
         "roles (cold schema + forbidden labels + role grounding), "
         "selected-role (cold schema + role grounding). Grounding (match, roles, "

@@ -49,3 +49,7 @@ Set `letter_type` to `"speculative"` — this is the short cold letter, and the 
 ## Humanizer pass
 
 Once both letters are drafted, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: `gate letters --draft`, the `humanizer:humanizer` skill on the `paragraphs` of both, then `gate letters`. Keep every fact, limit and rule above, the shared hook included.
+
+## Evidence discipline
+
+Follow `$SKILL_BASE_TAILOR/prompts/evidence_discipline.md` (the same rules as the offer flow: scope, no frequency wording, figures as stated, familiar-only skills, gaps). The gate's claims check enforces them on the letters and LinkedIn messages; the dossier has no claims check, so hold it to them yourself.

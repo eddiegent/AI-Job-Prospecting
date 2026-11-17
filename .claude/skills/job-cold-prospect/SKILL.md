@@ -171,9 +171,9 @@ Set `outreach_type: "cold"` and `target_role: "<selected_role.title>"` at the ro
 
 The candidate-facing document the user opens before any conversation with the company; it replaces the fit-score document. Follow `prompts/generate_dossier_cold.md` in full, passing the merged fact base, `company_profile.json`, `selected_role.json`, the tailored CV, the letter, the LinkedIn JSON and `$CUSTOMIZATION["prefs"]`.
 
-Nine sections, in order: Quick reference, Company at a glance, Why you / why them (the angle of approach), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, Research gaps. Write the Markdown to `$PREP_DIR/company_dossier.md`; Step 9 renders it as mobile-friendly HTML.
+Nine sections, in order: Quick reference, Company at a glance, Why you / why them (the angle of approach), Who to contact, Likely objections + answers, Conversation openers, Role-specific interview prep (STAR scaffolds), Transition narrative, Research gaps. Write the Markdown to `$PREP_DIR/company_dossier.md`; Step 9 renders it as mobile-friendly HTML. Run **`gate dossier`**: it blocks an incomplete dossier (length, the nine sections, Quick Reference, Why you, Research gaps, source links) and warns when the letter's opening and the first connection request share few words.
 
-**Alignment check.** The opening hook must match across the letter (§ 1), the top contact's connection request, and dossier § 3 "Why you, why them". Mismatched hooks are the most preventable cold-flow mistake — if they diverge, regenerate the LinkedIn or dossier step that drifted.
+**Alignment check.** The opening hook must match across the letter (§ 1), the top contact's connection request, and dossier § 3 "Why you, why them". Mismatched hooks are the most preventable cold-flow mistake — if they diverge, regenerate the LinkedIn or dossier step that drifted. `gate dossier`'s hook warning measures the letter against the connection request; compare dossier § 3 by eye.
 
 ### Step 9 — Build the output files
 

@@ -138,6 +138,10 @@ Honest, short, list-format. Copy every entry from `company_profile.research_gaps
 - **Alignment across artefacts.** The hook in the motivation letter, the opening sentence in the LinkedIn connection-request, and § 3 of this dossier must reference the same company fact. Inconsistency between artefacts is the single most preventable cold-flow mistake.
 - **Language.** Write in `selected_role.language` (`fr` or `en`, set in Step 4 from the user's request or `user_prefs.default_language`). All section headings localised.
 
+## Evidence discipline
+
+Follow `$SKILL_BASE_TAILOR/prompts/evidence_discipline.md` (the same rules as the offer flow: scope, no frequency wording, figures as stated, familiar-only skills, gaps). The gate's claims check enforces them on the letters and LinkedIn messages; the dossier has no claims check, so hold it to them yourself.
+
 ## Output format
 
 Return pure markdown. No JSON wrapper, no code-fence around the whole document. Write it to `$PREP_DIR/company_dossier.md`; Step 9 (`regenerate-outputs`) renders it to `$OUTPUT_DIR/company_dossier.html`, the first-class deliverable the user opens before a call.

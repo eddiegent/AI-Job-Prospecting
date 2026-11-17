@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added — cold flow: `gate dossier`, hook alignment, shared evidence rules (2026-11-17)
+- **Why.** The cold flow had fewer checks than the offer flow: no gate on the company dossier (a truncated one would ship, which is what `gate interview` exists to stop), the hook alignment its SKILL.md calls "the most preventable cold-flow mistake" was checked by hand, and the cold letter / LinkedIn / dossier prompts had none of the evidence rules the offer prompts carry.
+- **`gate dossier`.** Blocking: `company_dossier.md` under 5,000 characters, fewer than 9 `##` sections, no Quick Reference / Why you / Research gaps section (EN or FR headings), fewer than 3 source links. Calibrated on the five cold packs with a dossier (11,822–16,874 characters, 9 sections, 11–14 links): all pass. Cold `SKILL.md` Step 8 runs it.
+- **Hook alignment** (`scripts/cold_hooks.py`), a warning in `gate dossier`: distinctive words shared by the letter's first paragraph and the first connection request, company name excluded. Aligned real hooks shared 5–12; hooks from two different packs 0–4. Five packs is a thin base, so it never blocks.
+- **`prompts/evidence_discipline.md`** — the evidence bullets that were copied into three offer prompts, plus "copy every figure as the source states it", now live in one file. The offer letter / short-letter / LinkedIn / interview-prep prompts and the cold letter / short-letter / LinkedIn / dossier prompts point to it.
+- **Tests** — `tests/test_gate_dossier.py` (7).
+
 ### Added — `gate offer` checks the analysis against the cached offer (2026-11-17)
 - **Why.** The match rows are now built from the offer analysis, so a technology the analysis invents becomes a scored row. Of 102 offer packs since 2026-06-01 with a cached `raw_offer.md`, 14 listed a technology the offer never names: "C#" and "REST APIs" for an offer that says ".Net APIs", "REST APIs" in three more, "GitHub Copilot" for "Copilot", "JavaScript / TypeScript" for "JS/TS", "Agents IA" for an English offer's "AI agents". Until now `gate offer` checked the schema only.
 - **Blocking** (`scripts/offer_trace.py`): each `technologies` item must be found in `raw_offer.md` — as written, ignoring spaces and hyphens ("PowerBI" = "Power BI"), through a known synonym, or word by word on five-letter stems with plural "s" ignored ("API REST" covers "REST APIs"). The skill lists are not checked: they paraphrase by design (212 items in 76 packs would fail).

@@ -103,3 +103,7 @@ Set the optional `letter_type` field to `"speculative"` if the schema supports i
 ## Humanizer pass
 
 The pass covers both letters, so it runs once `short_letter.json` is drafted too. Follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: `gate letters --draft` on the two drafts, the `humanizer:humanizer` skill on the `paragraphs`, then `gate letters`. Keep every fact, limit and rule above, the opening hook included. The gate's claims check reads every figure: a number about the candidate must be one the master CV or addendum states.
+
+## Evidence discipline
+
+Follow `$SKILL_BASE_TAILOR/prompts/evidence_discipline.md` (the same rules as the offer flow: scope, no frequency wording, figures as stated, familiar-only skills, gaps). The gate's claims check enforces them on the letters and LinkedIn messages; the dossier has no claims check, so hold it to them yourself.

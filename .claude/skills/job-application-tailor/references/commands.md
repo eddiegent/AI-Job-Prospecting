@@ -97,6 +97,7 @@ cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
 | Stage | After writing | Checks |
 |---|---|---|
 | `factbase` | `cv_fact_base.json` | schema → verify against the master CV (fabricated tech/methodology, metric drift; skill warnings non-blocking). `--cv` overrides the CV path |
+| `dossier` | `company_dossier.md` (cold) | completeness: ≥ 5,000 characters, 9 `##` sections, Quick Reference, Why you, Research gaps, ≥ 3 source links → hook alignment warning (letter opening vs first connection request) |
 | `offer` | `job_offer_analysis.json` | schema → every `technologies` item named in `raw_offer.md` (warns when an English text is analysed as French; skipped with a note when no `raw_offer.md`) |
 | `match` | `match_analysis.json` | recount `match_summary` in place → schema → grounding against `cv_fact_base_merged.json` (a `direct` match needs evidence; familiar-only skills are at most `transferable`) |
 | `cv` | `tailored_cv.json` | schema → forbidden title labels (`user_prefs.yaml`) → claims check |
