@@ -99,3 +99,7 @@ Apply `user_prefs.tone_directives` verbatim. They override these defaults on con
 Return valid JSON matching `schemas/letter.schema.json` (reused from the tailor skill). Key fields: `sender_name`, `sender_address` (array), `recipient_name`, `recipient_address` (array), `date_line`, `subject_line`, `greeting`, `paragraphs` (array), `signoff`, `name`.
 
 Set the optional `letter_type` field to `"speculative"` if the schema supports it — it's an audit trail for downstream steps that a cold letter was generated. If the field isn't in the schema, skip it silently.
+
+## Humanizer pass
+
+Once the draft is written and before its gate, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above, the opening hook included.

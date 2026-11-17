@@ -130,3 +130,7 @@ Produce the connection-request variants first, then the direct-message variants,
 ```
 
 The abbreviated example is illustrative — in the real output every message must respect the character budget and reference verifiable company facts.
+
+## Humanizer pass
+
+Once the draft is written and before its gate, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `message` of each variant and keep every fact, limit and rule above, the shared hook included.

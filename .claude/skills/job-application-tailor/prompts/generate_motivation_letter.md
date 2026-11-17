@@ -52,6 +52,9 @@ Return valid JSON matching `schemas/letter.schema.json`. Read that schema file f
 
 Key fields: `sender_name`, `sender_address` (array), `recipient_name`, `recipient_address` (array), `date_line`, `subject_line`, `greeting`, `paragraphs` (array), `signoff`, `name`.
 
+## Humanizer pass
+Once the draft is written and before the gate below, follow `prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above.
+
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").

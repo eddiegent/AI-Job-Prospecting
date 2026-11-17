@@ -25,6 +25,9 @@ Create a punchy, short version of the motivation letter suitable for online appl
 ## Output format
 Return valid JSON matching `schemas/letter.schema.json`. Omit `sender_address`, `recipient_name`, `recipient_address`, `date_line`, and `subject_line` (or set them to empty) — this letter is body-only.
 
+## Humanizer pass
+Once the draft is written and before the gate below, follow `prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above.
+
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").

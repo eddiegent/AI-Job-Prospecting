@@ -127,9 +127,11 @@ Follow `prompts/tailor_cv.md` (it starts by loading `prompts/cv_rules.md`). Pass
 
 Once the CV passes its gate these three are independent: each reads the CV and the analyses, none reads another's output. **Spawn three Agent subagents at the same time.** Give each the paths to the merged fact base, `tailored_cv.json`, `job_offer_analysis.json`, `match_analysis.json`, `company_research.md`, `$SKILL_BASE` and `$OUTPUT_DIR`, plus `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` (the letter honours `tone_directives` and `team_context_companies`; LinkedIn honours `tone_directives`).
 
-- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters; `gate letters` blocks outside that range). Run **`gate letters`**.
-- **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Run **`gate linkedin`**.
+- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters; `gate letters` blocks outside that range). Humanize both (below), then run **`gate letters`**.
+- **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Humanize it (below), then run **`gate linkedin`**.
 - **Subagent 3 — interview prep.** Follow `prompts/generate_interview_prep.md` → `$PREP_DIR/interview_prep.md` (Step 9 renders it as mobile-friendly HTML). It can't see `$ARGUMENTS`, so pass the **job URL, the output folder path and today's date** for the Quick Reference block. Run **`gate interview`**.
+
+**Humanizer pass.** Subagents 1 and 2 run the `humanizer:humanizer` skill on their prose before gating, as `prompts/humanize_pass.md` describes (style only; facts, limits and rules stay). If the plugin isn't installed they skip it and say so.
 
 Each subagent returns only once its gate passes. Wait for all three, then **run `gate letters`, `gate linkedin` and `gate interview` yourself** — don't take a subagent's word for it, and never build files from output that hasn't passed its gate in this context. `gate interview` is what catches a silently failed or truncated prep: it has no schema, so without the gate a missing section would ship unnoticed. If a subagent couldn't write into `_prep/`, see `references/troubleshooting.md`.
 

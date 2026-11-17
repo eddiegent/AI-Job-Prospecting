@@ -159,13 +159,13 @@ Follow `prompts/generate_motivation_letter_cold.md` with the merged fact base, c
 - frames the outreach explicitly as speculative — no posting reference;
 - sets `letter_type: "speculative"`.
 
-Save `letter.json`. Then follow `prompts/generate_short_letter_cold.md` with the full letter as context → `short_letter.json` (body 500–750 characters, same hook; `gate letters` blocks outside that range). Run **`gate letters`**.
+Save `letter.json`. Then follow `prompts/generate_short_letter_cold.md` with the full letter as context → `short_letter.json` (body 500–750 characters, same hook; `gate letters` blocks outside that range). Run the humanizer pass on both (`$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: `humanizer:humanizer` skill, style only, hook kept), then **`gate letters`**.
 
 ### Step 7 — Cold LinkedIn outreach
 
 Follow `prompts/generate_linkedin_cold.md` in full, passing the merged fact base, `company_profile.json`, `selected_role.json`, the motivation letter (so hooks stay aligned) and `$CUSTOMIZATION["prefs"]`. It targets **hiring managers / CTO / tech leads** from `company_profile.leadership[]`, not recruiters, with two variants per contact: a ≤300-char connection request and a ≤700-char follow-up message. If `leadership[]` is empty it falls back to one `hiring_manager` pair with a `[Prénom]` placeholder and flags the missing name as a research gap.
 
-Set `outreach_type: "cold"` and `target_role: "<selected_role.title>"` at the root of `linkedin.json`, then run **`gate linkedin`**.
+Set `outreach_type: "cold"` and `target_role: "<selected_role.title>"` at the root of `linkedin.json`, run the same humanizer pass on the messages, then **`gate linkedin`**.
 
 ### Step 8 — Company dossier + interview prep
 

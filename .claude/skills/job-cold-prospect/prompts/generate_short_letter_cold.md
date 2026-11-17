@@ -45,3 +45,7 @@ Never let brevity flip the framing back to a generic "I'd love to work for you".
 Return valid JSON matching `schemas/letter.schema.json`. Omit `sender_address`, `recipient_name`, `recipient_address`, `date_line`, and `subject_line` (or set them to empty) — body-only.
 
 Set `letter_type` to `"speculative"` — this is the short cold letter, and the audit trail matters.
+
+## Humanizer pass
+
+Once the draft is written and before its gate, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above, the shared hook included.
