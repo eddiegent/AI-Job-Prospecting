@@ -70,6 +70,14 @@ Typical case: the offer was posted by a platform (Free-Work…) and the real cli
   - A DOCX/PDF is open in Word/Acrobat → `PermissionError`; ask the user to close it and re-run.
 - **`update-company <id> "<name>" --expect-company "<old name>"`** / **`update-output-folder <id> "<path>"`** — DB-only fixes, when nothing on disk should change. `update-company` also refreshes the normalised name used by duplicate detection.
 
+**Stale folder paths.** The DB stores absolute paths, and many rows were written in cloud sessions (`/sessions/<id>/mnt/…`) or on another machine. Commands that take an id fall back to `<project root>/output/<same folder name>` when the stored path is gone, so they keep working. To fix the stored paths themselves (for `get`, exports, other tools):
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py repair-output-folders
+```
+
+It only reports by default: how many rows are fine, how many can be repaired by folder name, and which packs are missing everywhere. Show the user that report. Once they confirm, run it again with `--apply`, which snapshots the DB and rewrites only the repairable rows. Missing packs are never touched; restore them, or point a row at a pack with `update-output-folder`. `--project-root "<dir>"` looks under another `output/`.
+
 ## Company lists
 
 | The user wants… | Command |

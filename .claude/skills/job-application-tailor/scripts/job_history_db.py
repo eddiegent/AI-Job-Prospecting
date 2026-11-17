@@ -662,6 +662,75 @@ class JobHistoryDB:
         self._conn.commit()
         return app_id
 
+    def refresh_application(
+        self,
+        app_id: int,
+        *,
+        company_name: str,
+        job_title: str,
+        location: str | None = None,
+        source_url: str | None = None,
+        domain: str | None = None,
+        seniority: str | None = None,
+        fit_level: str | None = None,
+        fit_pct: float | None = None,
+        direct_count: int | None = None,
+        transferable_count: int | None = None,
+        gap_count: int | None = None,
+        output_folder: str | None = None,
+        detected_language: str | None = None,
+        org_type: str | None = None,
+        company_profile_snapshot: str | None = None,
+        required_skills: list[str] | None = None,
+        preferred_skills: list[str] | None = None,
+    ) -> bool:
+        """Overwrite a row's pack-derived columns after the pack was rerun in place.
+
+        Exists because a rerun used to have only `add_application`, which
+        inserts: the old row kept its old fit score and a second row appeared.
+        This rewrites what the pack determines (titles, fit, counts, skills,
+        folder…) and deliberately leaves the application's identity and
+        history alone — `id`, `status`, `source`, `created_at` and every
+        `application_events` row are untouched, so a rerun never resets
+        "applied" back to "generated" or moves the response-time clock.
+        Skills are replaced, not appended. Returns False if `app_id` is unknown.
+        """
+        if org_type is not None and org_type not in _VALID_ORG_TYPES:
+            raise ValueError(
+                f"org_type must be one of {_VALID_ORG_TYPES} or None, got {org_type!r}"
+            )
+        cur = self._conn.cursor()
+        cur.execute(
+            """UPDATE applications SET
+                 company_name = ?, company_norm = ?, job_title = ?, job_title_norm = ?,
+                 location = ?, source_url = ?, domain = ?, seniority = ?,
+                 fit_level = ?, fit_pct = ?, direct_count = ?, transferable_count = ?,
+                 gap_count = ?, output_folder = ?, detected_language = ?,
+                 org_type = ?, company_profile_snapshot = ?, updated_at = ?
+               WHERE id = ?""",
+            (
+                company_name, normalise_company(company_name),
+                job_title, _normalise(job_title),
+                location, source_url, domain, seniority,
+                fit_level, fit_pct, direct_count, transferable_count,
+                gap_count, output_folder, detected_language,
+                org_type, company_profile_snapshot, datetime.now().isoformat(),
+                app_id,
+            ),
+        )
+        if cur.rowcount <= 0:
+            self._conn.rollback()
+            return False
+        cur.execute("DELETE FROM job_skills WHERE application_id = ?", (app_id,))
+        for skill_type, skills in (("required", required_skills), ("preferred", preferred_skills)):
+            for skill in skills or []:
+                cur.execute(
+                    "INSERT INTO job_skills(application_id, skill, skill_norm, skill_type) VALUES(?,?,?,?)",
+                    (app_id, skill, normalise_skill(skill), skill_type),
+                )
+        self._conn.commit()
+        return True
+
     # -- duplicate detection -------------------------------------------------
 
     def find_duplicates(

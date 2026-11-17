@@ -11,7 +11,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from scripts.common import auto_slug, delete_stale_slug_deliverables, matched_aggregator
-from scripts.job_history_db import JobHistoryDB, normalise_title
+from scripts.job_history_db import JobHistoryDB, normalise_company, normalise_title
+from scripts import paths
+from scripts.common import fit_level as fit_level_for_pct
 from scripts.paths import load_settings
 from scripts.commands import Command
 from scripts.commands._shared import SKILL_BASE
@@ -116,15 +118,29 @@ def cmd_check_duplicate(db: JobHistoryDB, args: argparse.Namespace) -> None:
 
 
 def _resolve_app_folder(db: JobHistoryDB, target: str) -> Path:
-    """Accept either an integer application id (DB lookup) or a filesystem path."""
+    """Accept either an integer application id (DB lookup) or a filesystem path.
+
+    An id goes through `resolve_output_folder`, which falls back to
+    `<project_root>/output/<folder name>` when the stored absolute path is from
+    another machine or a cloud session (most of the history was written there).
+    """
     if target.isdigit():
         app = db.get_application(int(target))
         if not app:
             print(f"Application #{target} not found.", file=sys.stderr)
             sys.exit(1)
-        folder = Path(app["output_folder"])
-    else:
-        folder = Path(target)
+        stored = app.get("output_folder")
+        folder = paths.resolve_output_folder(stored)
+        if folder is None:
+            print(
+                f"Output folder does not exist: {stored or '(none recorded)'}\n"
+                "Not found under this project's output/ either. "
+                "`repair-output-folders` lists every row in this state.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return folder
+    folder = Path(target)
     if not folder.exists():
         print(f"Output folder does not exist: {folder}", file=sys.stderr)
         sys.exit(1)
@@ -353,10 +369,92 @@ def _build_cold_kwargs(
     }
 
 
+# Columns `--update` rewrites, in display order. `status`, `source`,
+# `created_at` and the event history are deliberately absent (see
+# JobHistoryDB.refresh_application).
+_REFRESHED_COLUMNS = (
+    "company_name", "job_title", "location", "source_url", "domain", "seniority",
+    "fit_level", "fit_pct", "direct_count", "transferable_count", "gap_count",
+    "output_folder", "detected_language", "org_type", "company_profile_snapshot",
+)
+
+
+def _refresh_refusal(app: dict, kwargs: dict) -> str | None:
+    """Why the pack in `kwargs` must not overwrite row `app`, or None.
+
+    `--update` takes an id, and ids are not stable across a DB restore (see
+    `_guard_expected_company`), so a wrong id would silently graft one
+    company's pack onto another's row. The folder's own company is the check:
+    no extra flag to remember. Also refuses a stale fit prefix, because the
+    row's `fit_level` is read from the folder name.
+    """
+    if normalise_company(kwargs["company_name"]) != normalise_company(app["company_name"]):
+        return (
+            f"Refusing: application #{app['id']} is '{app['company_name']}' — "
+            f"'{app['job_title']}', but this pack's _prep/ says "
+            f"'{kwargs['company_name']}'. Re-resolve the id with "
+            f"`list --company \"{kwargs['company_name']}\"`. If the row was corrected "
+            "with update-company only, patch the pack with rename-application first."
+        )
+    if (app.get("source") or "offer") != kwargs["source"]:
+        return (f"Refusing: application #{app['id']} is a {app.get('source')} row; "
+                f"this folder is a {kwargs['source']} pack.")
+    pct = kwargs.get("fit_pct")
+    if kwargs["source"] == "offer" and pct is not None:
+        expected = fit_level_for_pct(pct)
+        if expected != kwargs["fit_level"]:
+            return (
+                f"Refusing: the folder prefix says '{kwargs['fit_level']}' but the "
+                f"rerun's fit is {pct}% ('{expected}'). Run rename-with-fit on the "
+                "folder first, then pass the printed path here."
+            )
+    return None
+
+
+def _refresh_application(db: JobHistoryDB, app_id: int, kwargs: dict, *, dry_run: bool) -> None:
+    """`record-application --update`: rewrite row `app_id` from a rerun pack."""
+    app = db.get_application(app_id)
+    if not app:
+        print(f"Application #{app_id} not found.", file=sys.stderr)
+        sys.exit(1)
+    refusal = _refresh_refusal(app, kwargs)
+    if refusal:
+        print(refusal, file=sys.stderr)
+        sys.exit(2)
+
+    fields = {k: v for k, v in kwargs.items() if k != "source"}
+    # A URL given with --url on the first record lives only in the DB; a
+    # rerun whose _prep/ carries none must not erase it.
+    if not fields.get("source_url") and app.get("source_url"):
+        fields["source_url"] = app["source_url"]
+
+    changes = [
+        (col, app.get(col), fields.get(col))
+        for col in _REFRESHED_COLUMNS
+        if app.get(col) != fields.get(col)
+    ]
+    verb = "Would update" if dry_run else "Updated"
+    print(f"{verb} application #{app_id} ({app['company_name']} — {app['job_title']}, "
+          f"status {app['status']} kept)")
+    for col, old, new in changes:
+        if col == "company_profile_snapshot":
+            print(f"  {col}: (changed)")
+        else:
+            print(f"  {col}: {old!r} -> {new!r}")
+    if not changes:
+        print("  (no column changes; skills are re-written)")
+    if dry_run:
+        return
+    if not db.refresh_application(app_id, **fields):
+        print("Update failed.", file=sys.stderr)
+        sys.exit(1)
+
+
 def cmd_record_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
     """Step 10 wrapper — read `_prep/` artefacts and insert one
     `applications` row. Detects offer vs. cold flow from the folder
-    prefix; `--source` overrides if needed."""
+    prefix; `--source` overrides if needed. With `--update ID` it rewrites
+    that existing row instead (a pack rerun in place), same derivation."""
     folder = _resolve_app_folder(db, args.target)
     prep = folder / "_prep"
     if not prep.exists():
@@ -372,6 +470,14 @@ def cmd_record_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
         kwargs = _build_offer_kwargs(folder, prep, args.url)
     else:
         kwargs = _build_cold_kwargs(folder, prep, args.url, args.language)
+
+    if getattr(args, "update", None) is not None:
+        if getattr(args, "supersede", False):
+            print("--update refreshes an existing row; it can't be combined with --supersede.",
+                  file=sys.stderr)
+            sys.exit(2)
+        _refresh_application(db, args.update, kwargs, dry_run=args.dry_run)
+        return
 
     if args.dry_run:
         print(json.dumps(kwargs, ensure_ascii=False, indent=2, default=str))
@@ -423,7 +529,11 @@ def cmd_rename_application(db: JobHistoryDB, args: argparse.Namespace) -> None:
         sys.exit(1)
 
     old_company = app["company_name"]
-    old_folder = Path(app["output_folder"])
+    # A stale stored path (another machine / a cloud session) resolves to the
+    # pack under this project's output/; if the pack is gone everywhere, keep
+    # the stored path so the "missing on disk" branch below reports it.
+    stored = app.get("output_folder") or ""
+    old_folder = paths.resolve_output_folder(stored) or Path(stored)
     parent = old_folder.parent
     prefix_part, _old_slug = _split_folder_prefix(old_folder.name)
 
@@ -603,6 +713,15 @@ def _configure_record_application(p: argparse.ArgumentParser) -> None:
         help="Mark any prior live application to the same company+role as 'dropped' "
         "before recording this one, so a re-prospect doesn't leave a parallel active row",
     )
+    p.add_argument(
+        "--update",
+        type=int,
+        metavar="ID",
+        help="After rerunning a pack in place: refresh application ID from this folder's _prep/ "
+        "(fit, counts, skills, title, folder…) instead of inserting a row. Keeps the id, status, "
+        "created_at and status history. Refuses if ID is a different company or source, or if the "
+        "folder's fit prefix is stale (run rename-with-fit first). --dry-run previews the changes",
+    )
 
 
 def _configure_rename_application(p: argparse.ArgumentParser) -> None:
@@ -627,8 +746,10 @@ COMMANDS = [
             help='Build or rebuild DOCX/PDF/TXT/HTML from _prep/ (offer or cold pack, flow from folder name)',
             configure=_configure_regenerate_outputs, handler=cmd_regenerate_outputs),
     Command('record-application',
-            help='Step 10 — read _prep/ artefacts and insert the history row',
-            configure=_configure_record_application, handler=cmd_record_application, mutating=True),
+            help='Step 10 — read _prep/ artefacts and insert the history row (--update ID refreshes an existing row after a rerun)',
+            configure=_configure_record_application, handler=cmd_record_application, mutating=True,
+            # --dry-run only prints: no snapshot, or previews push real ones out of db-backups/
+            writes_if=lambda a: not getattr(a, "dry_run", False)),
     Command('rename-application',
             help='Atomically rename folder + DB + _prep JSON + run_summary; optionally regenerate outputs',
             configure=_configure_rename_application, handler=cmd_rename_application, mutating=True),

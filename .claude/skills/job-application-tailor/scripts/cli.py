@@ -67,7 +67,7 @@ def main() -> None:
         # snapshot_before_mutation never raises, so a backup hiccup can't block
         # the mutation. Gives a cheap undo if a write goes wrong or a stale
         # mirror clobbers newer rows.
-        if command.mutating:
+        if command.will_write(args):
             db.snapshot_before_mutation()
         command.handler(db, args)
     finally:

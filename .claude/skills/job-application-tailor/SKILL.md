@@ -168,7 +168,7 @@ Filenames are language-aware (FR: `Lettre_de_motivation_...`, EN: `Cover_letter_
 
 ## Re-running one step
 
-When the user asks to redo one output ("redo the LinkedIn messages", "regenerate the letter for Acme"), don't re-run the pipeline — every step's inputs are in `_prep/`. ("Regenerate the pack" with no specific output means the full pipeline.)
+When the user asks to redo one output ("redo the LinkedIn messages", "regenerate the letter for Acme"), don't re-run the pipeline — every step's inputs are in `_prep/`. ("Regenerate the pack" with no specific output means the full pipeline — see the next section.)
 
 1. Find the folder — ask, or take the most recent one in `output/` matching their description. Set `$OUTPUT_DIR` and `$PREP_DIR`.
 2. If `cv_fact_base_merged.json` is missing (older packs), run Step 3.9 first. If another input the step needs is missing, tell the user which earlier step must run.
@@ -184,5 +184,26 @@ When the user asks to redo one output ("redo the LinkedIn messages", "regenerate
 | "all outputs", "everything" (files only) | — | — | — |
 
 4. Run Step 9 (`regenerate-outputs`) to rebuild the files.
+
+## Rerunning a whole pack in place
+
+"Rerun" / "regenerate the pack" (no single output named) means the full pipeline again on the **same folder and the same history row**: no new folder, no new row, and the row keeps its id, status and status history.
+
+1. Find the row and its folder: `list --company "<name>"`, then `get <id>`. If `get` shows a dead path, the commands below still find the pack under `output/` (see `references/troubleshooting.md`).
+2. Back up `_prep/` before anything overwrites it: `cp -r "<folder>/_prep" "<folder>/_prep.bak-$(date +%Y%m%d-%H%M%S)"`.
+3. Steps 0–2.5 through `job-prep-cv`, with `$REUSE_DIR` = the folder. Preflight prepares that folder instead of creating one; `cache_stale` still means re-extract the fact base.
+4. Step 3 from the cached `_prep/raw_offer.md`: no probe, no WebFetch, no `cache-raw-offer`. If the previous analysis had a real client resolved for a platform posting, keep that `company_name` / `source_platform`. Run `gate offer`.
+5. **Skip Step 3.5** — the duplicate it would find is this pack.
+6. Steps 3.9 and 4 as usual, including `rename-with-fit`: if the fit level changed, it moves the folder to the new prefix. Reassign `$OUTPUT_DIR` from the printed path. If the slug after the date changed too, the old deliverables keep their old filenames; delete them after Step 9. Below 50%, tell the user and ask before generating anything.
+7. Step 4.5: reuse `_prep/company_research.md`, no new web searches, unless the user asks for fresh research.
+8. Steps 5–8 with every gate. The `gate letters --draft` / `gate linkedin --draft` runs re-take the humanizer snapshot in `_prep/pre_humanize/`, replacing the old run's.
+9. Step 9 (`regenerate-outputs`).
+10. Instead of Step 10, refresh the existing row:
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py record-application "$OUTPUT_DIR" --update <id>
+```
+
+It rewrites the fit %, fit level, match counts, skills, title, company, domain and folder from `_prep/`, and prints each change (`--dry-run` previews). It refuses (exit 2, nothing written) when the id is another company or flow, or when the folder's fit prefix doesn't match the new score — run `rename-with-fit` first in that case.
 
 For anything that fails outside the gates (DB errors, no PDF, DOCX build errors), read `references/troubleshooting.md`.

@@ -437,7 +437,7 @@
           </table>
         </div>
         <h3 id="skills-delegation-contract">Contrat de délégation<a class="anchor" href="#skills-delegation-contract" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
-        <p>Les deux orchestrateurs font un <code>Read</code> de <code>job-prep-cv/SKILL.md</code> pour les étapes 0–2.5, en transmettant <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code> et <code>$EARLY_BLACKLIST_NAME</code>. Le sous-skill exécute <code>scripts/preflight.py</code> et renvoie les chemins résolus (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$MASTER_CV</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), la <code>$CUSTOMIZATION</code> chargée et un <code>$PREP_DIR/cv_fact_base.json</code> vérifié. Le contrôle revient à l'orchestrateur à l'étape 3.</p>
+        <p>Les deux orchestrateurs font un <code>Read</code> de <code>job-prep-cv/SKILL.md</code> pour les étapes 0–2.5, en transmettant <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code> et <code>$EARLY_BLACKLIST_NAME</code>, ou <code>$REUSE_DIR</code> à la place de <code>$INPUT_SEED</code> pour ré-exécuter un dossier existant sur place. Le sous-skill exécute <code>scripts/preflight.py</code> et renvoie les chemins résolus (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$MASTER_CV</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), la <code>$CUSTOMIZATION</code> chargée et un <code>$PREP_DIR/cv_fact_base.json</code> vérifié. Le contrôle revient à l'orchestrateur à l'étape 3.</p>
       </section>
 
       <!-- 3 · PIPELINE -->
@@ -527,12 +527,13 @@
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Sous-commande</th><th>Objet</th><th>Args / flags principaux</th></tr></thead>
           <tbody>
-            <tr><td><code>record-application</code></td><td>Étape 10 — insérer une ligne d'historique depuis <code>_prep/</code></td><td><code>target</code> · <code>--url --source --language --dry-run --supersede</code></td></tr>
+            <tr><td><code>record-application</code></td><td>Étape 10 — insérer une ligne d'historique depuis <code>_prep/</code> ; <code>--update ID</code> met à jour cette ligne après une ré-exécution sur place (id, statut, created_at et historique conservés)</td><td><code>target</code> · <code>--url --source --language --dry-run --supersede --update</code></td></tr>
             <tr><td><code>regenerate-outputs</code></td><td>Étape 9 — générer ou reconstruire un dossier depuis <code>_prep/</code> (offre ou cold)</td><td><code>target</code> · <code>--check --skip-pdf --language --job-title</code></td></tr>
             <tr><td><code>rename-application</code></td><td>Renommage atomique dossier+BDD+JSON</td><td><code>id</code> · <code>--new-company --new-slug --no-regenerate</code></td></tr>
+            <tr><td><code>repair-output-folders</code></td><td>Fait pointer les lignes dont le <code>output_folder</code> enregistré n'existe plus vers le dossier du même nom sous <code>output/</code> ; liste les dossiers introuvables. Simple rapport sans <code>--apply</code></td><td><code>--apply --project-root</code></td></tr>
           </tbody>
         </table></div>
-        <div class="callout"><span class="lbl">Garde-fous de sécurité</span>Chaque sous-commande mutante déclenche <code>snapshot_before_mutation()</code> (sauvegardes glissantes, 20 conservées). <code>--expect-company</code> refuse l'écriture si l'id pointe vers une autre entreprise — une garde contre l'action sur un id périmé après une restauration de la BDD.</div>
+        <div class="callout"><span class="lbl">Garde-fous de sécurité</span>Chaque sous-commande mutante déclenche <code>snapshot_before_mutation()</code> (sauvegardes glissantes, 20 conservées). <code>--expect-company</code> refuse l'écriture si l'id pointe vers une autre entreprise — une garde contre l'action sur un id périmé après une restauration de la BDD. <code>repair-output-folders</code> ne fait qu'un rapport par défaut et ne sauvegarde la base que quand <code>--apply</code> écrit ; <code>record-application --update</code> refuse un id dont l'entreprise ou le flux diffère du dossier.</div>
       </section>
 
       <!-- 6 · SCRIPTS -->
@@ -555,7 +556,7 @@
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Objet</th></tr></thead>
           <tbody>
-            <tr><td><code>preflight.py</code></td><td>Orchestration consolidée des étapes 0–2.5 ; émet un blob d'état JSON (<code>ok / cache_stale / first_run / blacklisted / error</code>)</td></tr>
+            <tr><td><code>preflight.py</code></td><td>Orchestration consolidée des étapes 0–2.5 ; émet un blob d'état JSON (<code>ok / cache_stale / first_run / blacklisted / error</code>). <code>--reuse-dir &lt;dossier&gt;</code> prépare un dossier existant au lieu d'en créer un (ré-exécution sur place) ; un cache périmé impose toujours une ré-extraction</td></tr>
             <tr><td><code>generate_outputs.py</code></td><td>Moteur de rendu de l'étape 9, derrière <code>cli.py regenerate-outputs</code> — validation → DOCX/PDF/TXT/HTML + résumé d'exécution</td></tr>
             <tr><td><code>validate.py</code></td><td>Validateur JSON-Schema (Draft 2020-12) avec des chemins d'erreur lisibles ; exécuté par chaque barrière</td></tr>
             <tr><td><code>recount_match_summary.py</code></td><td>Recalcule de façon déterministe <code>match_summary</code> avant validation ; <code>gate match</code> fait de même sur place</td></tr>
@@ -630,7 +631,7 @@
             <tr><td><code>fit_level</code></td><td>TEXT</td><td>— (very_good/good/medium/low)</td></tr>
             <tr><td><code>fit_pct</code></td><td>REAL</td><td>—</td></tr>
             <tr><td><code>direct_count · transferable_count · gap_count</code></td><td>INTEGER</td><td>—</td></tr>
-            <tr><td><code>output_folder · detected_language</code></td><td>TEXT</td><td>—</td></tr>
+            <tr><td><code>output_folder · detected_language</code></td><td>TEXT</td><td>— · <code>output_folder</code> est un chemin absolu ; s'il n'existe plus, les recherches par id se rabattent sur <code>&lt;project_root&gt;/output/&lt;nom du dossier&gt;</code></td></tr>
             <tr><td><code>status</code></td><td>TEXT</td><td>NOT NULL DEFAULT <code>'generated'</code> · indexée</td></tr>
             <tr><td><code>source</code></td><td>TEXT</td><td>NOT NULL DEFAULT <code>'offer'</code> · ajoutée en v2</td></tr>
             <tr><td><code>org_type</code></td><td>TEXT</td><td>nullable · ajoutée en v3</td></tr>
@@ -770,7 +771,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash existent
       <section class="section" id="outputs">
         <p class="sec-kick">11 · Livrables</p>
         <h2>Génération des livrables<a class="anchor" href="#outputs" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h2>
-        <p>Chaque exécution écrit dans <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offre) ou <code>output/cold-[date]-[company-slug]/</code> (cold). Les JSON/MD intermédiaires résident dans un sous-dossier <code>_prep/</code> afin que n'importe quelle étape puisse être ré-exécutée isolément ; <code>cli.py regenerate-outputs &lt;folder&gt;</code> en tire les fichiers à la première exécution et les reconstruit ensuite, pour l'un ou l'autre flux.</p>
+        <p>Chaque exécution écrit dans <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offre) ou <code>output/cold-[date]-[company-slug]/</code> (cold). Les JSON/MD intermédiaires résident dans un sous-dossier <code>_prep/</code> afin que n'importe quelle étape puisse être ré-exécutée isolément ; <code>cli.py regenerate-outputs &lt;folder&gt;</code> en tire les fichiers à la première exécution et les reconstruit ensuite, pour l'un ou l'autre flux. Une ré-exécution complète garde le dossier et la ligne d'historique : <code>preflight --reuse-dir</code>, étapes 3 à 9 à partir de l'offre ou de la recherche déjà en cache (sans contrôle de doublon), puis <code>record-application &lt;dossier&gt; --update &lt;id&gt;</code> à la place de l'étape 10.</p>
         <h3 id="outputs-prep-artefacts">Artefacts <code>_prep/</code><a class="anchor" href="#outputs-prep-artefacts" aria-label="Lien vers cette section" title="Lien vers cette section">#</a></h3>
         <div class="chips">
           <span class="chip">cv_fact_base.json</span><span class="chip">cv_fact_base_merged.json</span><span class="chip">job_offer_analysis.json</span><span class="chip">match_analysis.json</span>

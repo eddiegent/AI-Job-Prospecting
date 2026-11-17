@@ -23,6 +23,17 @@ class Command:
     mutating: bool = False                # True => snapshot the DB before running
     needs_db: bool = True                 # False => handler is called with db=None
                                           # and no DB file is opened or created
+    # For a mutating command whose default is a dry run: given the parsed
+    # args, True when this invocation will actually write. The snapshot is
+    # skipped otherwise, so previews don't fill db-backups/ (pruned to 20)
+    # and push out the snapshots that matter.
+    writes_if: Callable[[argparse.Namespace], bool] | None = None
+
+    def will_write(self, args: argparse.Namespace) -> bool:
+        """Whether to take the pre-mutation snapshot for this invocation."""
+        if not self.mutating:
+            return False
+        return self.writes_if is None or bool(self.writes_if(args))
 
 
 # Registration order == the order subcommands appear in --help (kept identical
@@ -31,7 +42,7 @@ _ORDER = [
     "list", "get", "update-status", "bulk-status", "update-company",
     "update-output-folder", "stats", "skills", "company-list", "company-add",
     "company-remove", "company-check", "check-duplicate", "export-csv",
-    "doctor", "count", "timeline",
+    "doctor", "repair-output-folders", "count", "timeline",
     # event-sourced reports (schema v4)
     "history", "response-time", "funnel", "follow-up",
     "regenerate-outputs", "record-application",

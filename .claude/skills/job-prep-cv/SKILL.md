@@ -16,6 +16,7 @@ The shared first steps of every application-pack run. `job-application-tailor` (
 - **`$FLOW`** — `offer` or `cold`. Controls the output folder prefix.
 - **`$INPUT_SEED`** — the user's input (job text/URL, or company name/URL). Seeds a placeholder folder slug, which each flow renames once it knows the real title/company.
 - **`$EARLY_BLACKLIST_NAME`** *(optional)* — a company name already known now. When set, the blacklist is checked before the folder is created.
+- **`$REUSE_DIR`** *(optional)* — an existing pack folder, when the caller is rerunning that pack in place. Replaces `--input` with `--reuse-dir`: no new folder is created.
 
 ## Step 0 — Preflight (one command)
 
@@ -47,6 +48,14 @@ If neither directory exists, stop: the job-application-tailor skill is not insta
 - **`first_run`** — there was no `MASTER_CV.docx`; preflight seeded the user data dir with templates and an example CV. Show `next_steps` verbatim and stop. Never generate a pack from the example CV.
 - **`blacklisted`** — show `blacklist_hit` and stop unless the user explicitly overrides.
 - **`error`** — show `message` and stop. If it reports a missing dependency, tell the user to run `pip install -r "$SKILL_BASE_TAILOR/requirements.txt"`.
+
+**Rerun in place** (`$REUSE_DIR` set) — same command with `--reuse-dir` instead of `--input`:
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python -m scripts.preflight --flow "<offer|cold>" --reuse-dir "$REUSE_DIR"
+```
+
+`output_dir` / `prep_dir` then point at that folder (the JSON also carries `"reused": true`). It refuses with `error` if the folder has no `_prep/` or its `cold-` prefix doesn't match `--flow`. The fact-base rules don't change: a valid cache is copied over the pack's `_prep/cv_fact_base.json` and verified; on `cache_stale` the pack's old fact base is renamed `cv_fact_base.prev.json` (reported as `previous_fact_base`) and you do Steps 1–2.5 — never put the old file back.
 
 ## Step 1 — Read the master CV (`cache_stale` only)
 

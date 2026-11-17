@@ -52,6 +52,34 @@ machine. It does not coordinate writers on different machines against one
 networked DB file — don't run the skill against a shared `job_history.db` from
 several hosts at once. Covered by `tests/test_db_concurrency.py`.
 
+## "Output folder does not exist" for an application id
+
+`applications.output_folder` stores the absolute path the pack was written to.
+Rows recorded in a cloud session (`/sessions/<id>/mnt/…/output/<folder>`) or on
+another machine therefore point at paths that don't exist here. Every command
+that resolves an id (`regenerate-outputs <id>`, `record-application <id>`,
+`rename-application <id>`) falls back to `<project root>/output/<same folder
+name>`; the project root is found the same way preflight finds it. If you still
+get the error, the pack isn't under this project's `output/` either.
+
+To see and fix the stored paths:
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py repair-output-folders          # report only
+cd "$SKILL_BASE" && python scripts/cli.py repair-output-folders --apply  # rewrite repairable rows
+```
+
+The report counts rows that are fine, repairable (found by folder name) and
+missing everywhere, and lists the last two groups. `--apply` snapshots the DB to
+`db-backups/` first and rewrites only the repairable rows. Rows whose pack is
+gone are left alone: restore the folder, or point the row at a pack with
+`update-output-folder <id> "<path>"`. Use `--project-root "<dir>"` when the packs
+live under another directory's `output/`.
+
+New rows still store absolute paths. The fallback works on the folder name, so
+a pack stays findable after the project moves, as long as the folder keeps its
+name under `output/`.
+
 ## PDF not produced
 
 PDF generation does NOT require Microsoft Word. `scripts/pdf_pipeline.py` tries

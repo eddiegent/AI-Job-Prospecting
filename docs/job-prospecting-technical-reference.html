@@ -437,7 +437,7 @@
           </table>
         </div>
         <h3 id="skills-delegation-contract">Delegation contract<a class="anchor" href="#skills-delegation-contract" aria-label="Link to this section" title="Link to this section">#</a></h3>
-        <p>Both orchestrators <code>Read</code> <code>job-prep-cv/SKILL.md</code> for Steps 0–2.5, passing <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code>, and <code>$EARLY_BLACKLIST_NAME</code>. The sub-skill runs <code>scripts/preflight.py</code> and hands back resolved paths (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$MASTER_CV</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), the loaded <code>$CUSTOMIZATION</code>, and a verified <code>$PREP_DIR/cv_fact_base.json</code>. Control returns to the orchestrator at Step 3.</p>
+        <p>Both orchestrators <code>Read</code> <code>job-prep-cv/SKILL.md</code> for Steps 0–2.5, passing <code>$FLOW</code> (<code>offer</code>|<code>cold</code>), <code>$INPUT_SEED</code>, and <code>$EARLY_BLACKLIST_NAME</code> — or <code>$REUSE_DIR</code> instead of <code>$INPUT_SEED</code> when rerunning an existing pack in place. The sub-skill runs <code>scripts/preflight.py</code> and hands back resolved paths (<code>$PROJECT_ROOT</code>, <code>$SKILL_BASE_TAILOR</code>, <code>$MASTER_CV</code>, <code>$OUTPUT_DIR</code>, <code>$PREP_DIR</code>), the loaded <code>$CUSTOMIZATION</code>, and a verified <code>$PREP_DIR/cv_fact_base.json</code>. Control returns to the orchestrator at Step 3.</p>
       </section>
 
       <!-- 3 · PIPELINE -->
@@ -527,12 +527,13 @@
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Subcommand</th><th>Purpose</th><th>Key args / flags</th></tr></thead>
           <tbody>
-            <tr><td><code>record-application</code></td><td>Step 10 — insert history row from <code>_prep/</code></td><td><code>target</code> · <code>--url --source --language --dry-run --supersede</code></td></tr>
+            <tr><td><code>record-application</code></td><td>Step 10 — insert history row from <code>_prep/</code>; <code>--update ID</code> refreshes that row after an in-place rerun (keeps id, status, created_at, history)</td><td><code>target</code> · <code>--url --source --language --dry-run --supersede --update</code></td></tr>
             <tr><td><code>regenerate-outputs</code></td><td>Step 9 — build or rebuild a pack from <code>_prep/</code> (offer or cold)</td><td><code>target</code> · <code>--check --skip-pdf --language --job-title</code></td></tr>
             <tr><td><code>rename-application</code></td><td>Atomic folder+DB+JSON rename</td><td><code>id</code> · <code>--new-company --new-slug --no-regenerate</code></td></tr>
+            <tr><td><code>repair-output-folders</code></td><td>Re-point rows whose stored <code>output_folder</code> is dead to the pack of the same name under <code>output/</code>; lists packs missing everywhere. Report only unless <code>--apply</code></td><td><code>--apply --project-root</code></td></tr>
           </tbody>
         </table></div>
-        <div class="callout"><span class="lbl">Safety rails</span>Every mutating subcommand triggers <code>snapshot_before_mutation()</code> (rolling backups, keep 20). <code>--expect-company</code> refuses the write if the id points at a different company — a guard against acting on a stale id after a DB restore.</div>
+        <div class="callout"><span class="lbl">Safety rails</span>Every mutating subcommand triggers <code>snapshot_before_mutation()</code> (rolling backups, keep 20). <code>--expect-company</code> refuses the write if the id points at a different company — a guard against acting on a stale id after a DB restore. <code>repair-output-folders</code> is a dry run by default and snapshots only when <code>--apply</code> writes; <code>record-application --update</code> refuses an id whose company or flow differs from the pack.</div>
       </section>
 
       <!-- 6 · SCRIPTS -->
@@ -555,7 +556,7 @@
         <div class="tbl-wrap"><table class="tbl">
           <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
           <tbody>
-            <tr><td><code>preflight.py</code></td><td>Consolidated Step 0–2.5 orchestration; emits a JSON state blob (<code>ok / cache_stale / first_run / blacklisted / error</code>)</td></tr>
+            <tr><td><code>preflight.py</code></td><td>Consolidated Step 0–2.5 orchestration; emits a JSON state blob (<code>ok / cache_stale / first_run / blacklisted / error</code>). <code>--reuse-dir &lt;pack&gt;</code> prepares an existing pack instead of a new folder (rerun in place); a stale cache still means re-extract</td></tr>
             <tr><td><code>generate_outputs.py</code></td><td>Step 9 renderer behind <code>cli.py regenerate-outputs</code> — validate → DOCX/PDF/TXT/HTML + run summary</td></tr>
             <tr><td><code>validate.py</code></td><td>JSON-Schema (Draft 2020-12) validator with readable error paths; run by every gate</td></tr>
             <tr><td><code>recount_match_summary.py</code></td><td>Deterministically recomputes <code>match_summary</code> before validation; <code>gate match</code> does the same in place</td></tr>
@@ -630,7 +631,7 @@
             <tr><td><code>fit_level</code></td><td>TEXT</td><td>— (very_good/good/medium/low)</td></tr>
             <tr><td><code>fit_pct</code></td><td>REAL</td><td>—</td></tr>
             <tr><td><code>direct_count · transferable_count · gap_count</code></td><td>INTEGER</td><td>—</td></tr>
-            <tr><td><code>output_folder · detected_language</code></td><td>TEXT</td><td>—</td></tr>
+            <tr><td><code>output_folder · detected_language</code></td><td>TEXT</td><td>— · <code>output_folder</code> is absolute; when it no longer exists, id lookups fall back to <code>&lt;project_root&gt;/output/&lt;folder name&gt;</code></td></tr>
             <tr><td><code>status</code></td><td>TEXT</td><td>NOT NULL DEFAULT <code>'generated'</code> · indexed</td></tr>
             <tr><td><code>source</code></td><td>TEXT</td><td>NOT NULL DEFAULT <code>'offer'</code> · added v2</td></tr>
             <tr><td><code>org_type</code></td><td>TEXT</td><td>nullable · added v3</td></tr>
@@ -770,7 +771,7 @@ cv_cache_is_valid(cv_path)  →  cv_fact_base.json + .cv_hash exist
       <section class="section" id="outputs">
         <p class="sec-kick">11 · Deliverables</p>
         <h2>Output generation<a class="anchor" href="#outputs" aria-label="Link to this section" title="Link to this section">#</a></h2>
-        <p>Each run writes to <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offer) or <code>output/cold-[date]-[company-slug]/</code> (cold). Intermediate JSON/MD lives in a <code>_prep/</code> subfolder so any step can be re-run in isolation; <code>cli.py regenerate-outputs &lt;folder&gt;</code> builds the files from it on the first run and rebuilds them later, for either flow.</p>
+        <p>Each run writes to <code>output/[fit_level]-[DDMMYYYY]-[job-slug]/</code> (offer) or <code>output/cold-[date]-[company-slug]/</code> (cold). Intermediate JSON/MD lives in a <code>_prep/</code> subfolder so any step can be re-run in isolation; <code>cli.py regenerate-outputs &lt;folder&gt;</code> builds the files from it on the first run and rebuilds them later, for either flow. A whole-pack rerun keeps the folder and the history row: <code>preflight --reuse-dir</code>, Steps 3–9 from the cached offer or research (no duplicate check), then <code>record-application &lt;folder&gt; --update &lt;id&gt;</code> instead of Step 10.</p>
         <h3 id="outputs-prep-artefacts"><code>_prep/</code> artefacts<a class="anchor" href="#outputs-prep-artefacts" aria-label="Link to this section" title="Link to this section">#</a></h3>
         <div class="chips">
           <span class="chip">cv_fact_base.json</span><span class="chip">cv_fact_base_merged.json</span><span class="chip">job_offer_analysis.json</span><span class="chip">match_analysis.json</span>

@@ -9,6 +9,14 @@ the orchestrator consumes.
 Usage:
     python -m scripts.preflight --flow {offer,cold} --input "<seed>"
                                 [--early-blacklist-name "<name>"]
+    python -m scripts.preflight --flow {offer,cold} --reuse-dir "<pack>"
+
+``--reuse-dir`` reruns an existing pack in place: no new folder, same JSON,
+``output_dir``/``prep_dir`` pointing at the pack. The fact-base rules are
+unchanged — a valid cache is copied over ``_prep/cv_fact_base.json`` and
+verified; a stale cache still returns ``cache_stale`` (re-extract), and the
+pack's old fact base is renamed to ``cv_fact_base.prev.json`` so it can't be
+mistaken for a current one.
 
 Exit codes:
     0 — preflight succeeded; the JSON ``status`` field tells the
@@ -53,34 +61,21 @@ from scripts.common import (  # noqa: E402
     slug_for_filename,
 )
 from scripts.job_history_db import JobHistoryDB  # noqa: E402
-from scripts.paths import resolve_user_data_dir  # noqa: E402
+from scripts.paths import (  # noqa: E402
+    git_toplevel,
+    resolve_project_root,
+    resolve_user_data_dir,
+)
 from scripts.user_customization import load_customization_context  # noqa: E402
 
 SKILL_BASE = Path(__file__).resolve().parent.parent
 
 
 def _git_toplevel() -> Path | None:
-    """Return `git rev-parse --show-toplevel` for the cwd, or None."""
-    import os
-    import subprocess
+    """Return `git rev-parse --show-toplevel` for the cwd, or None.
 
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=5,
-            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
-        )
-        if result.returncode == 0:
-            top = result.stdout.strip()
-            if top:
-                return Path(top)
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    return None
+    Kept as a module-level seam so tests can stub git out."""
+    return git_toplevel()
 
 
 def _resolve_project_root(
@@ -88,32 +83,14 @@ def _resolve_project_root(
 ) -> Path:
     """Return the directory the run's ``output/`` folder lives under.
 
-    The orchestrator may invoke this from the skill base after a ``cd``,
-    so ``Path.cwd()`` would point inside the skill rather than at the
-    project. Prefer ``git rev-parse --show-toplevel`` when available, then
-    walk up from the skill base looking for a ``.git`` / ``.claude``
-    project marker — **stopping before the user's home directory**, whose
-    ``~/.claude`` is Claude Code's global config, not a project (an
-    installed plugin lives under app-data, so without the stop the walk
-    would 'find' the home dir and scatter packs into ``~/output``). When
-    no project marker exists (the normal case for an installed plugin),
-    fall back to the user-data dir, keeping packs next to the CV and DB —
-    ``init.py`` seeds ``output/`` there for exactly this case.
-    """
-    skill_base = skill_base or SKILL_BASE
-    home = home or Path.home()
-
-    top = _git_toplevel()
-    if top is not None:
-        return top
-
-    for parent in skill_base.parents:
-        if parent == home:
-            break
-        if (parent / ".git").exists() or (parent / ".claude").exists():
-            return parent
-
-    return resolve_user_data_dir()
+    Thin wrapper over :func:`scripts.paths.resolve_project_root` (the rules
+    live there, shared with the history CLI's folder lookup)."""
+    return resolve_project_root(
+        skill_base=skill_base or SKILL_BASE,
+        home=home,
+        toplevel=_git_toplevel(),
+        use_git=False,
+    )
 
 
 def _check_dependencies() -> None:
@@ -131,6 +108,40 @@ def _build_initial_folder(project_root: Path, flow: str, input_seed: str) -> Pat
     slug = slug_for_filename(input_seed) or "untitled"
     prefix = "cold-" if flow == "cold" else ""
     return project_root / "output" / f"{prefix}{date}-{slug}"
+
+
+def _reuse_dir_problem(folder: Path, flow: str) -> str | None:
+    """Why ``folder`` can't be rerun in place under ``flow``, or None.
+
+    A rerun reuses the pack's ``_prep/`` inputs (raw offer, research), so a
+    folder without one isn't a pack. The ``cold-`` prefix is how every later
+    command tells the flows apart, so a mismatch would build the wrong pack.
+    """
+    if not folder.is_dir():
+        return f"--reuse-dir: folder does not exist: {folder}"
+    if not (folder / "_prep").is_dir():
+        return f"--reuse-dir: no _prep/ under {folder} — not an application pack"
+    is_cold = folder.name.startswith("cold-")
+    if is_cold != (flow == "cold"):
+        kind = "a cold pack" if is_cold else "an offer pack"
+        return f"--reuse-dir: {folder.name} is {kind}; rerun it with --flow {'cold' if is_cold else 'offer'}"
+    return None
+
+
+def _set_aside_previous_fact_base(prep_dir: Path) -> Path | None:
+    """Rename a reused pack's old ``cv_fact_base.json`` to ``.prev.json``.
+
+    Called only when the cache is stale (the master CV changed since that run):
+    the old file was extracted from a CV that no longer exists, and leaving it
+    in place under its usual name invites exactly the reuse-and-re-bless
+    shortcut CLAUDE.md forbids. Renamed rather than deleted so nothing is lost.
+    """
+    old = prep_dir / "cv_fact_base.json"
+    if not old.exists():
+        return None
+    dst = prep_dir / "cv_fact_base.prev.json"
+    old.replace(dst)
+    return dst
 
 
 def _verify_fact_base_cached(cv_path: Path, fact_base_path: Path) -> tuple[bool, str]:
@@ -169,13 +180,21 @@ def _verify_fact_base_cached(cv_path: Path, fact_base_path: Path) -> tuple[bool,
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="preflight")
     parser.add_argument("--flow", required=True, choices=["offer", "cold"])
-    parser.add_argument("--input", required=True, help="Input seed string (URL / company / pasted offer)")
+    parser.add_argument("--input", default=None, help="Input seed string (URL / company / pasted offer)")
     parser.add_argument(
         "--early-blacklist-name",
         default=None,
         help="If set, check the blacklist on this name before creating the folder (cold flow uses this).",
     )
+    parser.add_argument(
+        "--reuse-dir",
+        default=None,
+        help="Rerun an existing pack in place: prepare this folder (which must hold _prep/) "
+        "instead of creating a new one. Replaces --input.",
+    )
     args = parser.parse_args(argv)
+    if not args.input and not args.reuse_dir:
+        parser.error("one of --input or --reuse-dir is required")
 
     state: dict[str, object] = {"status": "ok", "flow": args.flow}
 
@@ -239,14 +258,28 @@ def main(argv: list[str]) -> int:
     state["customization"] = customization
 
     # --- Output folder ---
-    output_dir = _build_initial_folder(project_root, args.flow, args.input)
+    if args.reuse_dir:
+        output_dir = Path(args.reuse_dir)
+        problem = _reuse_dir_problem(output_dir, args.flow)
+        if problem:
+            print(json.dumps({"status": "error", "message": problem}, ensure_ascii=False))
+            return 1
+        state["reused"] = True
+    else:
+        output_dir = _build_initial_folder(project_root, args.flow, args.input)
     prep_dir = output_dir / "_prep"
     ensure_dir(prep_dir)
     state["output_dir"] = str(output_dir)
     state["prep_dir"] = str(prep_dir)
 
+    cache_valid = cv_cache_is_valid(master_cv)
+    if args.reuse_dir and not cache_valid:
+        previous = _set_aside_previous_fact_base(prep_dir)
+        if previous:
+            state["previous_fact_base"] = str(previous)
+
     # --- Cache-hot fact base path (collapses Steps 1/2/2.5) ---
-    if cv_cache_is_valid(master_cv):
+    if cache_valid:
         copy_cached_cv_fact_base(master_cv, prep_dir)
         fact_base_path = prep_dir / "cv_fact_base.json"
         ok, verify_msg = _verify_fact_base_cached(master_cv, fact_base_path)

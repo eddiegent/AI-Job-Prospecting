@@ -207,3 +207,20 @@ cd "$SKILL_BASE_TAILOR" && python scripts/cli.py list --company "<company>"
 If this is a deliberate refresh of the **same role**, add `--supersede` to `record-application`: it marks the earlier live application for that company + role as `dropped`, leaving one active row. A different role at the same company is untouched.
 
 Finally, tell the user: output folder, selected role, source URLs referenced, any `research_gaps` the dossier flagged, and the application id (for `/job-status` updates). Cold rows can be segmented in `/job-stats` with `--source cold` and `--org-type`.
+
+## Rerunning a whole pack in place
+
+"Rerun" / "regenerate the pack" means the full pipeline again on the **same `cold-` folder and the same history row** (id, status and status history unchanged). This is not a re-prospect: no new folder, no `--supersede`. The offer flow's procedure (`job-application-tailor/SKILL.md` § Rerunning a whole pack in place) applies, with these cold-flow differences:
+
+1. Find the row (`list --company "<company>"`) and back up `<folder>/_prep/` first, as in the offer flow.
+2. Steps 0–2.5 through `job-prep-cv` with `$FLOW = "cold"` and `$REUSE_DIR` = the folder.
+3. Step 3: reuse `_prep/raw_research.md` and `_prep/company_profile.json`, with no new web research unless the user asks for it. Re-run `gate profile` and `company-check`. Skip `rename-cold-folder`, since the folder already has its canonical name.
+4. Step 4: keep `_prep/selected_role.json` and re-run `gate selected-role`. Only redo 4a–4c if the user wants a different angle.
+5. Steps 3.9 and 5–8 with every gate. The `--draft` gates re-take the humanizer snapshot in `_prep/pre_humanize/`. Then Step 9.
+6. Instead of Step 10, refresh the existing row. Cold rows have no fit columns, so there is no prefix to rename:
+
+```bash
+cd "$SKILL_BASE_TAILOR" && python scripts/cli.py record-application "$OUTPUT_DIR" --update <id>
+```
+
+It rewrites title, language, domain, `org_type`, the profile snapshot and the folder from `_prep/`, and refuses (exit 2) if the id is another company or an offer row.

@@ -319,12 +319,12 @@ read-cv [--cv <cv>]
 
 ### `record-application`
 
-Step 10 — read _prep/ artefacts and insert the history row
+Step 10 — read _prep/ artefacts and insert the history row (--update ID refreshes an existing row after a rerun)
 
 **Signature:**
 
 ```
-record-application <target> [--url <url>] [--source <source>] [--language <language>] [--dry-run] [--supersede]
+record-application <target> [--url <url>] [--source <source>] [--language <language>] [--dry-run] [--supersede] [--update <update>]
 ```
 
 | Arg | Kind | Description |
@@ -335,6 +335,7 @@ record-application <target> [--url <url>] [--source <source>] [--language <langu
 | `--language` | optional | Detected language for cold flow (default: selected_role.language, else 'fr'). Ignored for offer flow — that one reads detected_language from job_offer_analysis.json. |
 | `--dry-run` | flag | Print the kwargs that would be inserted, then exit (no DB write) |
 | `--supersede` | flag | Mark any prior live application to the same company+role as 'dropped' before recording this one, so a re-prospect doesn't leave a parallel active row |
+| `--update` | optional | After rerunning a pack in place: refresh application ID from this folder's _prep/ (fit, counts, skills, title, folder…) instead of inserting a row. Keeps the id, status, created_at and status history. Refuses if ID is a different company or source, or if the folder's fit prefix is stale (run rename-with-fit first). --dry-run previews the changes |
 
 ### `regenerate-outputs`
 
@@ -398,6 +399,21 @@ rename-with-fit <target>
 | Arg | Kind | Description |
 | --- | --- | --- |
 | `target` | positional | Output folder for this run |
+
+### `repair-output-folders`
+
+Re-point rows whose stored output_folder is stale to the pack under output/ (dry run unless --apply)
+
+**Signature:**
+
+```
+repair-output-folders [--apply] [--project-root <project_root>]
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `--apply` | flag | Write the repaired paths (default: dry run, report only) |
+| `--project-root` | optional | Directory whose output/ holds the packs (default: the git toplevel, else the project marker above the skill, else the user data dir — same as preflight) |
 
 ### `response-time`
 

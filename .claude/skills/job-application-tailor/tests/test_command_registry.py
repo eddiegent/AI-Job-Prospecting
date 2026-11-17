@@ -21,7 +21,7 @@ from scripts.commands import _ORDER, Command, all_commands
 EXPECTED_MUTATING = {
     "update-status", "bulk-status", "update-company", "update-output-folder",
     "record-application", "rename-application",
-    "company-add", "company-remove",
+    "company-add", "company-remove", "repair-output-folders",
 }
 
 
@@ -54,3 +54,22 @@ def test_parser_covers_exactly_the_registry() -> None:
     assert len(sub_actions) == 1
     parser_names = list(sub_actions[0].choices)
     assert parser_names == [c.name for c in all_commands()]
+
+
+def test_dry_run_default_command_snapshots_only_when_writing() -> None:
+    """repair-output-folders is mutating but previews by default; a preview
+    must not take a snapshot (db-backups/ is pruned to 20, so preview
+    snapshots would push out the ones that matter)."""
+    cmd = {c.name: c for c in all_commands()}["repair-output-folders"]
+    parser = build_parser()
+    assert cmd.will_write(parser.parse_args(["repair-output-folders", "--apply"]))
+    assert not cmd.will_write(parser.parse_args(["repair-output-folders"]))
+    # same for record-application's --dry-run (insert or --update preview)
+    rec = {c.name: c for c in all_commands()}["record-application"]
+    assert rec.will_write(parser.parse_args(["record-application", "some/folder"]))
+    assert not rec.will_write(parser.parse_args(["record-application", "some/folder", "--dry-run"]))
+    assert not rec.will_write(parser.parse_args(["record-application", "7", "--update", "7", "--dry-run"]))
+    # every other mutating command still always snapshots
+    for c in all_commands():
+        if c.mutating and c.writes_if is None:
+            assert c.will_write(argparse.Namespace())

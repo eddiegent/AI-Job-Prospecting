@@ -1,4 +1,5 @@
-"""Diagnostics: doctor (read-only DB health/fingerprint report)."""
+"""Diagnostics and repair: doctor (read-only DB health/fingerprint report),
+repair-output-folders (re-point stale pack paths; dry run by default)."""
 from __future__ import annotations
 
 import argparse
@@ -8,6 +9,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from scripts import paths
 from scripts.job_history_db import JobHistoryDB, compute_content_fingerprint
 from scripts.commands import Command
 
@@ -91,8 +93,80 @@ def _configure_doctor(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true", help="Emit the report as JSON")
 
 
+def _app_label(app: dict) -> str:
+    return f"#{app['id']} {app['company_name']} — {app['job_title']}"
+
+
+def cmd_repair_output_folders(db: JobHistoryDB, args: argparse.Namespace) -> None:
+    """Re-point rows whose stored `output_folder` no longer exists.
+
+    `output_folder` holds absolute paths, and most of the history was written
+    in cloud sessions (`/sessions/<id>/mnt/...`) or on another machine, so the
+    stored path is dead here even though the pack sits under this project's
+    `output/` by the same folder name. Every id-based lookup already falls
+    back to that location (`paths.resolve_output_folder`); this makes the fix
+    permanent so the DB, `get` and exports show real paths again.
+
+    Dry run unless `--apply`: it rewrites the relocatable rows only, never
+    touches a row whose pack is missing everywhere (those are listed so the
+    user can decide), and snapshots the DB first (via `writes_if`).
+    """
+    root = Path(args.project_root) if args.project_root else paths.resolve_project_root()
+    apps = sorted(db.list_applications(limit=10**9), key=lambda a: a["id"])
+    buckets: dict[str, list[tuple[dict, Path | None]]] = {
+        "ok": [], "relocated": [], "missing": [], "none": [],
+    }
+    for app in apps:
+        found, state = paths.locate_output_folder(app.get("output_folder"), project_root=root)
+        buckets[state].append((app, found))
+
+    relocated, missing = buckets["relocated"], buckets["missing"]
+    print(f"Output folders ({len(apps)} rows, looking under {root / 'output'}):")
+    print(f"  already fine          : {len(buckets['ok'])}")
+    print(f"  repairable (by name)  : {len(relocated)}")
+    print(f"  missing everywhere    : {len(missing)}")
+    print(f"  no folder recorded    : {len(buckets['none'])}")
+
+    if relocated:
+        print("\nRepairable — stored path is gone, pack found under output/:")
+        for app, found in relocated:
+            print(f"  {_app_label(app)}")
+            print(f"    {app['output_folder']}")
+            print(f"    -> {found}")
+    if missing:
+        print("\nMissing everywhere — left as is (restore the pack, or fix with update-output-folder):")
+        for app, _ in missing:
+            print(f"  {_app_label(app)}: {app['output_folder']}")
+
+    if not args.apply:
+        if relocated:
+            print(f"\nDry run — nothing written. Re-run with --apply to rewrite {len(relocated)} row(s).")
+        return
+    for app, found in relocated:
+        db.update_output_folder(app["id"], str(found))
+    print(f"\nRewrote output_folder on {len(relocated)} row(s).")
+
+
+def _configure_repair_output_folders(p: argparse.ArgumentParser) -> None:
+    p.description = (
+        "Find rows whose stored output_folder doesn't exist but whose pack is under "
+        "<project_root>/output/ by the same folder name, and list the rows whose pack is "
+        "missing everywhere. Dry run by default; --apply rewrites the repairable rows "
+        "(after a DB snapshot)."
+    )
+    p.add_argument("--apply", action="store_true",
+                   help="Write the repaired paths (default: dry run, report only)")
+    p.add_argument("--project-root",
+                   help="Directory whose output/ holds the packs (default: the git toplevel, "
+                   "else the project marker above the skill, else the user data dir — same as preflight)")
+
+
 COMMANDS = [
     Command('doctor',
             help='Read-only DB health/fingerprint report; surfaces the temp mirror and any divergence',
             configure=_configure_doctor, handler=cmd_doctor),
+    Command('repair-output-folders',
+            help='Re-point rows whose stored output_folder is stale to the pack under output/ (dry run unless --apply)',
+            configure=_configure_repair_output_folders, handler=cmd_repair_output_folders,
+            mutating=True, writes_if=lambda a: bool(getattr(a, "apply", False))),
 ]

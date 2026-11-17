@@ -24,6 +24,8 @@ on disk. Migration to the new location is Phase 4.5's job and is opt-in.
 from __future__ import annotations
 
 import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Mapping
@@ -103,6 +105,124 @@ def resolve_user_data_dir(
 
     home = env.get("HOME") or str(Path.home())
     return Path(home) / f".{APP_NAME}"
+
+
+# ----- project root + output folders -------------------------------------
+
+
+def git_toplevel() -> Path | None:
+    """Return `git rev-parse --show-toplevel` for the cwd, or None."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5,
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        )
+        if result.returncode == 0:
+            top = result.stdout.strip()
+            if top:
+                return Path(top)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def resolve_project_root(
+    *,
+    skill_base: Path | None = None,
+    home: Path | None = None,
+    toplevel: Path | None = None,
+    use_git: bool = True,
+) -> Path:
+    """Return the directory the packs' ``output/`` folder lives under.
+
+    The orchestrator may run from the skill base after a ``cd``, so
+    ``Path.cwd()`` would point inside the skill rather than at the project.
+    Prefer the git toplevel when available (``toplevel`` lets a caller pass
+    one it already computed), then walk up from the skill base looking for a
+    ``.git`` / ``.claude`` project marker — **stopping before the user's home
+    directory**, whose ``~/.claude`` is Claude Code's global config, not a
+    project (an installed plugin lives under app-data, so without the stop
+    the walk would 'find' the home dir and scatter packs into ``~/output``).
+    When no project marker exists (the normal case for an installed plugin),
+    fall back to the user-data dir, keeping packs next to the CV and DB —
+    ``init.py`` seeds ``output/`` there for exactly this case.
+
+    Shared by preflight (where new packs are created) and the history CLI
+    (where packs recorded in the DB are found again), so both agree on it.
+    """
+    skill_base = skill_base or SKILL_ROOT
+    home = home or Path.home()
+
+    top = toplevel if toplevel is not None else (git_toplevel() if use_git else None)
+    if top is not None:
+        return top
+
+    for parent in skill_base.parents:
+        if parent == home:
+            break
+        if (parent / ".git").exists() or (parent / ".claude").exists():
+            return parent
+
+    return resolve_user_data_dir()
+
+
+def stored_folder_name(stored: str) -> str:
+    """Last component of a stored ``output_folder`` string.
+
+    Splits on both ``/`` and ``\\`` explicitly: the DB holds paths written on
+    Linux (cloud sessions: ``/sessions/<id>/mnt/...``) and on Windows, and
+    ``Path`` on either OS only understands its own separator.
+    """
+    parts = [p for p in re.split(r"[\\/]", stored.strip()) if p]
+    return parts[-1] if parts else ""
+
+
+def locate_output_folder(
+    stored: str | None, *, project_root: Path | None = None
+) -> tuple[Path | None, str]:
+    """Find an application's pack folder from its stored ``output_folder``.
+
+    Returns ``(path, state)`` where ``state`` is:
+
+    * ``"ok"``        — the stored path exists as written;
+    * ``"relocated"`` — it doesn't, but ``<project_root>/output/<folder name>``
+                        does (the row was written on another machine or in a
+                        cloud session with a different mount point);
+    * ``"missing"``   — neither exists (``path`` is None);
+    * ``"none"``      — the row has no folder recorded (``path`` is None).
+
+    ``project_root`` is resolved lazily, only when the stored path is stale,
+    so the common case costs no git subprocess.
+    """
+    if not stored or not stored.strip():
+        return None, "none"
+    direct = Path(stored)
+    if direct.exists():
+        return direct, "ok"
+    name = stored_folder_name(stored)
+    if name:
+        root = project_root if project_root is not None else resolve_project_root()
+        candidate = root / "output" / name
+        if candidate.is_dir():
+            return candidate, "relocated"
+    return None, "missing"
+
+
+def resolve_output_folder(
+    stored: str | None, *, project_root: Path | None = None
+) -> Path | None:
+    """The existing pack folder for a stored ``output_folder``, or None.
+
+    The one place every DB-to-folder lookup goes through, so a stale absolute
+    path (see :func:`locate_output_folder`) never surfaces as "Output folder
+    does not exist" when the pack is sitting under this project's ``output/``.
+    """
+    return locate_output_folder(stored, project_root=project_root)[0]
 
 
 # ----- config layering --------------------------------------------------
