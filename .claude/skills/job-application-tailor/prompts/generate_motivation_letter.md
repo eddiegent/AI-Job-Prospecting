@@ -53,11 +53,11 @@ Return valid JSON matching `schemas/letter.schema.json`. Read that schema file f
 Key fields: `sender_name`, `sender_address` (array), `recipient_name`, `recipient_address` (array), `date_line`, `subject_line`, `greeting`, `paragraphs` (array), `signoff`, `name`.
 
 ## Humanizer pass
-Once the draft is written and before the gate below, follow `prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above.
+The pass covers both letters, so it runs once `short_letter.json` is drafted too. Follow `prompts/humanize_pass.md`: `gate letters --draft` on the two drafts, the `humanizer:humanizer` skill on the `paragraphs`, then the gate below. Keep every fact, limit and rule above.
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Naming one as a gap is fine ("n8n reste à apprendre") — keep the negation in the same clause as the skill, or the claims check reads it as a claim. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- After writing `letter.json`, run the letters gate (`python scripts/cli.py gate letters "$PREP_DIR"` — schema + claims check) once `short_letter.json` exists too, and fix the wording until it passes.
+- After the humanizer pass on both letters, run the letters gate (`python scripts/cli.py gate letters "$PREP_DIR"` — schema + claims check + humanizer guard) and fix the wording until it passes. The claims check reads every figure: a number in the letter must be one the master CV or addendum states.

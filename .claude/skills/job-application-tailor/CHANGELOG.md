@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added — claims rule 8: figures must be stated by a source (2026-11-17)
+- **Why.** A test on a copy of pack #159: the tailored CV and the letter changed from "17 000+ sauvegardes" to "45 000+", plus an invented "j'ai dirigé une équipe de 12 personnes", passed `gate cv` and `gate letters`. The claims check read technologies, durations and intensity wording, but no other number. `factbase_consistency.py` closed the same hole for the fact base only (the "40+ → 100+" incident).
+- **Rule.** In `scripts/claims_guard.py`, every number in the CV (all but the contact line), in a letter's `paragraphs` and in a LinkedIn `message` must be one the master CV or addendum states; a percentage needs a percentage in the source ("95-98%" backs both ends). Messages are `[figure] <file>: '<value>' ...`.
+- **Not claims:** a figure in a negated clause ("je n'ai pas administré Microsoft 365"); the role's own figure in a clause that isn't first-person ("Acme, avec ses 650 collaborateurs, ..."); a number after the same name as in the offer or research (".NET 4.8"); a reference number of 5+ digits found there. Years, dates, call / commute times and durations (rule 7) are not figures. A count copied from the offer into a first-person clause ("j'ai dirigé une équipe de 12 personnes") stays a claim.
+- **Role-side text.** `run_check` now also reads `raw_offer.md`, `company_research.md` and `raw_research.md` for the figures a letter may quote back.
+- **Calibration.** On the 39 packs generated since 2026-10-01: no failure. On all 168: 73 fail, 71 of them only on figures the master CV no longer states (the old "40+" applications figure, 49 packs; a removed "City & Guilds 726" education line, 25) — true drift against today's CV, as expected for old packs. The other two are an unsourced "Microsoft 365" claim and "industrie 4.0" in a pack whose offer text was not cached.
+- **Prompts.** `cv_rules.md` § Evidence ledger and the letter / LinkedIn prompts say figures are copied as the source states them.
+- **Tests** — 27 cases in `tests/test_claims_guard.py` (rule 8 block); `tests/test_gate.py`'s sample master CV gains the education line its sample tailored CV carries.
+
+### Added — humanizer guard: the style pass may not change the content (2026-11-17)
+- **Why.** The first three packs rerun with the humanizer pass: one short letter gained a sentence no source supports ("L'équipe pouvait ensuite s'y retrouver sans moi"), and two runs edited the subject line and LinkedIn subject hints the pass is told to leave alone. Every gate passed.
+- **`gate letters --draft` / `gate linkedin --draft`.** The run made on the draft, before the pass: same checks, and a passing run copies the stage's files to `_prep/pre_humanize/`. A failing draft run removes any older snapshot; `--draft` on another stage exits 2.
+- **`humanizer guard` check** in the plain `gate letters` / `gate linkedin` (`scripts/humanize_guard.py`). Against the snapshot — blocking: a changed field outside the prose (anything but a letter's `paragraphs` or a LinkedIn `message`), an added number, an added name (a capitalised word that does not open a sentence, or one with an inner capital). Warnings: a number from the draft that is gone, and a sentence sharing less than half its content words with the draft. With no snapshot (plugin absent, older pack) the check passes with a note.
+- **Limits.** The sentence check is a warning because wording alone cannot prove a new claim; a paraphrase built from the draft's own vocabulary is not detected. Calibrated on one real before/after pair (pack #159: no finding) and the invented sentence above (reported).
+- **Prompts.** `prompts/humanize_pass.md` now runs draft gate → pass → final gate, and says how to re-baseline when a later fix needs a new fact. The six letter / LinkedIn prompts and both `SKILL.md` files follow it.
+- **Tests** — `tests/test_humanize_guard.py` (14) and 7 gate tests in `tests/test_gate.py`.
+
 ### Changed — Step 9 also converts the motivation letter to PDF (2026-11-17)
 - `generate_outputs.py` (behind `regenerate-outputs`) used to convert only the CV. A rebuild of a pack whose letter PDF came from an earlier build left that PDF beside the new DOCX with stale text, an easy wrong attachment. The letter DOCX now goes through the same `convert_docx_to_pdf()` fallback chain, `run_summary.json` gains `letter_pdf_file`, and `--skip-pdf` skips both. Applies to offer and cold packs.
 - **Tests** — `test_pdf_built_for_cv_and_letter` in `tests/test_generate_outputs_html.py` (converter stubbed).

@@ -133,4 +133,4 @@ The abbreviated example is illustrative — in the real output every message mus
 
 ## Humanizer pass
 
-Once the draft is written and before its gate, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `message` of each variant and keep every fact, limit and rule above, the shared hook included.
+Once the draft is written, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: `gate linkedin --draft`, the `humanizer:humanizer` skill on the `message` of each variant, then `gate linkedin`. Keep every fact, limit and rule above, the shared hook included. The gate's claims check reads every figure: a number about the candidate must be one the master CV or addendum states.

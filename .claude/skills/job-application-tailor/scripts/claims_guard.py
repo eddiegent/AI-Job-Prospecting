@@ -43,6 +43,14 @@ Two subcommands:
        addendum states for that unit ("35+ ans", "dont 15+ en C#/.NET", "en
        6 mois"). A range ("2 à 5 ans") describes a requirement, not the
        candidate, and is skipped.
+    8. Figures: every other number in the CV, in a letter's paragraphs or in a
+       LinkedIn message must be one the master CV or addendum states - "45 000+
+       sauvegardes" for a CV that says "17 000+" and an invented "équipe de 12
+       personnes" both fail. A percentage needs a percentage in the source. Not
+       claims: a figure in a negated clause, the role's own figure in a clause
+       that isn't about the candidate, a number that follows the same name as
+       in the offer / research (".NET 4.8"), a long reference number found
+       there; years, dates and call / commute times are ignored.
 
 Every message is ``[rule] <file>: ...`` so a gate can tell whose file failed.
 ``run_check(..., only=...)`` restricts the check to some of the four files
@@ -67,6 +75,8 @@ INTENSITY_RE = re.compile(
 )
 FAMILIAR_HEADINGS = ("familier", "familiar")
 DOC_NAMES = ("tailored_cv.json", "letter.json", "short_letter.json", "linkedin.json")
+# Raw text about the role / company: its figures may be quoted back (rule 8).
+ROLE_TEXT_NAMES = ("raw_offer.md", "company_research.md", "raw_research.md")
 # Legal-form suffixes dropped from a company name before looking for its
 # earlier-experience clause ("Globex SA" -> "Globex").
 LEGAL_SUFFIXES = (
@@ -157,6 +167,113 @@ def source_durations(source_norm: str) -> set[tuple[int, str]]:
     found = {(v, u) for v, u, _ in durations(source_norm, skip_ranges=False)}
     found |= {(int(n), "year") for n in _SOURCE_PLUS_EN_RE.findall(source_norm)}
     return found | tenure_durations(source_norm)
+
+
+# Rule 8 - figures. Patterns run on figure_text()-ed text. A figure is a
+# standalone number: "17 000+", "150", "80 %", "2,5". Digits glued to a name
+# are part of the name, not a figure ("b2b", "aes-256", "bac+5", "24/7",
+# "1er", "#144").
+_FIGURE_RE = re.compile(
+    r"(?<![a-z0-9.,/#+_-])"
+    r"(?P<value>\d+(?:\.\d{1,2})?)"
+    r"(?![a-z0-9_/]|[.,]\d|-[a-z0-9])"
+    r"(?P<pct>\s*(?:%|pour ?cent\b|percent\b))?"
+)
+_THOUSANDS_RE = re.compile(r"(?<=\d)[ ,.](?=\d{3}(?!\d))")
+_DECIMAL_COMMA_RE = re.compile(r"(?<=\d),(?=\d)")
+_YEAR_RE = re.compile(r"(?<![\w.,/-])(?:19|20)\d{2}(?![\w/]|[.,]\d)")
+# "17 novembre", "1er mars", "november 17", "17/11/2026", "9h30".
+_DATE_RES = (
+    re.compile(rf"(?<!\w)\d{{1,2}}(?:er|st|nd|rd|th)? (?:{_MONTH_WORDS})\b"),
+    re.compile(rf"\b(?:{_MONTH_WORDS}) \d{{1,2}}(?:st|nd|rd|th)?(?!\w| \d{{3}})"),
+    re.compile(r"(?<!\w)\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}(?!\w)"),
+    re.compile(r"(?<!\w)\d{1,2} ?h ?\d{0,2}(?!\w)"),
+    # A call or a commute is not a claim: "20 minutes", "~50 min", "2 heures".
+    re.compile(r"(?<![\w.,])\d+ ?(?:min|mn|minutes?|heures?|hours?|hrs?)(?!\w)"),
+)
+# The whole of a duration range ("2 a 5 ans", "3-5 years"): rule 7's business.
+_RANGE_RE = re.compile(
+    rf"(?<![\w.,])(?:{_NUMBER})\s*(?:a|-|to|ou|or)\s*(?:{_NUMBER})\s*\+?\s*"
+    r"(?:annees?|ans?|mois|years?|yrs?|months?)(?![\w])"
+)
+
+
+def figure_text(text_norm: str) -> str:
+    """Normalised text with numbers in one piece: thousands separators removed
+    ("17 000+" and "17,000+" -> "17000+") and a decimal comma turned into a dot
+    ("2,5" -> "2.5"), so a number never straddles a clause split on ","."""
+    return _DECIMAL_COMMA_RE.sub(".", _THOUSANDS_RE.sub("", text_norm))
+
+
+def figures(text: str, *, keep_durations: bool = False) -> list[tuple[str, str, str]]:
+    """``(value, 'pct'|'num', word before)`` for each figure in
+    ``figure_text()``-ed text.
+
+    Years, dates and call / commute times are not figures, and neither are
+    durations (rule 7's business) unless ``keep_durations`` - set for the
+    source, where "35+ ans" backs a later "j'en ai plus de 35". A trailing "+"
+    is not part of the value, so "300+" and "plus de 300" compare equal.
+    """
+    blank = (*_DATE_RES, _YEAR_RE) if keep_durations else (_RANGE_RE, _DURATION_RE, *_DATE_RES, _YEAR_RE)
+    for rx in blank:
+        text = rx.sub(lambda m: " " * len(m.group(0)), text)
+    out = []
+    for m in _FIGURE_RE.finditer(text):
+        before = re.search(r"([a-z][\w'-]*)\W*$", text[:m.start()])
+        out.append((m.group("value"), "pct" if m.group("pct") else "num", before.group(1) if before else ""))
+    return out
+
+
+_STATED_PCT_RE = re.compile(
+    r"(\d+(?:\.\d+)?)(?:\s*(?:-|a|to)\s*(\d+(?:\.\d+)?))?\s*(?:%|pour ?cent\b|percent\b)")
+
+
+def stated_numbers(text: str, *, every_digit_run: bool = False) -> tuple[set[str], set[str]]:
+    """``(numbers, percentages)`` that ``figure_text()``-ed text states.
+
+    Wider than ``figures()``: durations count ("35+ ans" backs "j'en ai plus
+    de 35") and both ends of "95-98%" are percentages. With ``every_digit_run``
+    (the role side: offer, company research) glued numbers count too, so an
+    offer reference in a URL or "M365" is found. The master CV is read without
+    it: there, any stray digit run would back an invented "équipe de 12".
+    """
+    percentages = {n for m in _STATED_PCT_RE.finditer(text) for n in m.groups() if n}
+    numbers = {value for value, _, _ in figures(text, keep_durations=True)} | percentages
+    if every_digit_run:
+        numbers |= set(re.findall(r"\d+(?:\.\d{1,2})?", text)) | set(re.findall(r"\d+", text))
+    return numbers, percentages
+
+
+# Words that sit before a count, not before a version: "équipe de 12", "ses 650".
+_FIGURE_STOPWORDS = frozenset(
+    "de du des le la les un une et ou a au aux en sur sous avec pour par dans vers chez plus moins "
+    "environ pres ses vos nos mes leurs ces the of to in on at for with by over under about around "
+    "than and or its your our my their some".split())
+
+
+def _named_in_role(value: str, before: str, role: str) -> bool:
+    """True when the role text has the same name right before the number
+    (".net 4.8", "microsoft 365", "industrie 4.0"): a version or product
+    designation quoted back, not a count the candidate claims. A count is told
+    apart by the word before it ("équipe de 12 personnes" -> "de"), so a team
+    size copied from the offer into "j'ai dirigé ..." stays a claim."""
+    if len(before) < 3 or before in _FIGURE_STOPWORDS:
+        return False
+    return re.search(rf"(?<![\w]){re.escape(before)}\s+{re.escape(value)}(?![\d])", role) is not None
+
+
+def figure_strings(name: str, doc: Any) -> list[str]:
+    """The strings of a generated file that rule 8 reads: the prose a recruiter
+    takes as the candidate's claims. Contact details, addresses, dates and
+    subject lines are left out - they carry numbers that are not claims."""
+    if not isinstance(doc, dict):
+        return []
+    if name == "tailored_cv.json":
+        keep = {k: v for k, v in doc.items() if k not in ("candidate_name", "contact_line")}
+        return list(_strings(keep))
+    if name == "linkedin.json":
+        return [v.get("message", "") for v in doc.get("variants", []) if isinstance(v, dict)]
+    return [p for p in doc.get("paragraphs", []) if isinstance(p, str)]
 
 
 def _norm(s: str) -> str:
@@ -406,9 +523,12 @@ def check_earlier_line(cv: dict[str, Any], name: str = "tailored_cv.json") -> li
 def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
           docs: dict[str, Any], offer: dict[str, Any],
           qualified: dict[str, str] | None = None,
-          profile: dict[str, Any] | None = None) -> list[str]:
-    """Run rules 1-6. ``qualified`` = master CV ``Name -> qualifier`` map (rule 4);
-    ``profile`` = company_profile.json, used by rule 6 only when ``offer`` is empty."""
+          profile: dict[str, Any] | None = None,
+          role_text: str = "") -> list[str]:
+    """Run rules 1-8. ``qualified`` = master CV ``Name -> qualifier`` map (rule 4);
+    ``profile`` = company_profile.json, used by rule 6 only when ``offer`` is empty;
+    ``role_text`` = raw offer / company research text, whose figures may be quoted
+    back (rule 8)."""
     errors: list[str] = []
     qualified_norm = {_norm(k): (k, v) for k, v in (qualified or {}).items()}
     source = master_text + "\n" + addendum_source_text(addendum_text)
@@ -439,6 +559,38 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
                     errors.append(f"[duration] {name}: '{text}' - no source states a {value}-{unit} duration "
                                   f"(master CV / addendum / role dates give {unit}s: {stated or 'none'}); use one "
                                   f"of those, or a date instead (\"depuis 2025\"): {sentence[:90]!r}")
+
+    # Rule 8 - figures. A number in the candidate's prose must be one the
+    # master CV or addendum states. A figure is not a claim when it sits in a
+    # negated clause ("je n'ai pas administré Microsoft 365"), when it is the
+    # role's own figure in a clause that isn't about the candidate, when it
+    # follows the same name as in the offer / research (".NET 4.8"), or when
+    # it is a long reference number found there.
+    from scripts._negation import affirmative_clauses
+
+    stated = dict(zip(("num", "pct"), stated_numbers(figure_text(source))))
+    role = figure_text(_norm(" ".join(_strings([offer or {}, profile or {}]))) + " " + role_text)
+    role_stated = dict(zip(("num", "pct"), stated_numbers(role, every_digit_run=True)))
+    for name, doc in docs.items():
+        for s in figure_strings(name, doc):
+            for sentence in re.split(r"(?<=[.!?])\s+", figure_text(_norm(s))):
+                for clause in affirmative_clauses(sentence):
+                    # clause scope, not sentence: "Acme, avec ses 650
+                    # collaborateurs, est ce que je recherche" quotes Acme
+                    first_person = bool(_FIRST_PERSON_RE.search(clause))
+                    for value, kind, before in figures(clause):
+                        if value in stated[kind]:
+                            continue
+                        if value in role_stated[kind] and not first_person:
+                            continue
+                        if len(value) >= 5 and value in role_stated["num"]:
+                            continue
+                        if _named_in_role(value, before, role):
+                            continue
+                        shown = value + (" %" if kind == "pct" else "")
+                        errors.append(f"[figure] {name}: '{shown}' - neither the master CV nor the addendum "
+                                      f"states this figure; use the source's own number or drop it: "
+                                      f"{sentence[:90]!r}")
 
     cvn = "tailored_cv.json"
     cv = docs.get(cvn, {})
@@ -528,8 +680,10 @@ def run_check(prep: Path, master: Path | None = None,
     profile = None
     if not offer_f.exists() and profile_f.exists():
         profile = json.loads(profile_f.read_text(encoding="utf-8"))
+    role_text = " ".join(_norm((prep / n).read_text(encoding="utf-8"))
+                         for n in ROLE_TEXT_NAMES if (prep / n).exists())
     return check(prep, master_text, familiar, add_text, docs, offer,
-                 qualified=qualified_skills_from_rows(rows), profile=profile)
+                 qualified=qualified_skills_from_rows(rows), profile=profile, role_text=role_text)
 
 
 def cmd_check(prep: Path) -> int:
@@ -540,7 +694,8 @@ def cmd_check(prep: Path) -> int:
             print("  -", e)
         print("Fix the wording (do not add the claim to the master CV / addendum just to pass) and re-run.")
         return 1
-    print("Claims check OK - no unsourced intensity wording, familiar-only skills or invented skills.")
+    print("Claims check OK - no unsourced intensity wording, figures or durations, no familiar-only "
+          "or invented skills.")
     return 0
 
 

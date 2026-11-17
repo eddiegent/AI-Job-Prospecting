@@ -102,4 +102,4 @@ Set the optional `letter_type` field to `"speculative"` if the schema supports i
 
 ## Humanizer pass
 
-Once the draft is written and before its gate, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above, the opening hook included.
+The pass covers both letters, so it runs once `short_letter.json` is drafted too. Follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: `gate letters --draft` on the two drafts, the `humanizer:humanizer` skill on the `paragraphs`, then `gate letters`. Keep every fact, limit and rule above, the opening hook included. The gate's claims check reads every figure: a number about the candidate must be one the master CV or addendum states.

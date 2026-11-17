@@ -48,7 +48,7 @@ After writing each intermediate file, run its gate — one command that runs eve
 cd "$SKILL_BASE" && python scripts/cli.py gate <stage> "$OUTPUT_DIR"
 ```
 
-Exit 0 = continue. Exit 1 = fix the file and re-run the gate; never continue past a failing gate. Each guard exists because it caught a real failure the prompts alone did not prevent: fabricated tech in the fact base, miscounted fit scores, false "direct" matches, forbidden title labels, over-claimed skills, job-posting technologies leaking into the CV.
+Exit 0 = continue. Exit 1 = fix the file and re-run the gate; never continue past a failing gate. Each guard exists because it caught a real failure the prompts alone did not prevent: fabricated tech in the fact base, miscounted fit scores, false "direct" matches, forbidden title labels, over-claimed skills, job-posting technologies leaking into the CV, figures the master CV doesn't state, a style pass that changed the content.
 
 **Fix the output, never the source.** When a gate fails, change the generated wording. Do not edit the master CV, the addendum or `.cv_hash` to make a gate pass.
 
@@ -127,11 +127,11 @@ Follow `prompts/tailor_cv.md` (it starts by loading `prompts/cv_rules.md`). Pass
 
 Once the CV passes its gate these three are independent: each reads the CV and the analyses, none reads another's output. **Spawn three Agent subagents at the same time.** Give each the paths to the merged fact base, `tailored_cv.json`, `job_offer_analysis.json`, `match_analysis.json`, `company_research.md`, `$SKILL_BASE` and `$OUTPUT_DIR`, plus `$CUSTOMIZATION["prefs"]` and `$CUSTOMIZATION["addendum"]` (the letter honours `tone_directives` and `team_context_companies`; LinkedIn honours `tone_directives`).
 
-- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters; `gate letters` blocks outside that range). Humanize both (below), then run **`gate letters`**.
-- **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Humanize it (below), then run **`gate linkedin`**.
+- **Subagent 1 — letters.** Follow `prompts/generate_motivation_letter.md` → `letter.json`. Then `prompts/generate_short_letter.md` with the full letter as context → `short_letter.json` (body 500–750 characters; `gate letters` blocks outside that range). Run `gate letters --draft`, humanize both (below), then run **`gate letters`**.
+- **Subagent 2 — LinkedIn.** Follow `prompts/generate_linkedin_message.md` (use the Contacts section) → `linkedin.json`. Run `gate linkedin --draft`, humanize it (below), then run **`gate linkedin`**.
 - **Subagent 3 — interview prep.** Follow `prompts/generate_interview_prep.md` → `$PREP_DIR/interview_prep.md` (Step 9 renders it as mobile-friendly HTML). It can't see `$ARGUMENTS`, so pass the **job URL, the output folder path and today's date** for the Quick Reference block. Run **`gate interview`**.
 
-**Humanizer pass.** Subagents 1 and 2 run the `humanizer:humanizer` skill on their prose before gating, as `prompts/humanize_pass.md` describes (style only; facts, limits and rules stay). If the plugin isn't installed they skip it and say so.
+**Humanizer pass.** Subagents 1 and 2 follow `prompts/humanize_pass.md`: gate the draft with `--draft` (this saves a snapshot in `_prep/pre_humanize/`), run the `humanizer:humanizer` skill on the prose, then run the plain gate. Its `humanizer guard` compares the result with the snapshot and blocks a changed field outside the prose, an added number or an added name; it warns on a sentence the draft didn't have. The pass invented a sentence and edited subject lines the first day it ran, which is why the guard exists. If the plugin isn't installed they skip the pass and say so.
 
 Each subagent returns only once its gate passes. Wait for all three, then **run `gate letters`, `gate linkedin` and `gate interview` yourself** — don't take a subagent's word for it, and never build files from output that hasn't passed its gate in this context. `gate interview` is what catches a silently failed or truncated prep: it has no schema, so without the gate a missing section would ship unnoticed. If a subagent couldn't write into `_prep/`, see `references/troubleshooting.md`.
 

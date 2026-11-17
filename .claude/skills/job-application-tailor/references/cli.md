@@ -229,7 +229,7 @@ Run all checks for one pipeline stage (schema, grounding, labels, claims) in one
 **Signature:**
 
 ```
-gate <stage> <folder> [--cv <cv>]
+gate <stage> <folder> [--cv <cv>] [--draft]
 ```
 
 | Arg | Kind | Description |
@@ -237,6 +237,7 @@ gate <stage> <folder> [--cv <cv>]
 | `stage` | positional | Pipeline stage to check — choices: `factbase`, `offer`, `match`, `cv`, `letters`, `linkedin`, `interview`, `profile`, `roles`, `selected-role` |
 | `folder` | positional | Run output folder (or its _prep/ subfolder) |
 | `--cv` | optional | Master CV path (default: <user-data-dir>/MASTER_CV.docx) |
+| `--draft` | flag | letters / linkedin only: this is the draft, before the humanizer pass - run the checks and, if they pass, save the snapshot the later run compares with |
 
 ### `get`
 

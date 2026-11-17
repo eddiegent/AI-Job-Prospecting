@@ -44,11 +44,11 @@ Return valid JSON matching `schemas/linkedin.schema.json`. Read that schema file
 500 characters max per message preferred.
 
 ## Humanizer pass
-Once the draft is written and before the gate below, follow `prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `message` of each variant and keep every fact, limit and rule above.
+Once the draft is written, follow `prompts/humanize_pass.md`: `gate linkedin --draft`, the `humanizer:humanizer` skill on the `message` of each variant, then the gate below. Keep every fact, limit and rule above.
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json`. Cite only things the CV or addendum say, in the scope they say it (employer, team vs solo, design vs tuning).
 - Never write "j'ai pratiqué X pendant N ans", "au quotidien", "tous les jours", "pratique quotidienne" about the candidate. Name the concrete thing done instead (e.g. "remplacé une API SOAP par une API REST").
 - Never mention skills listed in `familiar_only_skills` as strengths. Naming one as a gap is fine ("n8n reste à apprendre") — keep the negation in the same clause as the skill, or the claims check reads it as a claim. Do not describe the employer's product or team with claims taken from nowhere (e.g. "utilisé tous les jours par les métiers").
 - Gaps (domain knowledge, tools never used) are stated plainly and briefly, not dressed up.
-- After writing `linkedin.json`, run the LinkedIn gate (`python scripts/cli.py gate linkedin "$PREP_DIR"` — schema + claims check) and fix the wording until it passes.
+- After the humanizer pass, run the LinkedIn gate (`python scripts/cli.py gate linkedin "$PREP_DIR"` — schema + claims check + humanizer guard) and fix the wording until it passes. The claims check reads every figure: a number in a message must be one the master CV or addendum states.

@@ -48,4 +48,4 @@ Set `letter_type` to `"speculative"` — this is the short cold letter, and the 
 
 ## Humanizer pass
 
-Once the draft is written and before its gate, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: run the `humanizer:humanizer` skill on the `paragraphs` and keep every fact, limit and rule above, the shared hook included.
+Once both letters are drafted, follow `$SKILL_BASE_TAILOR/prompts/humanize_pass.md`: `gate letters --draft`, the `humanizer:humanizer` skill on the `paragraphs` of both, then `gate letters`. Keep every fact, limit and rule above, the shared hook included.

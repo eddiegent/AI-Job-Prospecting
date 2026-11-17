@@ -24,6 +24,8 @@ def home(tmp_path, monkeypatch) -> Path:
     doc = Document()
     doc.add_paragraph("Alex Dupont")
     doc.add_paragraph("Senior Engineer, C++ and API platforms.", style="Heading 1")
+    # the education line tailored_cv_good.json carries: its "6" must be sourced (claims rule 8)
+    doc.add_paragraph("2025 — Product Builder No-Code, École Cube (RNCP Niveau 6)")
     doc.add_paragraph("   ")  # blank paragraphs are skipped by read-cv
     t = doc.add_table(rows=2, cols=2)
     t.rows[0].cells[0].text = "Langages"
@@ -296,11 +298,110 @@ def test_gate_letters_messages_name_the_file(tmp_path, home, capsys):
     assert "[familiar] short_letter.json: mentions familiar-only skill 'Docker'" in out
 
 
+# ------------------------------------------------------------ humanizer guard
+
+def _gate_draft(stage: str, folder: Path, capsys) -> tuple[int, str]:
+    with pytest.raises(SystemExit) as e:
+        cmd_gate(None, Namespace(stage=stage, folder=str(folder), cv=None, draft=True))
+    return e.value.code, capsys.readouterr().out
+
+
+def _write(run: Path, name: str, payload: dict) -> None:
+    (run / "_prep" / name).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+
+def _letters_run(tmp_path: Path) -> Path:
+    letter = _letter("Je développe des outils C++ pour des équipes métier depuis longtemps.")
+    letter["subject_line"] = "Candidature - Dev"
+    return _run(tmp_path, {"letter.json": letter, "short_letter.json": _short_letter()})
+
+
+def test_gate_without_a_draft_snapshot_passes_with_a_note(tmp_path, home, capsys):
+    code, out = _gate("letters", _letters_run(tmp_path), capsys)
+    assert code == 0, out
+    assert "[PASS] humanizer guard (letter.json, short_letter.json): no draft snapshot - not checked" in out
+
+
+def test_gate_draft_saves_a_snapshot_and_a_style_only_rewrite_passes(tmp_path, home, capsys):
+    run = _letters_run(tmp_path)
+    code, out = _gate_draft("letters", run, capsys)
+    assert code == 0, out
+    assert "draft snapshot saved (letter.json, short_letter.json)" in out
+    assert (run / "_prep" / "pre_humanize" / "letter.json").exists()
+
+    letter = json.loads((run / "_prep" / "letter.json").read_text(encoding="utf-8"))
+    letter["paragraphs"] = ["Depuis longtemps, je développe des outils C++ pour des équipes métier."]
+    _write(run, "letter.json", letter)
+    code, out = _gate("letters", run, capsys)
+    assert code == 0, out
+    assert "[PASS] humanizer guard (letter.json, short_letter.json)" in out
+
+
+def test_gate_fails_when_the_pass_adds_a_number_a_name_or_touches_another_field(tmp_path, home, capsys):
+    run = _letters_run(tmp_path)
+    assert _gate_draft("letters", run, capsys)[0] == 0
+
+    letter = json.loads((run / "_prep" / "letter.json").read_text(encoding="utf-8"))
+    letter["subject_line"] = "Candidature : Dev"
+    letter["paragraphs"] = ["Je développe des outils C++ pour 40 équipes métier chez Globex depuis longtemps."]
+    _write(run, "letter.json", letter)
+    code, out = _gate("letters", run, capsys)
+    assert code == 1
+    assert "[FAIL] humanizer guard (letter.json, short_letter.json)" in out
+    assert "the pass changed 'subject_line'" in out
+    assert "the number 40 is not in the draft" in out
+    assert "the name 'Globex' is not in the draft" in out
+    assert "--draft" in out  # the way out when a gate fix needed a new fact
+
+
+def test_gate_warns_on_a_sentence_the_draft_did_not_have(tmp_path, home, capsys):
+    run = _letters_run(tmp_path)
+    assert _gate_draft("letters", run, capsys)[0] == 0
+    letter = json.loads((run / "_prep" / "letter.json").read_text(encoding="utf-8"))
+    letter["paragraphs"][0] += " L'ensemble pouvait ensuite fonctionner durablement sans intervention."
+    _write(run, "letter.json", letter)
+    code, out = _gate("letters", run, capsys)
+    assert code == 0, out  # a warning: the wording alone cannot prove a new claim
+    assert "[WARN] humanizer guard" in out and "shares few words with the draft" in out
+
+
+def test_gate_draft_that_fails_leaves_no_snapshot_behind(tmp_path, home, capsys):
+    run = _letters_run(tmp_path)
+    assert _gate_draft("letters", run, capsys)[0] == 0
+    # a new draft that fails its own checks: the old snapshot must not survive it
+    _write(run, "short_letter.json", _short_letter(100))
+    code, out = _gate_draft("letters", run, capsys)
+    assert code == 1
+    assert "draft snapshot saved" not in out
+    assert not (run / "_prep" / "pre_humanize" / "letter.json").exists()
+
+
+def test_gate_draft_is_refused_outside_the_humanized_stages(tmp_path, home, capsys):
+    run = _run(tmp_path, {"tailored_cv.json": _clean_cv(), **_fact_base()})
+    with pytest.raises(SystemExit) as e:
+        cmd_gate(None, Namespace(stage="cv", folder=str(run), cv=None, draft=True))
+    assert e.value.code == 2
+    assert not (run / "_prep" / "pre_humanize").exists()
+
+
+def test_gate_linkedin_draft_then_out_of_scope_edit_fails(tmp_path, home, capsys):
+    run = _run(tmp_path, {"linkedin.json": {"variants": [
+        {"target": "recruiter", "subject_hint": "Connection request", "message": "Bonjour, échange possible ?"}]}})
+    assert _gate_draft("linkedin", run, capsys)[0] == 0
+    edited = {"variants": [
+        {"target": "recruiter", "subject_hint": "Connection", "message": "Bonjour, un échange est-il possible ?"}]}
+    _write(run, "linkedin.json", edited)
+    code, out = _gate("linkedin", run, capsys)
+    assert code == 1
+    assert "the pass changed 'variants[0].subject_hint'" in out
+
+
 def test_read_cv_prints_paragraphs_then_tables(home, capsys):
     cmd_read_cv(None, Namespace(cv=None))
     assert capsys.readouterr().out.splitlines() == [
         "[Normal] Alex Dupont",
         "[Heading 1] Senior Engineer, C++ and API platforms.",
+        "[Normal] 2025 — Product Builder No-Code, École Cube (RNCP Niveau 6)",
         "--- TABLE 0 ---",
         "Langages | C++, Python (scripts)",
         "Familier / a approfondir | Docker",

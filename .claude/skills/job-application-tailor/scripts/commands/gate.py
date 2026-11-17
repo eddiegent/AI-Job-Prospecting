@@ -13,6 +13,11 @@ lines. A failed schema check (or a missing input file) stops the stage —
 later checks would be meaningless; otherwise every check runs and all
 failures are reported together.
 
+`gate letters --draft` / `gate linkedin --draft` is the run made on the draft,
+before the humanizer pass: same checks, and on success the stage's files are
+copied to `_prep/pre_humanize/`. The plain run made after the pass then
+compares each file with that snapshot (scripts/humanize_guard.py).
+
 Exit codes: 0 all pass, 1 any failure, 2 bad usage (no such folder / no _prep/).
 """
 from __future__ import annotations
@@ -20,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,6 +56,7 @@ class Result:
 class Ctx:
     prep: Path
     cv: Path
+    draft: bool = False  # `--draft`: the run made before the humanizer pass
 
     def path(self, name: str) -> Path:
         return self.prep / name
@@ -328,6 +335,73 @@ def _interview_prep(ctx: Ctx) -> Result:
     return r
 
 
+# The files each humanized stage owns: `--draft` snapshots them, and the plain
+# run compares them with the snapshot.
+HUMANIZED_STAGES: dict[str, tuple[str, ...]] = {
+    "letters": ("letter.json", "short_letter.json"),
+    "linkedin": ("linkedin.json",),
+}
+
+
+def _snapshot_dir(prep: Path) -> Path:
+    from scripts.humanize_guard import SNAPSHOT_DIR
+
+    return prep / SNAPSHOT_DIR
+
+
+def _humanizer_guard(*filenames: str) -> Callable[[Ctx], Result]:
+    """After the humanizer pass, each file must say what its draft said: no
+    field outside the prose changed, no number or name added. Without a
+    snapshot (pass skipped, or a pack built before the guard) there is nothing
+    to compare and the check passes with a note."""
+    label = f"humanizer guard ({', '.join(filenames)})"
+
+    def run(ctx: Ctx) -> Result:
+        from scripts.humanize_guard import compare
+
+        r = Result(label)
+        if ctx.draft:
+            r.note = "draft run - nothing to compare yet"
+            return r
+        snapshots = [n for n in filenames if (_snapshot_dir(ctx.prep) / n).exists()]
+        if not snapshots:
+            r.note = "no draft snapshot - not checked"
+            return r
+        for name in snapshots:
+            draft = json.loads((_snapshot_dir(ctx.prep) / name).read_text(encoding="utf-8"))
+            final = json.loads(ctx.path(name).read_text(encoding="utf-8"))
+            errors, warnings = compare(name, draft, final)
+            r.errors += errors
+            r.warnings += warnings
+        if r.errors:
+            r.errors.append("fix the text so it says what the draft said. If a gate fix needed a fact the "
+                            "draft lacked, check it in cv_fact_base_merged.json, then re-run this gate "
+                            "with --draft to take a new snapshot")
+        missing = [n for n in filenames if n not in snapshots]
+        if missing:
+            r.note = f"no draft snapshot for {', '.join(missing)}"
+        return r
+    run.label = label
+    return run
+
+
+def save_draft_snapshot(stage: str, prep: Path) -> list[str]:
+    """Copy the stage's files to `_prep/pre_humanize/`; returns the names copied."""
+    target = _snapshot_dir(prep)
+    target.mkdir(exist_ok=True)
+    copied = []
+    for name in HUMANIZED_STAGES[stage]:
+        if (prep / name).exists():
+            shutil.copyfile(prep / name, target / name)
+            copied.append(name)
+    return copied
+
+
+def clear_draft_snapshot(stage: str, prep: Path) -> None:
+    for name in HUMANIZED_STAGES[stage]:
+        (_snapshot_dir(prep) / name).unlink(missing_ok=True)
+
+
 def _role_grounding(filename: str, kind: str) -> Callable[[Ctx], Result]:
     def run(ctx: Ctx) -> Result:
         from scripts.check_role_grounding import check
@@ -370,11 +444,13 @@ STAGES: dict[str, list[Step]] = {
         (_schema("short_letter.json", TAILOR_SCHEMAS / "letter.schema.json"), True),
         (_short_letter_length, False),
         (_claims("letter.json", "short_letter.json"), False),
+        (_humanizer_guard("letter.json", "short_letter.json"), False),
     ],
     "linkedin": [
         (_schema("linkedin.json", TAILOR_SCHEMAS / "linkedin.schema.json"), True),
         (_linkedin_lengths, False),
         (_claims("linkedin.json"), False),
+        (_humanizer_guard("linkedin.json"), False),
     ],
     "interview": [
         (_interview_prep, False),
@@ -434,7 +510,18 @@ def cmd_gate(db, args: argparse.Namespace) -> None:
 
     prep = _prep_dir(args.folder)  # exits 2 when there is no _prep/
     cv = Path(args.cv) if args.cv else resolve_user_data_dir() / "MASTER_CV.docx"
-    sys.exit(run_stage(args.stage, Ctx(prep=prep, cv=cv)))
+    draft = bool(getattr(args, "draft", False))
+    if draft and args.stage not in HUMANIZED_STAGES:
+        print(f"--draft only applies to the humanized stages: {', '.join(HUMANIZED_STAGES)}", file=sys.stderr)
+        sys.exit(2)
+    if draft:
+        # a snapshot of an older draft must not outlive a new draft that fails
+        clear_draft_snapshot(args.stage, prep)
+    code = run_stage(args.stage, Ctx(prep=prep, cv=cv, draft=draft))
+    if draft and code == 0:
+        copied = save_draft_snapshot(args.stage, prep)
+        print(f"draft snapshot saved ({', '.join(copied)}) - run the humanizer pass, then this gate without --draft")
+    sys.exit(code)
 
 
 def _configure_gate(p: argparse.ArgumentParser) -> None:
@@ -446,20 +533,28 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "the compression cutoff is a full entry, no training in experience, a dateless "
         "earlier-experience line + claims on tailored_cv.json), letters "
         "(letter + short_letter schemas + short-letter body 500-750 characters + claims "
-        "on those two), linkedin (schema + "
+        "on those two + humanizer guard), linkedin (schema + "
         "message lengths: connection request <= 300, direct message <= 700 + "
-        "claims on linkedin.json), interview (interview_prep.md is complete: "
+        "claims on linkedin.json + humanizer guard), interview (interview_prep.md is complete: "
         "length, sections, Quick Reference, fit banner matching match_analysis.json), "
         "profile (cold schema), "
         "roles (cold schema + forbidden labels + role grounding), "
         "selected-role (cold schema + role grounding). Grounding (match, roles, "
         "selected-role) requires cv_fact_base_merged.json - run "
         "`claims_guard.py merge` first. "
+        "The claims check includes figures: a number in the CV, letters or LinkedIn "
+        "messages must be one the master CV or addendum states. "
+        "Humanizer guard: run letters / linkedin once with --draft before the humanizer "
+        "pass (saves a snapshot), then without it after the pass - the text must not have "
+        "gained a number or a name, and no field outside the prose may have changed. "
         "Exit 0 = all pass, 1 = a check failed, 2 = bad usage."
     )
     p.add_argument("stage", choices=list(STAGES), help="Pipeline stage to check")
     p.add_argument("folder", help="Run output folder (or its _prep/ subfolder)")
     p.add_argument("--cv", help="Master CV path (default: <user-data-dir>/MASTER_CV.docx)")
+    p.add_argument("--draft", action="store_true",
+                   help="letters / linkedin only: this is the draft, before the humanizer pass - "
+                        "run the checks and, if they pass, save the snapshot the later run compares with")
 
 
 COMMANDS = [

@@ -399,3 +399,117 @@ def test_familiar_skill_named_as_a_gap_is_allowed(text):
 ])
 def test_familiar_skill_claimed_despite_a_negation_word_is_flagged(text):
     assert any(e.startswith("[familiar]") for e in run(letter={"paragraphs": [text]}))
+
+
+# ---------------------------------------------------------------- rule 8: figures
+# The hole it closes: a tailored CV and letter saying "45 000+ sauvegardes" where
+# the master CV says "17 000+", and an invented "équipe de 12 personnes", passed
+# `gate cv` and `gate letters` (found 2026-11-17).
+
+FIG_MASTER = _norm("Ingénieur avec plus de 35 ans d'expérience. "
+                   "Suite de sauvegarde B2B : 17 000+ sauvegardes par jour, chiffrement AES-256. "
+                   "Tri sur 300+ scénarios Make, dont environ 150 stabilisés. "
+                   "Stockage saturé (95-98%), coûts réduits de 80 %. Bac+5.")
+
+
+def run_fig(text, name="letter.json", offer=None, profile=None, addendum="", role_text=""):
+    doc = {"variants": [{"message": text}]} if name == "linkedin.json" else {"paragraphs": [text]}
+    if name == "tailored_cv.json":
+        doc = {"experience": [{"role_line": "Dev", "metadata_line": "Acme | 2021 - 2025", "bullets": [text]}]}
+    return [e for e in check(None, FIG_MASTER, [], addendum, {name: doc}, offer or {},
+                             profile=profile, role_text=_norm(role_text)) if e.startswith("[figure]")]
+
+
+@pytest.mark.parametrize("text", [
+    "Une suite qui tourne sur 17 000+ sauvegardes par jour.",
+    "A suite running 17,000+ backups a day.",          # English thousands separator
+    "Une suite qui tourne sur 17000 sauvegardes.",       # no separator, no plus
+    "J'ai stabilisé environ 150 scénarios sur plus de 300 recensés.",
+    "Un stockage saturé à 98 %, et des coûts réduits de 80 %.",   # both ends of "95-98%" count
+    "On me demande 2 à 5 ans d'expérience : j'en ai plus de 35.",  # elliptical duration
+])
+def test_figure_stated_in_the_master_cv_passes(text):
+    assert run_fig(text) == []
+
+
+@pytest.mark.parametrize("name", ["letter.json", "short_letter.json", "linkedin.json", "tailored_cv.json"])
+def test_inflated_figure_is_flagged_in_every_file(name):
+    errs = run_fig("Une suite qui tourne sur 45 000+ sauvegardes par jour.", name=name)
+    assert len(errs) == 1 and "'45000'" in errs[0] and name in errs[0]
+
+
+def test_invented_figure_is_flagged():
+    errs = run_fig("Chez Acme, j'ai dirigé une équipe de 12 personnes.")
+    assert len(errs) == 1 and "'12'" in errs[0]
+
+
+def test_percentage_needs_a_percentage_in_the_source():
+    # 150 is a count in the master CV, never a percentage
+    errs = run_fig("J'ai réduit les incidents de 150 %.")
+    assert len(errs) == 1 and "'150 %'" in errs[0]
+
+
+@pytest.mark.parametrize("text", [
+    "Lyon, le 17 novembre 2026.",
+    "Available from November 17.",
+    "Chez Acme de 2021 à 2025.",
+    "Un appel de 20 minutes suffit, je suis à ~50 min de vos locaux.",
+    "Disponible dès 9h30.",
+    "Produit B2B, chiffrement AES-256, niveau Bac+5, support 24/7, version .NET8.",
+    "C'était mon 1er projet.",
+])
+def test_dates_times_and_numbers_glued_to_a_name_are_not_figures(text):
+    assert run_fig(text) == []
+
+
+def test_figure_in_a_negated_clause_is_not_a_claim():
+    assert run_fig("Je n'ai jamais administré Microsoft 365.") == []
+    assert len(run_fig("J'ai administré Microsoft 365 pendant ce projet.")) == 1
+
+
+def test_role_figure_may_be_quoted_outside_a_first_person_clause():
+    research = "Acme compte 650 collaborateurs et accompagne plus de 1 000 entreprises."
+    assert run_fig("Acme, avec ses 650 collaborateurs, est le type d'équipe que je recherche.",
+                   role_text=research) == []
+    # the same number claimed by the candidate is still a claim
+    errs = run_fig("J'ai encadré 650 collaborateurs.", role_text=research)
+    assert len(errs) == 1 and "'650'" in errs[0]
+
+
+def test_count_copied_from_the_offer_into_a_first_person_clause_is_flagged():
+    # figure contagion: the offer's team size turned into the candidate's own claim
+    offer = {"responsibilities": ["Poste en 100 % présentiel, vous encadrez une équipe de 12 personnes"]}
+    assert run_fig("Le 100 % présentiel me convient.", offer=offer) == []
+    errs = run_fig("J'ai dirigé une équipe de 12 personnes.", offer=offer)
+    assert len(errs) == 1 and "'12'" in errs[0]
+
+
+def test_version_named_in_the_offer_may_be_quoted_in_the_first_person():
+    offer = {"job_title": "Développeur .NET 4.8 / SQL Server 2022", "technologies": ["Microsoft 365"]}
+    assert run_fig("J'ai postulé à votre offre de Développeur .NET 4.8 / SQL Server 2022.", offer=offer) == []
+    assert run_fig("Je découvre Microsoft 365 avec intérêt.", offer=offer) == []
+    # same number, but not after the name the offer gives it
+    assert len(run_fig("J'ai livré 365 correctifs.", offer=offer)) == 1
+
+
+def test_long_reference_number_from_the_offer_passes():
+    offer = {"source_url": "https://candidat.francetravail.fr/offres/recherche/detail/8576883"}
+    assert run_fig("Je me positionne sur votre offre 8576883.", offer=offer) == []
+    assert len(run_fig("Je me positionne sur votre offre 8576884.", offer=offer)) == 1
+
+
+def test_addendum_figure_counts_as_a_source():
+    add = "## Off-CV facts to remember\n- Toolkit open source : 100+ candidatures traitées.\n"
+    assert run_fig("Un toolkit qui a traité 100+ candidatures.", addendum=add) == []
+    assert len(run_fig("Un toolkit qui a traité 100+ candidatures.")) == 1
+
+
+def test_figures_outside_the_prose_fields_are_ignored():
+    # contact details, addresses, dates and subject lines carry numbers that are not claims
+    docs = {
+        "tailored_cv.json": {"candidate_name": "A 9", "contact_line": "06 12 34 56 78 | 91800 Brunoy"},
+        "letter.json": {"sender_address": ["12 rue de la Paix", "91800 Brunoy"], "date_line": "17/11/2026",
+                        "subject_line": "Candidature - réf. 4242", "paragraphs": ["Bonjour."]},
+        "linkedin.json": {"variants": [{"subject_hint": "Connection request (300 max)", "message": "Bonjour."}]},
+    }
+    assert [e for e in check(None, FIG_MASTER, [], "", docs, {}) if e.startswith("[figure]")] == []

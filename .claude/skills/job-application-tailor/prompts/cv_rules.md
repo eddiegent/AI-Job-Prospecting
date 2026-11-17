@@ -195,12 +195,13 @@ The merged fact base (§ Fact-base input) is the ledger: it contains the user's 
 - **Copy the master skills table as written, then only reorder.** Keep qualifiers verbatim: a skill the master CV qualifies, such as `Terraform (reading existing modules)` or `TDD (on new code only)`, keeps that qualifier exactly as written.
 - **`familiar_only_skills` (the master's "Familier / à approfondir" row) may appear ONLY in a trailing section headed "Familier / à approfondir"** — never in a core skills section, tagline, title or summary.
 - **No intensity / frequency / duration wording unless a source states it.** Forbidden unless sourced: "pratique quotidienne", "au quotidien", "tous les jours", "depuis N ans" attached to a specific technology, "expert", "maîtrise". The only durations allowed are those in the master CV (e.g. a "10+ ans en Java" that the master CV itself states).
+- **Copy every figure exactly as the source states it.** "17 000+ sauvegardes/jour" stays 17 000+; never round up, scale, or attach a number the master CV and addendum don't state (a team size, a percentage, a count of users). The claims check reads every number in the CV and blocks one no source states.
 - **Describe what was done, not how often.** "Remplacement d'une API SOAP par une API REST" is a fact; "pratique de SOAP" is an invention. A technology that only appears in a skills table without a described use is listed as a skill — it is not described as practised.
 - **Respect `addendum_skill_calibration`**: it records the real scope of each skill (employer, team vs solo, tuning vs design). Wording must stay inside it.
 - **Use the addendum.** Pick the bullets that support the target role's real requirements (support, production follow-up, documentation, migrations, team context) and phrase them as written there.
 - **Tagline/summary come from the master CV's own profile text**, lightly reordered. Do not copy job-posting (or other role-side) vocabulary into them.
 
-After writing `tailored_cv.json`, the flow runs the deterministic CV gate — `python scripts/cli.py gate cv "$PREP_DIR"` from the job-application-tailor skill directory (schema + forbidden title labels + claims check; see the flow's SKILL.md). Exit 1 = fix the wording and re-run. Never "fix" a failure by editing the master CV or the addendum.
+After writing `tailored_cv.json`, the flow runs the deterministic CV gate — `python scripts/cli.py gate cv "$PREP_DIR"` from the job-application-tailor skill directory (schema + forbidden title labels + timeline + claims check, figures included; see the flow's SKILL.md). Exit 1 = fix the wording and re-run. Never "fix" a failure by editing the master CV or the addendum.
 
 ## Forbidden
 
