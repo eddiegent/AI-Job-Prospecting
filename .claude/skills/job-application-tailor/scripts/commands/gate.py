@@ -156,6 +156,28 @@ def _recount_match(ctx: Ctx) -> Result:
     return r
 
 
+def _offer_trace(ctx: Ctx) -> Result:
+    """The analysis against the cached offer text (scripts/offer_trace.py):
+    every listed technology must be named in raw_offer.md - it becomes a
+    scored match row - and an English text analysed as French is flagged."""
+    from scripts.offer_trace import language_mismatch, untraced_technologies
+
+    r = Result("offer analysis vs raw_offer.md")
+    raw_path = ctx.path("raw_offer.md")
+    if not raw_path.exists():
+        r.note = "no raw_offer.md - not checked (cache the offer with cache-raw-offer)"
+        return r
+    offer = json.loads(ctx.path("job_offer_analysis.json").read_text(encoding="utf-8"))
+    raw = raw_path.read_text(encoding="utf-8")
+    for item in untraced_technologies(offer, raw):
+        r.errors.append(f"technologies: '{item}' is not named in raw_offer.md - write it as the offer does, "
+                        f"or drop it (don't infer, expand or translate a technology name)")
+    warning = language_mismatch(offer, raw)
+    if warning:
+        r.warnings.append(warning)
+    return r
+
+
 def _match_rows(ctx: Ctx) -> Result:
     """The rows are the offer's items, one each (scripts/match_rows.py), so the
     fit score's denominator doesn't depend on how a run split the offer."""
@@ -455,6 +477,7 @@ STAGES: dict[str, list[Step]] = {
     ],
     "offer": [
         (_schema("job_offer_analysis.json", TAILOR_SCHEMAS / "job_offer_analysis.schema.json"), True),
+        (_offer_trace, False),
     ],
     "match": [
         (_recount_match, True),
@@ -556,7 +579,8 @@ def cmd_gate(db, args: argparse.Namespace) -> None:
 def _configure_gate(p: argparse.ArgumentParser) -> None:
     p.description = (
         "Run every deterministic check for one pipeline stage. Stages: "
-        "factbase (schema + verify vs master CV), offer (schema), "
+        "factbase (schema + verify vs master CV), offer (schema + every technology named in "
+        "raw_offer.md; warns when an English text is analysed as French), "
         "match (recount in place + schema + one row per offer item + grounding), "
         "cv (schema + forbidden labels + timeline: every role ending in or after "
         "the compression cutoff is a full entry, no training in experience, a dateless "

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added — `gate offer` checks the analysis against the cached offer (2026-11-17)
+- **Why.** The match rows are now built from the offer analysis, so a technology the analysis invents becomes a scored row. Of 102 offer packs since 2026-06-01 with a cached `raw_offer.md`, 14 listed a technology the offer never names: "C#" and "REST APIs" for an offer that says ".Net APIs", "REST APIs" in three more, "GitHub Copilot" for "Copilot", "JavaScript / TypeScript" for "JS/TS", "Agents IA" for an English offer's "AI agents". Until now `gate offer` checked the schema only.
+- **Blocking** (`scripts/offer_trace.py`): each `technologies` item must be found in `raw_offer.md` — as written, ignoring spaces and hyphens ("PowerBI" = "Power BI"), through a known synonym, or word by word on five-letter stems with plural "s" ignored ("API REST" covers "REST APIs"). The skill lists are not checked: they paraphrase by design (212 items in 76 packs would fail).
+- **Warning:** the raw text reads as English but `detected_language` is `fr` — 8 packs since June, the analysis prompt's market-signal flip. Stronger wording when the offer says French is not required (Brevo). Whether that case should switch the pack to English is still the user's open decision; the warning makes it visible at Step 3.
+- **Prompt.** `analyze_job_offer.md`: copy technology names as written; don't infer, expand, specify or translate them.
+- **Tests** — `tests/test_offer_trace.py` (14).
+
 ### Added — required skills missing, shown next to the fit score (2026-11-17)
 - **Why, and why not weighting.** The question was whether required skills should weigh more in `overall_fit_pct`. Simulated on 144 offer packs: every scheme tried (required ×2; ×2 with preferred ×0.5; ×3 with preferred and responsibilities ×0.5) raised the mean score by 2–4 points, because the candidate matches required skills best (average credit 0.75 vs 0.49 for technologies); 19–44 packs changed fit level and 5–8 crossed the 50% cut-off. The outcome data (3 interviews, 27 rejections) can't tell the schemes apart, and one interview came with 4 required skills missing. Weighting would also amplify the model's required-vs-preferred call in Step 3 and invalidate the 50 / 70 / 85% thresholds. So the score stays unweighted and the knockout risk is shown on its own.
 - **`match_summary.required_gap_count` / `required_gaps`**, computed by the gate's recount (`common.recount_match_summary`): the `required_skill` rows rated `gap`. Optional in the schema; older packs gain them the next time `gate match` runs. They reach `run_summary.json` with the rest of `match_summary`.

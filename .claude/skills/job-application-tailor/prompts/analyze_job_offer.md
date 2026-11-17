@@ -62,6 +62,7 @@ The same logic applies to other languages (German, Spanish, Italian, Dutch) if t
 ```
 
 ## Rules
+- **`technologies`: copy each name as the offer writes it.** Don't infer one the offer doesn't name (no "C#" because it says ".Net", no "REST APIs" because it says "APIs"), don't expand ("JS/TS" stays "JS/TS"), don't make it more specific ("Copilot" stays "Copilot") and don't translate it, even when the rest of the analysis is in French. Every item becomes a scored match row; `gate offer` blocks one it can't find in `raw_offer.md`.
 - If something is not explicit, use an empty string or empty list
 - Do not hallucinate the job title
 - Use concise phrases
