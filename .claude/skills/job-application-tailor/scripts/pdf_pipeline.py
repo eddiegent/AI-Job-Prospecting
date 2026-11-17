@@ -31,13 +31,53 @@ def _try_docx2pdf(docx: Path, pdf: Path) -> bool:
         from docx2pdf import convert as _convert
     except ImportError:
         return False
+    # Convert a copy in a local temp dir, like LibreOffice below: Word writes the
+    # PDF through an ``lu*.tmp`` scratch file next to its output and, when the
+    # final rename races with something holding the folder, leaves it there.
+    # 24 packs held one (a stray copy of the PDF) on 2026-11-17.
+    workdir = Path(tempfile.mkdtemp(prefix="docx2pdf_"))
     try:
-        _convert(str(docx), str(pdf))
-    except Exception:
-        # Word.Application.Quit often raises even when conversion succeeded;
-        # trust the on-disk artefact rather than the exception.
-        pass
-    return pdf.exists()
+        src = workdir / docx.name
+        shutil.copy2(docx, src)
+        produced = workdir / (docx.stem + ".pdf")
+        try:
+            _convert(str(src), str(produced))
+        except Exception:
+            # Word.Application.Quit often raises even when conversion succeeded;
+            # trust the on-disk artefact rather than the exception.
+            pass
+        if not produced.exists():
+            return False
+        shutil.move(str(produced), str(pdf))
+        return pdf.exists()
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def remove_office_scratch(folder: Path) -> list[Path]:
+    """Delete Office scratch files left in ``folder`` by earlier builds: Word
+    ``~$`` lock files, LibreOffice ``.~lock.<file>#`` lock files (29 packs held
+    one from conversions run in a remote session) and ``lu*.tmp`` files that
+    are PDFs (Word's conversion scratch, 24 packs). Any other ``.tmp`` is left
+    alone. A file still open is skipped. Returns the files removed."""
+    removed: list[Path] = []
+    for f in Path(folder).iterdir():
+        if not f.is_file():
+            continue
+        scratch = f.name.startswith("~$") or (f.name.startswith(".~lock.") and f.name.endswith("#"))
+        if not scratch and f.name.lower().startswith("lu") and f.suffix.lower() == ".tmp":
+            try:
+                with f.open("rb") as fh:
+                    scratch = fh.read(5) == b"%PDF-"
+            except OSError:
+                continue
+        if scratch:
+            try:
+                f.unlink()
+                removed.append(f)
+            except OSError:
+                pass
+    return removed
 
 
 def _try_libreoffice(docx: Path, pdf: Path) -> bool:

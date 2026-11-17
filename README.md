@@ -140,12 +140,13 @@ A pre-commit hook keeps CLI documentation in sync with `cli.py` and lints markdo
 git config core.hooksPath .githooks
 ```
 
-Tests run as two pytest invocations (the suites can't share one process — both declare a `tests` package):
+Tests (both suites in one run):
 
 ```bash
-python -m pytest ".claude/skills/job-application-tailor" -q
-python -m pytest ".claude/skills/job-cold-prospect" -q
+python -m pytest ".claude/skills/job-application-tailor" ".claude/skills/job-cold-prospect" -q
 ```
+
+Each suite also runs on its own (`python -m pytest ".claude/skills/job-cold-prospect" -q`), from any cwd.
 
 See [CLAUDE.md](CLAUDE.md) for details. The canonical CLI reference is auto-generated at [.claude/skills/job-application-tailor/references/cli.md](.claude/skills/job-application-tailor/references/cli.md).
 

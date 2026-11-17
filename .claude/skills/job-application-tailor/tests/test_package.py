@@ -325,3 +325,13 @@ def test_package_plugin_archive_includes_manifest(fake_project: Path) -> None:
 )
 def test_all_phase_tests_pass_in_ci() -> None:
     pass
+
+
+def test_cold_suite_tests_folder_is_not_a_package():
+    # Two `tests` packages collide, and the two suites could no longer run in one
+    # pytest process (they couldn't until 2026-11-17).
+    from pathlib import Path
+
+    cold_tests = Path(__file__).resolve().parents[2] / "job-cold-prospect" / "tests"
+    assert cold_tests.is_dir()
+    assert not (cold_tests / "__init__.py").exists()

@@ -242,3 +242,39 @@ def test_libreoffice_converts_off_mount_and_cleans_up(tmp_path, monkeypatch):
     # .~lock.*# and no lu*.tmp leaked onto the mount.
     leftovers = sorted(p.name for p in outdir_mount.iterdir())
     assert leftovers == ["CV.docx", "CV.pdf"], f"output folder must be clean, got {leftovers}"
+
+
+def test_remove_office_scratch_deletes_only_office_scratch_files(tmp_path):
+    from scripts.pdf_pipeline import remove_office_scratch
+
+    (tmp_path / "lu469wai.tmp").write_bytes(b"%PDF-1.7 scratch copy")
+    (tmp_path / "lu_notes.tmp").write_bytes(b"not a pdf")
+    (tmp_path / "other.tmp").write_bytes(b"%PDF-1.7")
+    (tmp_path / "~$Lettre.docx").write_bytes(b"lock")
+    (tmp_path / ".~lock.Lettre.pdf#").write_bytes(b"lock")
+    (tmp_path / "CV.pdf").write_bytes(b"%PDF-1.7")
+    removed = {p.name for p in remove_office_scratch(tmp_path)}
+    assert removed == {"lu469wai.tmp", "~$Lettre.docx", ".~lock.Lettre.pdf#"}
+    assert {p.name for p in tmp_path.iterdir()} == {"lu_notes.tmp", "other.tmp", "CV.pdf"}
+
+
+def test_docx2pdf_converts_off_the_output_folder(tmp_path, monkeypatch):
+    # Word's lu*.tmp scratch lands next to the file it converts; converting a
+    # copy in a temp dir keeps it out of the pack folder.
+    import sys
+    import types
+
+    seen: list[Path] = []
+
+    def fake_convert(src, dst):
+        seen.append(Path(src).parent)
+        Path(dst).write_bytes(b"%PDF-1.7")
+        (Path(dst).parent / "lu123.tmp").write_bytes(b"%PDF-1.7")  # Word's leftover
+
+    monkeypatch.setitem(sys.modules, "docx2pdf", types.SimpleNamespace(convert=fake_convert))
+    out = tmp_path / "pack"
+    out.mkdir()
+    docx = _make_docx(out)
+    assert pdf_pipeline._try_docx2pdf(docx, docx.with_suffix(".pdf"))
+    assert seen and seen[0] != out
+    assert sorted(p.name for p in out.iterdir()) == ["cv.docx", "cv.pdf"]

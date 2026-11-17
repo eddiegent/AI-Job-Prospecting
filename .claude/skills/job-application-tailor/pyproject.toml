@@ -5,9 +5,10 @@
 # skill root at import time, which required running pytest from this
 # directory. From the repo root:  pytest ".claude/skills/job-application-tailor"
 #
-# Note: the two skill suites cannot run in one pytest process — both declare a
-# `tests` package and the names collide. Run them as two invocations (that is
-# also what scripts/package.py's release gate does).
+# Both skill suites run in one process from the repo root:
+#   pytest ".claude/skills/job-application-tailor" ".claude/skills/job-cold-prospect"
+# Only this suite's tests/ is a package; the cold suite's must not be, or the two
+# `tests` packages collide.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

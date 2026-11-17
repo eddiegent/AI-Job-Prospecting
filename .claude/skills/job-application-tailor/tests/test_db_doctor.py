@@ -168,3 +168,30 @@ def test_expect_company_match_proceeds(tmp_path):
         assert db.get_application(aid)["status"] == "applied"
     finally:
         db.close()
+
+
+def test_hand_named_snapshots_are_ordered_by_their_stamp_and_never_pruned(tmp_path):
+    # 2026-11-17: sorting by name put "job_history-pre-v4-20260728-..." after
+    # every "job_history-2026...", so `doctor` called a July snapshot the latest.
+    from job_history_db import list_snapshots
+
+    backups = tmp_path / "db-backups"
+    backups.mkdir()
+    for name in ("job_history-20261116-061207.db", "job_history-20261117-130127.db",
+                 "job_history-pre-v4-20260728-135846.db", "job_history-pre-canal-date-20261102-231031.db"):
+        (backups / name).write_bytes(b"x")
+    auto, manual = list_snapshots(backups, "job_history")
+    assert [p.name for p in auto] == ["job_history-20261116-061207.db", "job_history-20261117-130127.db"]
+    assert [p.name for p in manual] == ["job_history-pre-v4-20260728-135846.db",
+                                        "job_history-pre-canal-date-20261102-231031.db"]
+
+    db = JobHistoryDB(str(tmp_path / "job_history.db"))
+    try:
+        _add(db, "Acme", "Dev", "2026-01-01T00:00:00")
+        db.snapshot_before_mutation(keep=1)
+    finally:
+        db.close()
+    left = {p.name for p in backups.glob("*.db")}
+    assert "job_history-pre-v4-20260728-135846.db" in left
+    assert "job_history-pre-canal-date-20261102-231031.db" in left
+    assert "job_history-20261116-061207.db" not in left and len(left) == 3

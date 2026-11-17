@@ -17,7 +17,7 @@ Help the candidate walk into the interview confident and prepared. Every talking
    - **Company**: company name — company career page URL if found during research
    - **Location**: job location and work mode (remote/hybrid/onsite)
    - **Commute**: brief commute assessment from the match analysis `location_analysis` (e.g. "Same metro area — easy commute", "Different region — relocation likely needed", "Fully remote — N/A")
-   - **Applied on**: today's date
+   - **Pack generated on**: today's date (French: « Dossier généré le »). Not "Applied on": the pack is made before the candidate applies, and the application date is recorded later in the history (`/job-status`)
    - **Output folder**: the path to the output folder for this run
    ```
    Include the original job URL exactly as provided by the user (from `$ARGUMENTS`). If company research found additional useful links (career page, team page, Glassdoor, Welcome to the Jungle), add them too. This block is a practical cheat-sheet the candidate can glance at before an interview.

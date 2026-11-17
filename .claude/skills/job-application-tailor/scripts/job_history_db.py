@@ -354,6 +354,36 @@ def _segment_filters(
     return conds, params
 
 
+_SNAPSHOT_STAMP = re.compile(r"(\d{8}-\d{6})")
+
+
+def list_snapshots(backups_dir: Path, stem: str) -> tuple[list[Path], list[Path]]:
+    """``(automatic, hand-named)`` DB snapshots in ``backups_dir``, each oldest
+    first by the timestamp in the name (file mtime when a name has none).
+
+    Automatic ones are ``<stem>-YYYYMMDD-HHMMSS.db`` (``snapshot_before_mutation``);
+    anything else matching ``<stem>-*.db`` was named by hand before a risky
+    change ("job_history-pre-v4-20260728-135846.db") and is never pruned.
+    Sorting by name put "pre-..." after every "2026..." snapshot, so `doctor`
+    reported a July snapshot as the latest in November.
+    """
+    if not backups_dir.exists():
+        return [], []
+    auto_re = re.compile(re.escape(stem) + r"-\d{8}-\d{6}\.db$")
+    snaps = list(backups_dir.glob(f"{stem}-*.db"))
+    auto = sorted((p for p in snaps if auto_re.fullmatch(p.name)), key=snapshot_key)
+    manual = sorted((p for p in snaps if not auto_re.fullmatch(p.name)), key=snapshot_key)
+    return auto, manual
+
+
+def snapshot_key(p: Path) -> str:
+    """Sort key of a snapshot: the ``YYYYMMDD-HHMMSS`` in its name, else its mtime."""
+    m = _SNAPSHOT_STAMP.search(p.name)
+    if m:
+        return m.group(1)
+    return datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y%m%d-%H%M%S")
+
+
 class JobHistoryDB:
     """Thin wrapper around the SQLite job history database."""
 
@@ -477,7 +507,9 @@ class JobHistoryDB:
         Best-effort: a backup failure must never block the actual mutation, so
         every error is swallowed and returns None. Snapshots live next to the DB
         (``<db_dir>/db-backups/``, git-ignored) and are pruned to the newest
-        ``keep``. Returns the snapshot path, or None if nothing was written.
+        ``keep`` automatic snapshots; a hand-named one ("job_history-pre-v4-...")
+        is never pruned (``list_snapshots``). Returns the snapshot path, or None
+        if nothing was written.
         """
         try:
             if not self.db_path.exists():
@@ -488,8 +520,8 @@ class JobHistoryDB:
             dst = backups_dir / f"{self.db_path.stem}-{stamp}.db"
             if not dst.exists():
                 shutil.copy2(self.db_path, dst)
-            snaps = sorted(backups_dir.glob(f"{self.db_path.stem}-*.db"))
-            for old in snaps[:-keep] if keep > 0 else []:
+            auto, _ = list_snapshots(backups_dir, self.db_path.stem)
+            for old in auto[:-keep] if keep > 0 else []:
                 try:
                     old.unlink()
                 except OSError:

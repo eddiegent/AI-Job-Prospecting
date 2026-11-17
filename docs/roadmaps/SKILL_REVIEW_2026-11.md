@@ -1,6 +1,6 @@
 # Skill Review — November 2026
 
-> **Status: items 1–7, 9, 14 and 15 shipped 2026-11-17 and released as v1.2.0; 16 shipped after it (unreleased); 8 and 10–13 open.**
+> **Status: items 1–7, 9, 14 and 15 shipped 2026-11-17 and released as v1.2.0; 13 and 16 shipped after it (unreleased); 8 and 10–12 open.**
 > Written 2026-11-17 from a review of the five job skills, after the humanizer pass was added and three
 > packs were rerun with it. Each item records what was found, what shipped and what is left. Details of
 > each change are in `.claude/skills/job-application-tailor/CHANGELOG.md`.
@@ -48,7 +48,7 @@
 - [ ] **11. Reuse company research.** A second pack for the same company repeats every web search.
 - [ ] **12. Correct a status-history date.** 99% of `application_events` are backfilled dates and no
   command amends one (`amend-event` was proposed, never built).
-- [ ] **13. Small bugs.** `doctor` reports the latest backup by name (a July snapshot) instead of by date;
+- [x] **13. Small bugs.** Fixed 2026-11-17 (all four; see the tailor CHANGELOG). `doctor` reports the latest backup by name (a July snapshot) instead of by date;
   interview prep stamps "Applied on" with the generation date; leftover files (Word `.tmp`) survive a
   rebuild; the two test suites can't share one pytest process.
 - [x] **16. Gate gaps found by the comparison runs** — shipped 2026-11-17 except the two items marked

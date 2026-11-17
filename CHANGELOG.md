@@ -7,6 +7,13 @@ within each section.
 
 ## Unreleased
 
+- **Small fixes (review item 13, 2026-11-17)** — `doctor` reports the newest DB
+  backup by its timestamp (it showed a July snapshot in November), and pruning
+  never deletes a hand-named backup; the interview prep says "Pack generated on",
+  not "Applied on"; Word PDF conversion runs in a temp folder and a rebuild removes
+  Office scratch files left in a pack (24 `lu*.tmp`, 29 LibreOffice locks); both
+  test suites run in one pytest process.
+
 - **Gate gaps from the comparison runs (2026-11-17)** — skills in a tailored CV
   must come from the master CV's skills table or the addendum; two new addendum
   sections, `## Skill translations` (FR = EN pairs, so an English CV can list a

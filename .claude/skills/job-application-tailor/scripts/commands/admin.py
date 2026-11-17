@@ -45,7 +45,10 @@ def cmd_doctor(db: JobHistoryDB, args: argparse.Namespace) -> None:
     mirror = _inspect_db_file(db._mirror_path)
     diverged = bool(target and mirror and target["fingerprint"] != mirror["fingerprint"])
     backups_dir = Path(db.db_path).parent / "db-backups"
-    snaps = sorted(backups_dir.glob(f"{Path(db.db_path).stem}-*.db")) if backups_dir.exists() else []
+    from scripts.job_history_db import list_snapshots, snapshot_key
+
+    auto, manual = list_snapshots(backups_dir, Path(db.db_path).stem)
+    snaps = sorted(auto + manual, key=snapshot_key)  # by timestamp, not by name
     report = {
         "job_tailor_home": os.environ.get("JOB_TAILOR_HOME"),
         "target": target,

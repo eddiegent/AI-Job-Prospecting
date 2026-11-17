@@ -18,7 +18,7 @@ from scripts.common import (  # noqa: E402
 )
 from docx_generator import generate_cv_docx, generate_letter_docx
 from scripts.md_to_html import render_html_document  # noqa: E402
-from scripts.pdf_pipeline import PdfConversionError, convert_docx_to_pdf  # noqa: E402
+from scripts.pdf_pipeline import PdfConversionError, convert_docx_to_pdf, remove_office_scratch  # noqa: E402
 from scripts.validate import validate  # noqa: E402
 
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
@@ -109,6 +109,8 @@ def main() -> None:
             letter_pdf_path = convert_docx_to_pdf(letter_path)
         except PdfConversionError as exc:
             print(f"PDF conversion skipped: {exc}", file=sys.stderr)
+    for f in remove_office_scratch(out_dir):
+        print(f"Removed Office scratch file left by an earlier build: {f.name}")
 
     linkedin_path = None
     if linkedin_data is not None:

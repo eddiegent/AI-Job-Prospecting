@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed — small bugs (review item 13, 2026-11-17)
+- **`doctor` latest backup / pruning** (`job_history_db.list_snapshots`, `snapshot_key`). Snapshots were sorted by name, so the hand-named `job_history-pre-v4-20260728-...` sorted after every `job_history-2026...` and `doctor` reported it as the latest. They are now ordered by the timestamp in the name (mtime if none). Pruning counts and deletes only automatic `<stem>-YYYYMMDD-HHMMSS.db` snapshots; hand-named ones are kept on purpose (before, by accident).
+- **"Applied on" → "Pack generated on"** in the interview prep's Quick Reference (`generate_interview_prep.md`): the pack is generated before the candidate applies; the application date lives in the history.
+- **Office scratch files** (`pdf_pipeline.py`). Word's `docx2pdf` now converts a copy in a temp dir, like LibreOffice already did, so its `lu*.tmp` scratch PDF can't be left in the pack (24 packs had one). `regenerate-outputs` removes Office scratch already there: Word `~$` locks, LibreOffice `.~lock.<file>#` (29 packs, from conversions in a remote session) and `lu*.tmp` files whose content is a PDF; any other `.tmp` is left alone.
+- **Both test suites in one pytest process.** `job-cold-prospect/tests/` is no longer a package (it never imported from itself), so its `tests` no longer collides with the tailor suite's. `test_package.py` guards it; CLAUDE.md, README and both `pyproject.toml` updated.
+- **Tests** — snapshot ordering and pruning, scratch cleanup, docx2pdf off the output folder.
+
 ### Fixed — gate gaps found by the comparison runs (review item 16, 2026-11-17)
 - **Why.** Rerunning packs #164–#168 showed old packs shipping content every gate passed, and some honest wording blocked.
 - **Skills come from the skills table** (`claims_guard.py` rule 3). The `[unsourced-skill]` source is now the master CV's skills table plus the addendum, not the whole CV: `cv_rules.md` already forbade "a tool named once in an old bullet". On the 16 packs made since the master CV last changed (2026-11-02) no item is newly rejected; older packs (older master CVs) are.

@@ -8,12 +8,15 @@ This is a Job Prospecting toolkit — a collection of Claude Code skills for aut
 
 ## Running tests
 
-Two pytest suites, one per skill that has a `tests/` directory. They cannot share a single pytest process (both declare a `tests` package, and the names collide), so run them as two invocations — each skill's `pyproject.toml` makes this work from any cwd:
+Two pytest suites, one per skill that has a `tests/` directory. They run in one process:
 
 ```bash
-python -m pytest ".claude/skills/job-application-tailor" -q
-python -m pytest ".claude/skills/job-cold-prospect" -q
+python -m pytest ".claude/skills/job-application-tailor" ".claude/skills/job-cold-prospect" -q
 ```
+
+Each suite also runs on its own (`python -m pytest ".claude/skills/job-cold-prospect" -q`), from any cwd.
+
+Only the tailor suite's `tests/` is a package (its tests import `tests.conftest`). Don't add an `__init__.py` to `job-cold-prospect/tests/`: two `tests` packages collide and the suites can no longer share a run (`test_package.py` checks this).
 
 ## CLI signatures — single source of truth
 
