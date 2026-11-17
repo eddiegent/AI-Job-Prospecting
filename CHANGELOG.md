@@ -7,6 +7,16 @@ within each section.
 
 ## Unreleased
 
+- **Gate gaps from the comparison runs (2026-11-17)** — skills in a tailored CV
+  must come from the master CV's skills table or the addendum; two new addendum
+  sections, `## Skill translations` (FR = EN pairs, so an English CV can list a
+  skill the CV states in French) and `## Skill level caps` (skills a match row may
+  rate at most `transferable`: Python at reading level, training-only tools); the
+  interview prep's figures are checked; "qu'en formation" / "encore à approfondir"
+  admit a gap; intensity words are checked only in sentences about the candidate;
+  load-bearing older roles are found from a short name ("JFC (Asnières)"); the
+  humanizer guard warns when the pass changed nothing; "R&D" is one token.
+
 ## v1.2.0 — 2026-11-17
 
 Third release (git tags `v1.2.0` and `job-prospecting--v1.2.0`): a humanizer pass on letters and LinkedIn

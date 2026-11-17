@@ -609,3 +609,49 @@ def test_absorbed_member_of_a_satisfied_alternatives_list_can_be_direct(tmp_path
     errors, _ = check(_write(tmp_path, "ma.json", ma), _write(tmp_path, "off.json", off),
                       _write(tmp_path, "fb.json", _automation_fact_base()))
     assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# Addendum level caps and translations (2026-11-17, item 16)
+# ---------------------------------------------------------------------------
+
+
+def _caps_check(tmp_path, requirement, match_type, fb_extra, techs=()):
+    fb = {**_automation_fact_base(), **fb_extra}
+    off = {**_automation_offer(), "technologies": list(techs), "required_skills": [requirement]}
+    ma = {"match_summary": {}, "matches": [{"requirement": requirement, "category": "required_skill",
+                                            "match_type": match_type, "evidence": "x", "notes": "x"}]}
+    return check(_write(tmp_path, "ma.json", ma), _write(tmp_path, "off.json", off), _write(tmp_path, "fb.json", fb))
+
+
+def test_a_capped_skill_cannot_be_direct(tmp_path):
+    fb = {"technologies": ["C#", "Python"], "skill_level_caps": ["Python"]}
+    errors, _ = _caps_check(tmp_path, "Python", "direct", fb, techs=["Python"])
+    assert any("'python'" in e and "capped" in e for e in errors)
+    errors, _ = _caps_check(tmp_path, "Python", "transferable", fb, techs=["Python"])
+    assert errors == []
+
+
+def test_a_capped_training_tool_needs_no_gap_row(tmp_path):
+    fb = {"addendum_hidden_skills": ["agents IA avec RAG en formation"], "skill_level_caps": ["agents IA"],
+          "skill_translations": [{"source": "agents IA", "translation": "AI agents"}]}
+    errors, _ = _caps_check(tmp_path, "Experience with automation", "transferable", fb, techs=["AI agents"])
+    assert not [e for e in errors if "offer technology" in e]
+
+
+def test_a_translation_grounds_the_other_language(tmp_path):
+    fb = {"addendum_hidden_skills": ["Conception de systèmes distribués"],
+          "skill_translations": [{"source": "Conception de systèmes distribués",
+                                  "translation": "Distributed systems"}]}
+    errors, _ = _caps_check(tmp_path, "Distributed systems", "direct", fb, techs=["Distributed systems"])
+    assert errors == []
+    fb.pop("skill_translations")
+    errors, _ = _caps_check(tmp_path, "Distributed systems", "direct", fb, techs=["Distributed systems"])
+    assert errors
+
+
+def test_r_and_d_is_one_token():
+    from scripts._grounding_common import split_tokens
+
+    assert split_tokens("Ownership, R&D challenges") == ["Ownership", "R&D challenges"]
+    assert split_tokens("Data & Analytics") == ["Data", "Analytics"]

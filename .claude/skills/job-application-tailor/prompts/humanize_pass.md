@@ -28,6 +28,7 @@ If the `humanizer:humanizer` skill isn't installed, skip steps 2–3, say so in 
 
 The humanizer edits style. The rules of the calling prompt still win on content:
 
+- **If the pass finds nothing to change, say so in your report.** The guard warns when the prose is identical to the draft, because that is also what a skipped pass leaves.
 - **Every fact, number, name, employer and tech stays exactly as drafted**, and nothing new comes in. A "specific detail" the humanizer would add must come from `cv_fact_base_merged.json` or the company research, never from guesswork — and a detail the draft didn't have goes through step 5.
 - Team scope stays team scope: no solo-work phrasing for `team_context_companies`.
 - Gaps stay stated as gaps; a negation stays in the same clause as the skill it negates (the claims check reads it that way).

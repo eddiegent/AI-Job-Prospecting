@@ -406,6 +406,19 @@ def _interview_prep(ctx: Ctx) -> Result:
     return r
 
 
+def _interview_figures(ctx: Ctx) -> Result:
+    """Rule 8 of the claims check on the interview prep (scripts/claims_guard.py
+    ``interview_figure_errors``): a figure in it must come from a source."""
+    from scripts.claims_guard import interview_figure_errors
+
+    r = Result("interview prep figures")
+    if not ctx.path("interview_prep.md").exists():
+        r.note = "no interview_prep.md - not checked"
+        return r
+    r.errors = interview_figure_errors(ctx.prep, master=ctx.cv if ctx.cv.exists() else None)
+    return r
+
+
 # The files each humanized stage owns: `--draft` snapshots them, and the plain
 # run compares them with the snapshot.
 HUMANIZED_STAGES: dict[str, tuple[str, ...]] = {
@@ -584,6 +597,7 @@ STAGES: dict[str, list[Step]] = {
     ],
     "interview": [
         (_interview_prep, False),
+        (_interview_figures, False),
     ],
     "dossier": [
         (_dossier, False),

@@ -62,6 +62,22 @@ is read as a rule only, never as evidence that you have the skill.
 
 ---
 
+## Skill translations
+
+Optional. Read by the checks: a skill your master CV writes in one language may
+be written with its pair in a CV or an analysis in the other. Format:
+`- <wording in the master CV> = <translation>`.
+
+- Conception de systèmes distribués = Distributed systems design
+
+## Skill level caps
+
+Optional. Read by `gate match`: an offer row asking for one of these skills is
+at most `transferable`, never `direct`. Comma-separated; text after " — " is a note.
+
+- Python — reading and adapting scripts only
+- Supabase, RAG agents — training exercises only
+
 ## Hidden skills
 
 Flat bullet list. Each item is something you can talk about in an

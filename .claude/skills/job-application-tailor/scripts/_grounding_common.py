@@ -28,8 +28,10 @@ SYNONYMS: dict[str, list[str]] = {
 }
 
 
+# "&" separates only with spaces around it: "Data & Analytics" is two tokens,
+# "R&D" one (it used to become "r" and "d challenges").
 _SEPARATORS = re.compile(
-    r"[/,;&|·]|\s+et\s+|\s+and\s+|\s+à\s+|→|\bvs\b|\s+[–-]\s+",
+    r"[/,;|·]|\s+&\s+|\s+et\s+|\s+and\s+|\s+à\s+|→|\bvs\b|\s+[–-]\s+",
     re.IGNORECASE,
 )
 # Brackets are treated as separators so parenthetical sub-lists / version

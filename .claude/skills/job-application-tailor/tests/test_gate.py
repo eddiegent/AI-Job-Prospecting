@@ -542,7 +542,7 @@ def _interview_md(*, fit: str = "72", banner: str = "## Fit Score: {fit}% — GO
                   quick: str = "## Quick Reference", sections: int = 10, filler: int = 600,
                   gaps_line: str | None = "Required skills missing: 0") -> str:
     parts = ["# Interview Preparation", quick, "- **Job offer**: https://example.com/job",
-             banner.format(fit=fit), "Direct matches: 5 | Transferable: 3 | Gaps: 2"]
+             banner.format(fit=fit), "Direct matches: 2 | Transferable: 1 | Gaps: 0"]
     if gaps_line is not None:
         parts.append(gaps_line)
     for i in range(sections):

@@ -102,11 +102,23 @@ def _shows_role(item: dict[str, Any], entry: dict[str, Any]) -> bool:
     return end_year is None or str(end_year) in line
 
 
+def role_tags(entry: dict[str, Any], entries: list[dict[str, Any]]) -> tuple[str, ...]:
+    """Words that tell this role apart from another role at a company of the
+    same name: its bracketed name ("Kantar" in "JFC Informatique & Média
+    (Kantar)") and its location when no other role shares it ("Asnières")."""
+    tags = [t.strip() for t in re.findall(r"\(([^)]+)\)", entry.get("company", ""))]
+    loc = (entry.get("location") or "").strip()
+    if loc and sum(1 for e in entries if (e.get("location") or "").strip().lower() == loc.lower()) == 1:
+        tags.append(loc)
+    return tuple(t.lower() for t in tags if t)
+
+
 def _role_is_load_bearing(
     company: str,
     dates: str,
     match_analysis: dict[str, Any],
     companies: list[str] | tuple[str, ...] = (),
+    tags: tuple[str, ...] = (),
 ) -> bool:
     """Criterion A only: match analysis evidence names the company or date.
 
@@ -118,25 +130,37 @@ def _role_is_load_bearing(
     ``companies`` lists every fact-base company. Longer names that contain
     this one are blanked out of the evidence first ("Telmar Peaktime" is not
     "Peaktime"). When another role's name still overlaps (the two JFC roles),
-    a mention only counts with one of this role's years right after it:
-    "JFC Informatique & Média (2002–2005)" is the Kantar role, not the
-    1994–2001 one.
+    a mention only counts with one of this role's years or ``tags`` (see
+    ``role_tags``) next to it: "JFC Informatique & Média (2002–2005)" and
+    "JFC (Kantar)" are the Kantar role, "JFC Asnières" the 1994–2001 one.
+
+    The company's first word counts as a mention too ("JFC", "ROCC"): evidence
+    rarely spells the full legal name, and a 2026-11-17 rerun folded a role its
+    own evidence cited as "JFC (Asnières)" because only the full name counted.
     """
     core = _company_core(company)
     cores = [c for c in map(_company_core, companies) if c]
     longer = [c for c in cores if core and core in c and c != core]
     ambiguous = sum(1 for c in cores if core and (c == core or c in core)) > 1
     years = {str(y) for y in re.findall(r"(19\d{2}|20\d{2})", dates or "")}
+    marks = years | set(tags)
+    first = core.split()[0] if core else ""
+    names = [core] + ([first] if len(first) >= 3 and first != core else [])
+    # The first word is ambiguous when another company starts with it ("JFC" x2):
+    # then it needs one of this role's marks next to it, like an ambiguous full name.
+    first_shared = sum(1 for c in cores if c.split()[:1] == [first]) > 1
     for match in match_analysis.get("matches", []):
         if match.get("match_type") not in {"direct", "transferable"}:
             continue
         evidence = (match.get("evidence") or "").lower()
         for name in longer:
             evidence = evidence.replace(name, " ")
-        for m in re.finditer(re.escape(core), evidence) if core else ():
-            after = evidence[m.end():m.end() + _YEAR_WINDOW]
-            if not ambiguous or any(y in after for y in years):
-                return True
+        for name in names:
+            needs_mark = ambiguous or (name == first and first_shared)
+            for m in re.finditer(r"(?<![\w])" + re.escape(name) + r"(?![\w])", evidence):
+                near = evidence[max(0, m.start() - _YEAR_WINDOW):m.end() + _YEAR_WINDOW]
+                if not needs_mark or any(k in near for k in marks):
+                    return True
         if dates and dates.lower() in evidence:
             return True
     return False
@@ -171,7 +195,8 @@ def find_missing_load_bearing_roles(
         if end_year is None or end_year >= cutoff_year:
             continue
         company = entry.get("company", "")
-        if not _role_is_load_bearing(company, entry.get("dates", ""), match_analysis, companies):
+        tags = role_tags(entry, fact_base.get("experience", []))
+        if not _role_is_load_bearing(company, entry.get("dates", ""), match_analysis, companies, tags):
             continue
         if not any(_shows_role(item, entry) for item in standalone):
             violations.append(
@@ -233,7 +258,8 @@ def find_non_consolidated_non_load_bearing_roles(
         if end_year is None or end_year >= cutoff_year:
             continue
         company = entry.get("company", "")
-        if _role_is_load_bearing(company, entry.get("dates", ""), match_analysis, companies):
+        tags = role_tags(entry, fact_base.get("experience", []))
+        if _role_is_load_bearing(company, entry.get("dates", ""), match_analysis, companies, tags):
             continue
         for item in tailored_cv.get("experience", []):
             if _is_consolidated(item):

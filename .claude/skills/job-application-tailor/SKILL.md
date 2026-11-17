@@ -196,7 +196,7 @@ When the user asks to redo one output ("redo the LinkedIn messages", "regenerate
 3. Steps 0–2.5 through `job-prep-cv`, with `$REUSE_DIR` = the folder. Preflight prepares that folder instead of creating one; `cache_stale` still means re-extract the fact base.
 4. Step 3 from the cached `_prep/raw_offer.md`: no probe, no WebFetch, no `cache-raw-offer`. If the previous analysis had a real client resolved for a platform posting, keep that `company_name` / `source_platform`. Run `gate offer`.
 5. **Skip Step 3.5** — the duplicate it would find is this pack.
-6. Steps 3.9 and 4 as usual, including `rename-with-fit`: if the fit level changed, it moves the folder to the new prefix. Reassign `$OUTPUT_DIR` from the printed path. If the slug after the date changed too, the old deliverables keep their old filenames; delete them after Step 9. Below 50%, tell the user and ask before generating anything.
+6. Steps 3.9 and 4 as usual, including `rename-with-fit`: if the fit level changed, it moves the folder to the new prefix. Reassign `$OUTPUT_DIR` from the printed path. If the slug after the date changed too, the old deliverables keep their old filenames; delete them after Step 9. Below 50%, tell the user and ask before generating anything. If they don't want a pack, the folder now has the `low-` prefix but still holds the previous run's files: move them into `<folder>/previous-run/` so they aren't taken for this score, then refresh the row (step 10).
 7. Step 4.5: reuse `_prep/company_research.md`, no new web searches, unless the user asks for fresh research.
 8. Steps 5–8 with every gate. The `gate letters --draft` / `gate linkedin --draft` runs re-take the humanizer snapshot in `_prep/pre_humanize/`, replacing the old run's.
 9. Step 9 (`regenerate-outputs`).

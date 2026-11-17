@@ -174,3 +174,25 @@ def test_user_prefs_team_context_companies_prevents_solo_phrasing(tmp_path):
     )
     assert find_team_context_solo_phrasing(solo, prefs) != []
     assert find_team_context_solo_phrasing(team, prefs) == []
+
+
+# --- Skill translations and level caps (2026-11-17, item 16) ---------------
+
+def test_skill_translations_and_level_caps_are_parsed():
+    from scripts.user_customization import parse_skill_level_caps, parse_skill_translations
+
+    text = (
+        "## Skill translations\n\n"
+        "Some prose that is not a pair.\n"
+        "- Conception de systèmes distribués = Distributed systems design\n"
+        "- **agents IA** = AI agents\n"
+        "- no equals sign here\n"
+        "## Skill level caps\n"
+        "- Python — reading scripts only\n"
+        "- Supabase, RAG - training only\n"
+        "## Hidden skills\n"
+        "- Gmelius = not a pair, wrong section\n"
+    )
+    assert parse_skill_translations(text) == [
+        ("Conception de systèmes distribués", "Distributed systems design"), ("agents IA", "AI agents")]
+    assert parse_skill_level_caps(text) == ["Python", "Supabase", "RAG"]

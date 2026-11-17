@@ -71,7 +71,7 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 
 ## Evidence discipline (added after an over-claiming incident)
 - Read `cv_fact_base_merged.json` (addendum + `addendum_skill_calibration` + `familiar_only_skills`).
-- A skill that sits in the master CV's "Familier / à approfondir" row (`familiar_only_skills`) is at most `transferable`, never `direct`. Same for anything a calibration note says is limited (e.g. a database noted as "schemas and queries, no tuning", or a framework noted as "team work only").
+- A skill that sits in the master CV's "Familier / à approfondir" row (`familiar_only_skills`) or in `skill_level_caps` (the addendum's `## Skill level caps`: Python at reading/adapting level, training-only tools) is at most `transferable`, never `direct`, and needs no `gap` row of its own. A skill the fact base states in another language counts through `skill_translations` ("agents IA" grounds an offer's "AI agents"). Same for anything a calibration note says is limited (e.g. a database noted as "schemas and queries, no tuning", or a framework noted as "team work only").
 - A technology that is merely listed in a skills table, with no described use, may be `direct` only for that exact tool name — never for a wider practice ("documentation", "CI/CD pipelines", "support") built on it.
 - Do not rename a requirement to make it pass the grounding check (e.g. calling a familiar-only "CI/CD" requirement "<tool> pipelines" because the hosting tool sits in the core skills table). If the master calls it familiar, it is transferable.
 - Prefer a lower honest `overall_fit_pct` to an inflated one.

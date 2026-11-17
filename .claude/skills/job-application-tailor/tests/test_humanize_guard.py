@@ -33,8 +33,10 @@ def _final(**changes) -> dict:
     return doc
 
 
-def test_identical_file_has_nothing_to_report():
-    assert compare("letter.json", DRAFT_LETTER, copy.deepcopy(DRAFT_LETTER)) == ([], [])
+def test_identical_file_only_warns_that_the_pass_may_not_have_run():
+    errors, warnings = compare("letter.json", DRAFT_LETTER, copy.deepcopy(DRAFT_LETTER))
+    assert errors == []
+    assert len(warnings) == 1 and "identical to the draft" in warnings[0]
 
 
 def test_real_style_rewrite_passes_clean():

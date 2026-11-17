@@ -47,7 +47,8 @@ def addendum_section_kind(heading: str) -> str | None:
     """Classify a ``## `` heading of the addendum (text after the ``## ``).
 
     Returns ``additional_experience``, ``hidden_skills``, ``off_cv_facts``,
-    ``skill_calibration`` or None (unknown section). The single place that
+    ``skill_calibration``, ``skill_translations``, ``skill_level_caps`` or None
+    (unknown section). The single place that
     decides which section a line belongs to — ``parse_addendum_md`` and
     ``claims_guard`` both use it.
     """
@@ -60,6 +61,10 @@ def addendum_section_kind(heading: str) -> str | None:
         return "off_cv_facts"
     if "skill calibration" in h:
         return "skill_calibration"
+    if "skill translation" in h:
+        return "skill_translations"
+    if "level cap" in h:
+        return "skill_level_caps"
     return None
 
 
@@ -122,6 +127,49 @@ def parse_addendum_md(text: str) -> dict[str, Any]:
             elif current_section == "off_cv_facts":
                 result["off_cv_facts"].append(item)
     return result
+
+
+def parse_skill_translations(text: str) -> list[tuple[str, str]]:
+    """``## Skill translations`` bullets ``- <master CV wording> = <other language>``
+    as ``(source, translation)`` pairs.
+
+    Why: the master CV states some skills in one language only ("Conception de
+    systèmes distribués"), and the claims check matches skill names literally,
+    so an English CV couldn't list them. A pair lets an English CV write
+    "Distributed systems design" for a skill the CV states in French, and lets
+    the match check ground an English offer's "AI agents" on "agents IA". The
+    user writes the pairs; nothing is translated automatically.
+    """
+    out: list[tuple[str, str]] = []
+    for section, line in addendum_lines(text):
+        if section != "skill_translations" or not line.startswith("- ") or "=" not in line:
+            continue
+        left, right = (part.strip().strip("*`\"«» ") for part in line[2:].split("=", 1))
+        if left and right:
+            out.append((left, right))
+    return out
+
+
+def parse_skill_level_caps(text: str) -> list[str]:
+    """``## Skill level caps`` bullets: skills a match row may rate at most
+    ``transferable``, comma-separated. Text after " — " or " - " on a bullet
+    is a note, not a skill.
+
+    Why: a skill the candidate has only at a limited level (Python: reading and
+    adapting scripts) or only from training exercises (n8n, Supabase, RAG
+    agents) is in the fact base, so the grounding check let a row asking for
+    it be rated `direct`.
+    """
+    out: list[str] = []
+    for section, line in addendum_lines(text):
+        if section != "skill_level_caps" or not line.startswith("- "):
+            continue
+        names = re.split(r"\s[—–-]\s", line[2:], maxsplit=1)[0]
+        for name in names.split(","):
+            name = name.strip().strip("*`\"«» ")
+            if name and name not in out:
+                out.append(name)
+    return out
 
 
 # --- Loading ---------------------------------------------------------------

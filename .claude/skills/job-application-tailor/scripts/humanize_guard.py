@@ -22,6 +22,8 @@ Non-blocking (warnings):
 - a number from the draft is gone (the pass may cut, but should keep facts);
 - a sentence shares few words with the draft: likely new content, to be
   checked against the fact base or cut.
+- the prose is identical to the draft: the pass may have found nothing to
+  fix, or may not have run - the gate can't tell which.
 
 The comparison is with the draft, not with the CV: the claims check
 (``claims_guard.py``) is what ties the text to the sources.
@@ -144,6 +146,10 @@ def compare(name: str, draft: dict[str, Any], final: dict[str, Any]) -> tuple[li
 
     draft_prose, final_prose = "\n".join(prose(name, draft)), "\n".join(prose(name, final))
     if draft_prose == final_prose:
+        # A pass can find nothing to fix, but an untouched file is also what a
+        # skipped pass leaves, and the gate can't tell them apart.
+        warnings.append(f"{name}: the prose is identical to the draft - if the humanizer pass didn't run, "
+                        f"run it now (prompts/humanize_pass.md); if it found nothing to change, say so")
         return errors, warnings
 
     draft_numbers, final_numbers = numbers(draft_prose), numbers(final_prose)

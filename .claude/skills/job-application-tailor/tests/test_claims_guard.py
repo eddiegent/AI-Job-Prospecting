@@ -513,3 +513,116 @@ def test_figures_outside_the_prose_fields_are_ignored():
         "linkedin.json": {"variants": [{"subject_hint": "Connection request (300 max)", "message": "Bonjour."}]},
     }
     assert [e for e in check(None, FIG_MASTER, [], "", docs, {}) if e.startswith("[figure]")] == []
+
+
+# --- item 16 (2026-11-17): skills table, translations, caps, gap wording,
+# intensity scope, interview-prep figures ------------------------------------
+
+TABLE = _norm("Langages | C#, Python (lecture/adaptation de scripts)\n"
+              "Architecture | Conception de systèmes distribués")
+MASTER_WITH_BULLET = _norm("Langages | C#, Python (lecture/adaptation de scripts)\n"
+                           "Architecture | Conception de systèmes distribués\n"
+                           "Migration ponctuelle vers SharePoint en 2019")
+
+
+def run16(cv=None, letter=None, addendum="", translations=None, caps=None, offer=None):
+    docs = {"tailored_cv.json": cv or {}, "letter.json": letter or {}}
+    return check(None, MASTER_WITH_BULLET, FAMILIAR, addendum, docs, offer or {}, qualified=QUALIFIED,
+                 skills_table=TABLE, translations=translations, level_caps=caps)
+
+
+def _skills(*items):
+    return {"skills_sections": [{"heading": "Skills", "items": list(items)}]}
+
+
+def test_a_tool_named_once_in_a_bullet_is_not_a_skills_source():
+    errs = run16(cv=_skills("C#", "SharePoint"))
+    assert len(errs) == 1 and "[unsourced-skill]" in errs[0] and "SharePoint" in errs[0]
+
+
+def test_a_translated_skill_needs_the_addendum_pair():
+    assert any("[unsourced-skill]" in e for e in run16(cv=_skills("Distributed systems design")))
+    pairs = [("Conception de systèmes distribués", "Distributed systems design")]
+    assert run16(cv=_skills("Distributed systems design"), translations=pairs) == []
+
+
+def test_a_capped_skill_outside_the_skills_table_is_blocked_in_the_skills_section():
+    errs = run16(cv=_skills("Supabase"), addendum="## Hidden skills\n- Supabase en formation\n",
+                 caps=["Supabase", "Python"])
+    assert any("[capped-skill]" in e and "Supabase" in e for e in errs)
+    # Python is capped but in the table: listing it (with its qualifier) is fine
+    assert run16(cv=_skills("Python (lecture/adaptation de scripts)"), caps=["Python"]) == []
+
+
+def test_translation_and_cap_sections_are_rules_not_sources():
+    addendum = "## Skill level caps\n- Stripe — vu en formation\n## Skill translations\n- Kafka = Kafka\n"
+    errs = run16(cv=_skills("Stripe", "Kafka"), addendum=addendum)
+    assert {e.split("'")[3] for e in errs if "[unsourced-skill]" in e} == {"Stripe", "Kafka"}
+
+
+@pytest.mark.parametrize("text", [
+    "Docker, je ne l'ai pratiqué qu'en formation.",
+    "Je dois encore approfondir Docker.",
+    "I have used Docker only in training.",
+])
+def test_familiar_skill_named_as_training_only_or_to_deepen_is_a_gap(text):
+    assert not [e for e in run16(letter={"paragraphs": [text]}) if "[familiar]" in e]
+
+
+def test_familiar_skill_claimed_plainly_is_still_flagged():
+    assert any("[familiar]" in e for e in run16(letter={"paragraphs": ["J'utilise Docker en production."]}))
+
+
+def test_intensity_about_the_reader_or_the_company_is_not_a_claim():
+    letter = {"paragraphs": ["Vous êtes rattaché à Acme au quotidien ?", "Acme livre tous les jours."]}
+    assert run16(letter=letter, offer={"company_name": "Acme"}) == []
+
+
+def test_intensity_about_the_candidate_is_still_flagged_in_a_letter():
+    errs = run16(letter={"paragraphs": ["J'utilise Claude Code au quotidien."]})
+    assert any("[intensity]" in e for e in errs)
+
+
+def test_intensity_matches_a_source_in_the_other_language():
+    # MASTER has "stand-ups quotidiens"
+    docs = {"tailored_cv.json": {"experience": [{"bullets": ["Ran daily stand-ups with the business teams"]}]}}
+    assert check(None, MASTER, FAMILIAR, "", docs, {}) == []
+    docs = {"tailored_cv.json": {"experience": [{"bullets": ["Used Claude Code daily"]}]}}
+    assert any("[intensity]" in e for e in check(None, MASTER, FAMILIAR, "", docs, {}))
+
+
+def _interview_prep(tmp_path, monkeypatch, md: str, summary=None):
+    import json
+
+    from docx import Document
+
+    doc = Document()
+    doc.add_paragraph("Développeur C# senior, 17 000+ sauvegardes par jour.")
+    doc.save(str(tmp_path / "MASTER_CV.docx"))
+    monkeypatch.setenv("JOB_TAILOR_HOME", str(tmp_path))
+    prep = tmp_path / "_prep"
+    prep.mkdir()
+    (prep / "interview_prep.md").write_text(md, encoding="utf-8")
+    (prep / "raw_offer.md").write_text("Equipe de 12 personnes, 650 collaborateurs.", encoding="utf-8")
+    (prep / "match_analysis.json").write_text(json.dumps({
+        "match_summary": summary or {"overall_fit_pct": 72.4, "direct_count": 2},
+        "matches": [{"requirement": "C#", "category": "required_skill", "match_type": "direct"}]}),
+        encoding="utf-8")
+    return prep
+
+
+def test_interview_prep_figures_come_from_a_source(tmp_path, monkeypatch):
+    from scripts.claims_guard import interview_figure_errors
+
+    md = "\n".join([
+        "## Fit Score: 72% — GOOD",                                     # heading: skipped
+        "## Quick Reference", "- Folder: 2026-11-17 #164", "## Talking points",
+        "Tu as tenu 17 000+ sauvegardes par jour.",                       # master CV
+        "L'équipe compte 12 personnes, sur 650 collaborateurs.",          # offer
+        "Le score est de 72 % et passe le seuil de 70 %.",                # match analysis, threshold
+        "**« Une migration de 20 000 utilisateurs. Comment faites-vous ? »**",  # question
+        "Gérer les erreurs 429 avec un retry.",                           # HTTP code
+        "Tu as récupéré 45 000 sauvegardes.",                             # invented
+    ])
+    errs = interview_figure_errors(_interview_prep(tmp_path, monkeypatch, md))
+    assert len(errs) == 1 and "'45000'" in errs[0]

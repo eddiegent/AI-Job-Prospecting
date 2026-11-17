@@ -174,3 +174,26 @@ def test_load_bearing_ignores_a_longer_name_and_a_year_belonging_to_another_role
     ma = {"matches": [{"match_type": "transferable", "evidence":
                        "Outils presse chez JFC Informatique & Média (Kantar) (2002–2005) et M6 chez Telmar Peaktime SAS."}]}
     assert find_missing_load_bearing_roles(cv, fb, ma, cutoff_year=2005) == []
+
+
+def test_load_bearing_detected_from_a_short_name_and_the_roles_location():
+    # 2026-11-17: evidence citing "JFC (Asnières)" left the role folded.
+    fb = {"experience": [
+        {"type": "role", "company": "JFC Informatique & Média (Kantar)", "dates": "Décembre 2002 – Mars 2005",
+         "location": "Paris"},
+        {"type": "role", "company": "Oodrive SAS", "dates": "Juillet 2010 – Mars 2025", "location": "Paris"},
+        {"type": "role", "company": "JFC Informatique & Média", "dates": "Octobre 1994 – Mai 2001",
+         "location": "Asnières"},
+    ]}
+    cv = {"experience": [
+        _entry("R&D", "Oodrive SAS | Paris | Juillet 2010 – Mars 2025"),
+        _entry("Expériences antérieures", "JFC Informatique & Média (Kantar) | JFC Informatique & Média (Asnières)"),
+    ]}
+    asnieres = {"matches": [{"match_type": "direct", "evidence": "Analyse fonctionnelle chez JFC (Asnières)"}]}
+    violations = find_missing_load_bearing_roles(cv, fb, asnieres, cutoff_year=2006)
+    assert len(violations) == 1 and "Octobre 1994" in violations[0]
+    kantar = {"matches": [{"match_type": "direct", "evidence": "Interface UK chez JFC (Kantar)"}]}
+    violations = find_missing_load_bearing_roles(cv, fb, kantar, cutoff_year=2006)
+    assert len(violations) == 1 and "Décembre 2002" in violations[0]
+    plain = {"matches": [{"match_type": "direct", "evidence": "Outils presse chez JFC"}]}
+    assert find_missing_load_bearing_roles(cv, fb, plain, cutoff_year=2006) == []

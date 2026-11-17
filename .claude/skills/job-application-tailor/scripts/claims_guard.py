@@ -22,7 +22,11 @@ Two subcommands:
        except named as a gap, in a negated clause ("n8n reste à apprendre",
        "pas encore de Docker en production").
     3. Every item in a (non-familiar) skills section must appear literally in the
-       master CV or the addendum - no invented skills. Negated addendum clauses
+       master CV's skills table or the addendum - no invented skills, and no tool
+       named only once in an experience bullet. A skill the CV states in one
+       language counts in the other when the addendum's ``## Skill translations``
+       pairs them. A skill the addendum's ``## Skill level caps`` lists may be in a
+       skills section only if the master CV's skills table lists it. Negated addendum clauses
        ("never Hibernate", "no Go in this role") are not a source
        (``addendum_source_text``, negation semantics in ``scripts/_negation.py``);
        this also applies to rules 1 and 6.
@@ -74,6 +78,37 @@ INTENSITY_RE = re.compile(
     re.IGNORECASE,
 )
 FAMILIAR_HEADINGS = ("familier", "familiar")
+# Rules 2 and 6: wording that names a skill as a gap without a negation word.
+# "Je n'ai pratiqué n8n qu'en formation" asserts n8n for scripts/_negation.py
+# ("ne ... que" is restrictive), and "je dois encore approfondir n8n" has no
+# negation at all, so both were blocked although they are the honest framing.
+# Kept out of _negation.py: there a clause is evidence for the fact base, and a
+# training-only clause must not change what grounds a match.
+_GAP_ADMISSION_RE = re.compile(
+    r"\bqu'(?:en|a|au|pendant|lors)\b[^,;.]{0,30}\b(?:formation|bootcamp|exercices?|training)"
+    r"|\b(?:uniquement|seulement|only)\s+(?:en|in|during|pendant)\s+(?:formation|bootcamp|training|exercices?)"
+    r"|\b(?:in|en)\s+(?:formation|training)\s+only\b"
+    r"|\bapprofondir\b|\bto deepen\b|\bstill (?:to )?learn"
+)
+
+
+def _claim_clauses(text: str) -> list[str]:
+    """Clauses that claim what they name: affirmative (scripts/_negation.py) and
+    not a gap admission (``_GAP_ADMISSION_RE``). A short item just before a gap
+    admission is its subject and is dropped with it: "Docker, je ne l'ai
+    pratiqué qu'en formation" (as _negation.py does for "Razor, Blazor are not used")."""
+    from scripts._negation import SHORT_ITEM_WORDS, affirmative_clauses, fold
+
+    clauses = affirmative_clauses(text)
+    drop = set()
+    for i, c in enumerate(clauses):
+        if _GAP_ADMISSION_RE.search(fold(c)):
+            drop.add(i)
+            if i > 0 and len(clauses[i - 1].split()) <= SHORT_ITEM_WORDS:
+                drop.add(i - 1)
+    return [c for i, c in enumerate(clauses) if i not in drop]
+
+
 DOC_NAMES = ("tailored_cv.json", "letter.json", "short_letter.json", "linkedin.json")
 # Raw text about the role / company: its figures may be quoted back (rule 8).
 ROLE_TEXT_NAMES = ("raw_offer.md", "company_research.md", "raw_research.md")
@@ -188,8 +223,10 @@ _DATE_RES = (
     re.compile(rf"\b(?:{_MONTH_WORDS}) \d{{1,2}}(?:st|nd|rd|th)?(?!\w| \d{{3}})"),
     re.compile(r"(?<!\w)\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}(?!\w)"),
     re.compile(r"(?<!\w)\d{1,2} ?h ?\d{0,2}(?!\w)"),
-    # A call or a commute is not a claim: "20 minutes", "~50 min", "2 heures".
-    re.compile(r"(?<![\w.,])\d+ ?(?:min|mn|minutes?|heures?|hours?|hrs?)(?!\w)"),
+    # A call or a commute is not a claim: "20 minutes", "~50 min", "2 heures", "pitch 60 s".
+    re.compile(r"(?<![\w.,])\d+ ?(?:min|mn|minutes?|heures?|hours?|hrs?|secondes?|seconds?|sec|s)(?!\w)"),
+    # A decade is a date: "les annees 90", "in the 90s" (figure_text has folded accents).
+    re.compile(r"\b(?:annees|the) \d0(?:s|'s)?(?!\w)"),
 )
 # The whole of a duration range ("2 a 5 ans", "3-5 years"): rule 7's business.
 _RANGE_RE = re.compile(
@@ -347,6 +384,11 @@ def _master_cv_parts(master_path: Path) -> tuple[str, list[str], list[list[str]]
     return _norm("\n".join(parts)), familiar_items(rows), rows
 
 
+def skills_table_text(rows: list[list[str]]) -> str:
+    """Normalised text of the master CV's skills table (every table row)."""
+    return _norm("\n".join(" | ".join(cells) for cells in rows))
+
+
 def master_cv_text(master_path: Path) -> tuple[str, list[str]]:
     """Return (full normalised text, familiar-only items) from MASTER_CV.docx."""
     text, familiar, _ = _master_cv_parts(master_path)
@@ -414,6 +456,8 @@ def addendum_source_text(addendum_text: str) -> str:
 
     kept: list[str] = []
     for section, line in addendum_lines(addendum_text):
+        if section in ("skill_translations", "skill_level_caps"):
+            continue  # rules for the checks, not facts about the candidate
         if section == "hidden_skills" and line.startswith("- "):
             kept.append(line[2:])
         elif section == "skill_calibration":
@@ -439,7 +483,8 @@ def _paths(prep: Path) -> dict[str, Path]:
 
 # ------------------------------------------------------------------ merge
 def cmd_merge(prep: Path) -> int:
-    from scripts.user_customization import parse_addendum_md, merge_addendum_into_fact_base
+    from scripts.user_customization import (merge_addendum_into_fact_base, parse_addendum_md,
+                                            parse_skill_level_caps, parse_skill_translations)
 
     p = _paths(prep)
     fb = json.loads((prep / "cv_fact_base.json").read_text(encoding="utf-8"))
@@ -450,11 +495,18 @@ def cmd_merge(prep: Path) -> int:
         merged["addendum_skill_calibration"] = cal
     _, familiar = master_cv_text(p["master"])
     merged["familiar_only_skills"] = familiar
+    translations = parse_skill_translations(add_text)
+    if translations:
+        merged["skill_translations"] = [{"source": a, "translation": b} for a, b in translations]
+    caps = parse_skill_level_caps(add_text)
+    if caps:
+        merged["skill_level_caps"] = caps
     out = prep / "cv_fact_base_merged.json"
     out.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
     added = sum(len(v) for v in parse_addendum_md(add_text).get("additional_experience", {}).values())
     print(f"OK - wrote {out.name}: {added} addendum bullets merged, {len(cal)} calibration notes, "
-          f"{len(familiar)} familiar-only skills.")
+          f"{len(familiar)} familiar-only skills, {len(translations)} skill translations, "
+          f"{len(caps)} level caps.")
     return 0
 
 
@@ -520,27 +572,98 @@ def check_earlier_line(cv: dict[str, Any], name: str = "tailored_cv.json") -> li
     return errs
 
 
+_SECOND_PERSON_RE = re.compile(r"\b(?:vous|votre|vos|you|your)\b")
+_WORD_RE = re.compile(r"[a-z0-9][a-z0-9+#.-]{3,}")
+_INTENSITY_STOPWORDS = frozenset(
+    "avec dans pour mais plus tous tout toute toutes leur leurs cette sont etait with from that this "
+    "their have been were your vous votre nous".split())
+
+
+def _about_candidate(sentence_norm: str, company: str) -> bool:
+    """False for a letter / LinkedIn sentence about the reader or the company,
+    with no first person: its intensity word describes the role, not a claim."""
+    if _FIRST_PERSON_RE.search(sentence_norm):
+        return True
+    return not (_SECOND_PERSON_RE.search(sentence_norm) or (company and company in sentence_norm))
+
+
+def _content_words(text_norm: str) -> set[str]:
+    return {w.strip(".-") for w in _WORD_RE.findall(text_norm)} - _INTENSITY_STOPWORDS
+
+
+def _intensity_sourced(sentence_norm: str, source: str) -> bool:
+    """An intensity word the source also uses about the same thing, in either
+    language: "daily stand-ups" for a source's "stand-ups quotidiens". The
+    output's words within four of its intensity word must share one with the
+    words within four of an intensity word in the source."""
+    def windows(text: str) -> list[set[str]]:
+        out = []
+        for m in INTENSITY_RE.finditer(text):
+            before = text[:m.start()].split()[-4:]
+            after = text[m.end():].split()[:4]
+            out.append(_content_words(" ".join(before + after)))
+        return out
+
+    mine = windows(sentence_norm)
+    theirs = windows(source)
+    return any(w & t for w in mine for t in theirs)
+
+
+def translated_text(text_norm: str, translations: list[tuple[str, str]]) -> str:
+    """The other-language wording of every translated skill ``text_norm`` names
+    (addendum ``## Skill translations``), one per line - to append to a source."""
+    out = []
+    for a, b in translations:
+        for have, add in ((a, b), (b, a)):
+            if _norm(have) and _tok_in(have, text_norm):
+                out.append(_norm(add))
+    return "\n".join(out)
+
+
 def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
           docs: dict[str, Any], offer: dict[str, Any],
           qualified: dict[str, str] | None = None,
           profile: dict[str, Any] | None = None,
-          role_text: str = "") -> list[str]:
+          role_text: str = "",
+          skills_table: str | None = None,
+          translations: list[tuple[str, str]] | None = None,
+          level_caps: list[str] | None = None) -> list[str]:
     """Run rules 1-8. ``qualified`` = master CV ``Name -> qualifier`` map (rule 4);
     ``profile`` = company_profile.json, used by rule 6 only when ``offer`` is empty;
     ``role_text`` = raw offer / company research text, whose figures may be quoted
-    back (rule 8)."""
+    back (rule 8); ``skills_table`` = the master CV's skills table text, the only
+    master CV text a skills item may come from (rule 3; default: the whole CV);
+    ``translations`` = the addendum's ``(wording, other language)`` skill pairs;
+    ``level_caps`` = the addendum's capped skills, which a skills section may list
+    only when the master CV's skills table does (rule 3)."""
     errors: list[str] = []
     qualified_norm = {_norm(k): (k, v) for k, v in (qualified or {}).items()}
-    source = master_text + "\n" + addendum_source_text(addendum_text)
+    pairs = list(translations or [])
+    added = addendum_source_text(addendum_text)
+    source = master_text + "\n" + added
+    source += "\n" + translated_text(source, pairs)
+    # Rule 3 reads the skills table and the addendum only: "Do not add skills that
+    # are absent from the master CV's skills table (e.g. a tool named once in an
+    # old bullet) unless the addendum states them" (prompts/cv_rules.md).
+    skill_source = (master_text if skills_table is None else skills_table) + "\n" + added
+    skill_source += "\n" + translated_text(skill_source, pairs)
 
+    company = _norm((offer or {}).get("company_name", "") or (profile or {}).get("company_name", "") or "")
     for name, doc in docs.items():
         for s in _strings(doc):
-            m = INTENSITY_RE.search(s)
-            if m:
-                ctx = _norm(" ".join(s[:m.end()].split()[-2:]))
+            for sentence in re.split(r"(?<=[.!?])\s+", s):
+                m = INTENSITY_RE.search(sentence)
+                if not m:
+                    continue
+                if name != "tailored_cv.json" and not _about_candidate(_norm(sentence), company):
+                    continue  # "vous êtes rattaché à Acme au quotidien" describes the role
+                ctx = _norm(" ".join(sentence[:m.end()].split()[-2:]))
                 if ctx and ctx in source:  # phrase (with its noun) already in master/addendum
                     continue
-                errors.append(f"[intensity] {name}: '{m.group(0)}' is not supported by any source: {s[:110]!r}")
+                if _intensity_sourced(_norm(sentence), source):
+                    continue
+                errors.append(f"[intensity] {name}: '{m.group(0)}' is not supported by any source: "
+                              f"{sentence[:110]!r}")
 
     sourced = source_durations(source)
     # Durations the offer / company states ("mission de 24 mois", "5 ans
@@ -604,8 +727,16 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
                     if _norm(item) == _norm(f) or _norm(f) in _norm(item).split(" / "):
                         errors.append(f"[familiar] {cvn}: skills '{sec['heading']}': '{item}' is familiar-only "
                                       f"in the master CV; move it under the familiar heading ('Familier / à approfondir')")
-                if not _tok_in(re.sub(r"\s*\(.*?\)", "", item), source):
-                    errors.append(f"[unsourced-skill] {cvn}: skills '{sec['heading']}': '{item}' not found in master CV or addendum")
+                table = master_text if skills_table is None else skills_table
+                for cap in level_caps or []:
+                    if len(cap) > 2 and _tok_in(cap, _norm(item)) and not _tok_in(cap, table):
+                        errors.append(f"[capped-skill] {cvn}: skills '{sec['heading']}': '{item}' - '{cap}' is "
+                                      f"capped in the addendum ('## Skill level caps') and not in the master "
+                                      f"CV's skills table; mention it in a bullet or a letter instead")
+                if not _tok_in(re.sub(r"\s*\(.*?\)", "", item), skill_source):
+                    errors.append(f"[unsourced-skill] {cvn}: skills '{sec['heading']}': '{item}' is in neither "
+                                  f"the master CV's skills table nor the addendum (a skill the CV states in "
+                                  f"another language needs a pair under the addendum's '## Skill translations')")
             hit = qualified_norm.get(_norm(item))
             if hit:
                 errors.append(f"[calibration] {cvn}: '{hit[0]}' must keep the master qualifier '({hit[1]})'")
@@ -622,8 +753,9 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
     from scripts._negation import affirmative_clauses
 
     for where, text in narrative:
-        # a mention inside a negated clause admits the gap ("n8n reste à apprendre")
-        claimed = _norm(" | ".join(affirmative_clauses(text)))
+        # a mention inside a negated clause admits the gap ("n8n reste à apprendre",
+        # "n8n, je ne l'ai pratiqué qu'en formation")
+        claimed = _norm(" | ".join(_claim_clauses(text)))
         for f in familiar:
             if len(f) > 2 and _tok_in(f, claimed):
                 errors.append(f"[familiar] {where}: mentions familiar-only skill '{f}' - keep it out of "
@@ -641,7 +773,7 @@ def check(prep: Path, master_text: str, familiar: list[str], addendum_text: str,
             for text in _strings(d):
                 # a mention inside a negated clause admits the gap ("no Terraform yet")
                 flagged: set[str] = set()
-                for clause in affirmative_clauses(text):
+                for clause in _claim_clauses(text):
                     cl = _norm(clause)
                     for tech in techs:
                         if tech not in flagged and _tok_in(tech, cl):
@@ -682,8 +814,93 @@ def run_check(prep: Path, master: Path | None = None,
         profile = json.loads(profile_f.read_text(encoding="utf-8"))
     role_text = " ".join(_norm((prep / n).read_text(encoding="utf-8"))
                          for n in ROLE_TEXT_NAMES if (prep / n).exists())
+    from scripts.user_customization import parse_skill_level_caps, parse_skill_translations
+
     return check(prep, master_text, familiar, add_text, docs, offer,
-                 qualified=qualified_skills_from_rows(rows), profile=profile, role_text=role_text)
+                 qualified=qualified_skills_from_rows(rows), profile=profile, role_text=role_text,
+                 skills_table=skills_table_text(rows), translations=parse_skill_translations(add_text),
+                 level_caps=parse_skill_level_caps(add_text))
+
+
+# ------------------------------------------------------------------ interview prep
+_QUICK_REF_BLOCK = re.compile(
+    r"(?ims)^#{1,3}\s*(?:quick reference|r[ee\u00e9]f[ee\u00e9]rences? rapides?).*?(?=^#{1,3}\s|\Z)")
+_MD_PREFIX = re.compile(r"^\s*(?:#+|[-*+]|\d+[.)]|>)\s*")
+_PRODUCT_NUMBER = re.compile(r"\b(?:microsoft|office|windows|dynamics)\s*$")
+_HTTP_CODE = re.compile(r"\b(?:http|erreurs?|errors?|codes?|status|statut|retry|rate)\b")
+
+
+def interview_figure_errors(prep: Path, master: Path | None = None) -> list[str]:
+    """Rule 8 (figures) on ``interview_prep.md``.
+
+    The prep has no schema and no claims check, so a figure it invents ("around
+    1 PB recovered" moved onto the wrong story, in an old Zeffy prep) reached
+    the candidate's interview notes unchecked. Not claims, and skipped: the
+    Quick Reference block (URLs, dates, folder), questions (the interviewer's
+    hypotheticals: "une migration de 20 000 utilisateurs ?"), negated clauses,
+    HTTP status codes, and the pack's own score figures (fit %, row counts,
+    fit-level thresholds). Figures from the offer, the research and the match
+    analysis may be quoted back; the prep speaks about the candidate in the
+    second or third person, so the first-person test of the letters doesn't apply.
+    """
+    from scripts._negation import affirmative_clauses
+    from scripts.common import _load_fit_levels
+
+    md_path = prep / "interview_prep.md"
+    if not md_path.exists():
+        return []
+    p = _paths(prep)
+    if master is not None:
+        p["master"] = master
+    master_text, _, _ = _master_cv_parts(p["master"])
+    add_text = p["addendum"].read_text(encoding="utf-8") if p["addendum"].exists() else ""
+    source = master_text + "\n" + addendum_source_text(add_text)
+    stated = dict(zip(("num", "pct"), stated_numbers(figure_text(source))))
+
+    role_parts = [_norm((prep / n).read_text(encoding="utf-8"))
+                  for n in ROLE_TEXT_NAMES + ("job_offer_analysis.json",) if (prep / n).exists()]
+    own: set[str] = {str(v) for v in _load_fit_levels().values()}
+    ma = prep / "match_analysis.json"
+    if ma.exists():
+        analysis = json.loads(ma.read_text(encoding="utf-8"))
+        summary = analysis.get("match_summary") or {}
+        from scripts.common import recount_match_summary
+
+        counts = list(summary.values()) + list(recount_match_summary(analysis.get("matches") or []).values())
+        for v in counts:
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                own |= {str(round(v)), str(int(v)) if float(v).is_integer() else str(v)}
+        own.add(str(len(analysis.get("matches") or [])))
+    role = figure_text(" ".join(role_parts))
+    role_stated = dict(zip(("num", "pct"), stated_numbers(role, every_digit_run=True)))
+
+    md = _QUICK_REF_BLOCK.sub("", md_path.read_text(encoding="utf-8"))
+    md = re.sub(r"https?://\S+", " ", md)
+    errors: list[str] = []
+    for line in md.splitlines():
+        if line.lstrip().startswith("#"):
+            continue  # headings: section numbers, and the fit banner `gate interview` checks itself
+        line = _MD_PREFIX.sub("", line)
+        if re.search(r"\?[\s»\"”*_)]*$", line):
+            continue  # a question line, often several sentences: a hypothetical, not a claim
+        for sentence in re.split(r"(?<=[.!?])\s+", figure_text(_norm(line))):
+            if "?" in sentence:
+                continue
+            for clause in affirmative_clauses(sentence):
+                for value, kind, before in figures(clause):
+                    if value in stated[kind] or value in role_stated[kind] or value in own:
+                        continue
+                    if value in ("0", "1") or _PRODUCT_NUMBER.search(before):
+                        continue  # "de 0 a 1"; "Microsoft 365", "Windows 11" name a product
+                    if kind == "num" and len(value) == 3 and value[0] in "12345" and _HTTP_CODE.search(clause):
+                        continue
+                    if _named_in_role(value, before, role):
+                        continue
+                    shown = value + (" %" if kind == "pct" else "")
+                    errors.append(f"[figure] interview_prep.md: '{shown}' - neither the master CV, the addendum, "
+                                  f"the offer, the research nor the match analysis states this figure: "
+                                  f"{sentence[:90]!r}")
+    return errors
 
 
 def cmd_check(prep: Path) -> int:

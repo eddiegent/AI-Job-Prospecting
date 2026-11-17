@@ -338,6 +338,38 @@ def _check_absorbed_directs(
     return out
 
 
+def _pairs(translations: list) -> list[tuple[str, str]]:
+    return [(t.get("source", ""), t.get("translation", "")) for t in translations
+            if isinstance(t, dict) and t.get("source") and t.get("translation")]
+
+
+def _with_translations(prose: str, vocab: set[str], translations: list) -> str:
+    """The candidate prose plus the other-language wording of every skill the
+    fact base states in one language (addendum ``## Skill translations``):
+    an English offer's "AI agents" grounds on "agents IA avec RAG"."""
+    extra = []
+    for a, b in _pairs(translations):
+        for have, add in ((a, b), (b, a)):
+            c = canonical(_dot_norm(have))
+            if c and (candidate_has(c, vocab, prose) or tech_in_text(c, prose)):
+                extra.append(add.lower())
+    return prose + ("\n" + "\n".join(extra) if extra else "")
+
+
+def _capped(fact_base: dict) -> list[str]:
+    """Skills a row may rate at most `transferable`: the master CV's
+    familiar-only skills plus the addendum's level caps, each with its
+    translation when the addendum gives one."""
+    names = list(fact_base.get("familiar_only_skills") or []) + list(fact_base.get("skill_level_caps") or [])
+    lowered = {n.lower() for n in names}
+    for a, b in _pairs(fact_base.get("skill_translations") or []):
+        if a.lower() in lowered and b.lower() not in lowered:
+            names.append(b)
+        elif b.lower() in lowered and a.lower() not in lowered:
+            names.append(a)
+    return names
+
+
 def check(
     match_file: Path,
     offer_file: Path,
@@ -355,8 +387,11 @@ def check(
 
     tech_only, wider = _extract_universes(offer)
     vocab, prose = extract_candidate_vocab(fact_base)
+    prose = _with_translations(prose, vocab, fact_base.get("skill_translations") or [])
     matches = match_analysis.get("matches", []) or []
-    familiar = fact_base.get("familiar_only_skills") or []
+    # Familiar-only skills (master CV) and the addendum's level caps are both
+    # at most `transferable`, and neither needs a `gap` row.
+    familiar = _capped(fact_base)
     alternatives = [_alternatives(m.get("requirement", ""), wider, vocab, prose, _familiar_canon(familiar))
                     for m in matches]
     covered = [c for c, _ in alternatives]
@@ -384,7 +419,8 @@ def check(
         joined = ", ".join(repr(t) for t in hits)
         errors.append(
             f"  - matches[{i}] '{requirement}' marked direct but {joined} is familiar-only "
-            "in the master CV ('Familier / a approfondir') - at most transferable"
+            "in the master CV ('Familier / a approfondir') or capped in the addendum's "
+            "'Skill level caps' - at most transferable"
         )
 
     warnings: list[str] = []
