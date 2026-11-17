@@ -7,6 +7,15 @@ within each section.
 
 ## Unreleased
 
+- **Comparison-run fixes: one row per fact, example lists, read-only audits
+  (2026-11-17)** — rerunning the last five packs with all of the above found
+  four problems, now fixed. A technology a skill item already names ("Jira"
+  next to "Jira, Confluence") no longer gets its own match row, so one fact
+  isn't scored twice. Lists marked "etc." / "e.g." / "such as" / "comme" /
+  "tels que" count as "one of these", like "ou" / "or". `gate --check` audits
+  a pack without writing to it (`gate match` used to rewrite the file it
+  checked). `gate interview` counts required skills missing from the match
+  rows, so its result no longer depends on which gate ran first.
 - **Cold flow: dossier gate, hook check, shared evidence rules (2026-11-17)** —
   `gate dossier` blocks an incomplete company dossier (length, the nine
   sections, Quick Reference / Why you / Research gaps, source links) and warns

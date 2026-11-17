@@ -1,6 +1,6 @@
 # Skill Review — November 2026
 
-> **Status: items 1–7 and 9 shipped 2026-11-17 on branch `gate-gaps-and-bootcamp-rule`; 8 and 10–14 open.**
+> **Status: items 1–7, 9 and 15 shipped 2026-11-17 on branch `gate-gaps-and-bootcamp-rule`; 8, 10–14 and 16 open.**
 > Written 2026-11-17 from a review of the five job skills, after the humanizer pass was added and three
 > packs were rerun with it. Each item records what was found, what shipped and what is left. Details of
 > each change are in `.claude/skills/job-application-tailor/CHANGELOG.md`.
@@ -29,6 +29,12 @@
   never names (14 of 102 packs since June had one) and warns on an English offer analysed as French.
   (`ef819a5`)
 - [x] **9. Evidence rules in one file.** `prompts/evidence_discipline.md`. (`5948122`)
+- [x] **15. Comparison-run fixes.** The last five packs (#164–#168) rerun on scratch copies with all of
+  the above found four problems, fixed: a technology a skill item already names no longer gets its own
+  row (it had moved #164 from 67% to 71%); "etc." / "e.g." / "such as" / "comme" lists count as "one of
+  these" (#168 fell under 50% because of it); `gate --check` audits without writing (`gate match` rewrote
+  the packs it inspected); `gate interview` counts required gaps from the rows, not from a field only
+  `gate match` writes. (uncommitted)
 
 ## Open
 
@@ -43,6 +49,19 @@
 - [ ] **13. Small bugs.** `doctor` reports the latest backup by name (a July snapshot) instead of by date;
   interview prep stamps "Applied on" with the generation date; leftover files (Word `.tmp`) survive a
   rebuild; the two test suites can't share one pytest process.
+- [ ] **16. Gate gaps found by the comparison runs** (old packs shipped these with every gate passing):
+  - an English CV can't use a skill the master CV states only in French ("Distributed systems design" is
+    blocked: `claims_guard.py` matches skill names literally) — an FR↔EN skill map would fix it;
+  - `gate cv` doesn't check that a skills-table item is in the master table (WCF, Scrum and "Revues de
+    code" passed in #164);
+  - no claims check on the interview prep, and wording claims slip through everywhere ("disponible
+    rapidement" / "I can start now" in three packs, a CV bullet merging two ROCC facts);
+  - "n8n qu'en formation" is blocked as a claim (`_negation.py` reads "ne…que" as an assertion);
+  - the addendum calls training-only tools "transferable", the gate rates a missing one `gap`;
+  - Criterion A (a load-bearing pre-cutoff role kept in full) is not enforced (#165 folded JFC);
+  - the humanizer guard can't tell a pass that never ran from one that changed nothing;
+  - a rerun stopped under 50% renames the folder `low-` but leaves the old deliverables in it;
+  - noisy soft-skill warnings (5–9 per run), "R&D" split on "&".
 - [ ] **14. Merge and release.** The branch carries the 2026-11-02 gate-gap fixes and everything above;
   merge to `main`, bump the version (README, `docs/index.html`, plugin manifest) and tag.
 

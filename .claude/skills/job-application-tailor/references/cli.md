@@ -229,7 +229,7 @@ Run all checks for one pipeline stage (schema, grounding, labels, claims) in one
 **Signature:**
 
 ```
-gate <stage> <folder> [--cv <cv>] [--draft]
+gate <stage> <folder> [--cv <cv>] [--draft] [--check]
 ```
 
 | Arg | Kind | Description |
@@ -238,6 +238,7 @@ gate <stage> <folder> [--cv <cv>] [--draft]
 | `folder` | positional | Run output folder (or its _prep/ subfolder) |
 | `--cv` | optional | Master CV path (default: <user-data-dir>/MASTER_CV.docx) |
 | `--draft` | flag | letters / linkedin only: this is the draft, before the humanizer pass - run the checks and, if they pass, save the snapshot the later run compares with |
+| `--check` | flag | audit only: change no file. `match` then reports a stale match_summary as a failure instead of rewriting it - use it to inspect an archived pack |
 
 ### `get`
 

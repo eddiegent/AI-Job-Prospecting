@@ -78,13 +78,19 @@ def _extract_universes(offer: dict) -> tuple[set[str], set[str]]:
 # MySQL", "Supabase ou alternatives". Clauses are split on "et" / "and" / ";"
 # first, so "C# ou Java, et Kubernetes" still requires Kubernetes.
 _CLAUSE = re.compile(r";|\s+et\s+|\s+and\s+", re.IGNORECASE)
-_ALTERNATIVES = re.compile(r"\s(?:ou|or)\s|[ée]quivalent", re.IGNORECASE)
+# A list of examples is one too: "Make, Zapier, etc.", "(e.g. Make, Zapier)",
+# "outils comme Make ou Zapier", "tools such as Make". Before 2026-11-17 only
+# "or" / "équivalent" counted, so "(Claude Cowork/skills, n8n, Make, Zapier,
+# etc.)" required all four and a grounded Make could not make the row direct.
+_EXAMPLES = r"\betc\b|\be\.\s?g\.|\bsuch\s+as\b|\bcomme\b|\btel(?:le)?s?\s+que\b|\bpar\s+ex(?:emple\b|\.)"
+_ALTERNATIVES = re.compile(r"\s(?:ou|or)\s|[ée]quivalent|" + _EXAMPLES, re.IGNORECASE)
 _OR = re.compile(r"\s+(?:ou|or)\s+", re.IGNORECASE)
 # An explicit marker accepts tools the offer does not name.
-_EQUIVALENTS = re.compile(r"[ée]quivalent|alternative|similaire|similar", re.IGNORECASE)
-# "équivalents" / "alternatives" name no skill: never a token to ground.
+_EQUIVALENTS = re.compile(r"[ée]quivalent|alternative|similaire|similar|" + _EXAMPLES, re.IGNORECASE)
+# "équivalents" / "alternatives" / "etc." name no skill: never a token to ground.
 _ALTERNATIVES_MARKER = re.compile(
-    r"^(?:d'|des |other |autres? )?(?:[ée]quivalents?|similaires?|similar|alternatives?|autres?|outils similaires)$",
+    r"^(?:d'|des |other |autres? )?(?:[ée]quivalents?|similaires?|similar|alternatives?|autres?|outils similaires)$"
+    r"|^etc\.?$|^\.\.\.$|^…$",
     re.IGNORECASE,
 )
 
@@ -99,7 +105,8 @@ _LEAD_IN = re.compile(
     r"(?:interest\s+(?:in|for)|experience\s+(?:in|with|of)|knowledge\s+of|understanding\s+of|"
     r"familiarity\s+with|exposure\s+to|expertise\s+in|"
     r"int[ée]r[êe]t\s+pour|exp[ée]rience\s+(?:en|de|du|des|avec|dans|sur)|"
-    r"connaissances?\s+(?:en|de|du|des)|ma[îi]trise\s+(?:de|du|des)|app[ée]tence\s+pour)\s+",
+    r"connaissances?\s+(?:en|de|du|des)|ma[îi]trise\s+(?:de|du|des)|app[ée]tence\s+pour|"
+    r"e\.\s?g\.|such\s+as|comme|tel(?:le)?s?\s+que|par\s+ex(?:emple|\.))\s+",
     re.IGNORECASE,
 )
 
@@ -267,19 +274,23 @@ def _check_unrowed_tech_gaps(
     counting as a gap, which inflates the fit score. Returns (technology, rows
     that mention it) - an empty list means no row assesses it at all. Skipped:
     technologies the fact base has, familiar-only ones (those are at most
-    transferable, not gaps), and members of an alternatives list ("N8N, Make
-    ou Zapier") - another member stands in for them.
+    transferable, not gaps), members of an alternatives list ("N8N, Make
+    ou Zapier") - another member stands in for them - and technologies a
+    skill item already names (scripts/match_rows.py gives them no row: the
+    skill row rates them, and the direct check keeps it off `direct`).
     """
+    from scripts.match_rows import absorbed_technologies, row_key
+
+    absorbed = absorbed_technologies(offer)
     out: list[tuple[str, list[int]]] = []
     seen: set[str] = set()
-    for tok in (t for item in offer.get("technologies", []) or [] for t in _tokens(item)):
+    items = [i for i in offer.get("technologies", []) or [] if isinstance(i, str) and row_key(i) not in absorbed]
+    for tok in (t for item in items for t in _tokens(item)):
         canon = canonical(tok)
         if len(canon) < 2 or canon in seen:
             continue
         seen.add(canon)
-        # "REST" is held when the fact base lists "REST APIs"; "Claude" when it lists "Claude Code".
-        held = candidate_has(canon, vocab, prose) or any(tech_in_text(canon, v) for v in vocab)
-        if held or _is_familiar(canon, familiar):
+        if _held(canon, vocab, prose) or _is_familiar(canon, familiar):
             continue
         rows = [i for i, m in enumerate(matches) if tech_in_text(canon, _dot_norm(m.get("requirement", "")))]
         if any(canon in c | o for i in rows for c, o in [alternatives[i]]):
@@ -287,6 +298,43 @@ def _check_unrowed_tech_gaps(
         if any(matches[i].get("match_type") == "gap" for i in rows):
             continue
         out.append((tok.strip(), rows))
+    return out
+
+
+def _held(canon: str, vocab: set[str], prose: str) -> bool:
+    # "REST" is held when the fact base lists "REST APIs"; "Claude" when it lists "Claude Code".
+    return candidate_has(canon, vocab, prose) or any(tech_in_text(canon, v) for v in vocab)
+
+
+def _check_absorbed_directs(
+    offer: dict,
+    matches: list[dict],
+    alternatives: list[tuple[set[str], set[str]]],
+    vocab: set[str],
+    prose: str,
+) -> list[tuple[int, str, list[str]]]:
+    """Directs naming an offer technology the candidate lacks, when that
+    technology has no row of its own (scripts/match_rows.py: a skill item
+    names it). The token check reads "Bases de données avec Supabase" as one
+    phrase and never sees Supabase; the technology's own gap row used to
+    carry it. A member of a satisfied alternatives list is exempt."""
+    from scripts.match_rows import absorbed_technologies, row_key
+
+    absorbed = absorbed_technologies(offer)
+    techs = [canonical(t) for item in offer.get("technologies", []) or []
+             if isinstance(item, str) and row_key(item) in absorbed for t in _tokens(item)]
+    out: list[tuple[int, str, list[str]]] = []
+    for i, m in enumerate(matches):
+        if m.get("match_type") != "direct":
+            continue
+        requirement = m.get("requirement", "")
+        text = _dot_norm(requirement)
+        optional = alternatives[i][0] | alternatives[i][1]
+        missing = sorted({t for t in techs if len(t) >= 2 and tech_in_text(t, text)
+                          and not _held(t, vocab, prose)
+                          and not any(t == o or tech_in_text(t, o) for o in optional)})
+        if missing:
+            out.append((i, requirement, missing))
     return out
 
 
@@ -322,6 +370,15 @@ def check(
         errors.append(
             f"  - matches[{i}] '{requirement}' marked direct but tech token(s) {joined} "
             "are listed in the job offer and absent from cv_fact_base"
+        )
+    flagged = {i for i, _, _ in direct_errors}
+    for i, requirement, missing in _check_absorbed_directs(offer, matches, alternatives, vocab, prose):
+        if i in flagged:  # the token check already reported this row
+            continue
+        joined = ", ".join(repr(t) for t in missing)
+        errors.append(
+            f"  - matches[{i}] '{requirement}' marked direct but names {joined}, an offer technology "
+            "absent from cv_fact_base - at most transferable"
         )
     for i, requirement, hits in _check_familiar_directs(matches, familiar, covered):
         joined = ", ".join(repr(t) for t in hits)

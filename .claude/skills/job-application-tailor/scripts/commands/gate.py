@@ -50,6 +50,8 @@ class Result:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     note: str = ""
+    # A failure that leaves the later checks meaningful: don't stop the stage on it.
+    keep_going: bool = False
 
 
 @dataclass
@@ -57,6 +59,7 @@ class Ctx:
     prep: Path
     cv: Path
     draft: bool = False  # `--draft`: the run made before the humanizer pass
+    check: bool = False  # `--check`: audit only - no check may write a file
 
     def path(self, name: str) -> Path:
         return self.prep / name
@@ -148,6 +151,19 @@ def _recount_match(ctx: Ctx) -> Result:
     current = data.get("match_summary")
     if current == correct:
         r.note = "unchanged"
+    elif ctx.check:
+        # Auditing an archived pack must not change it (the 2026-11-17 comparison
+        # runs found the recount rewriting old packs they only meant to inspect).
+        # The rows don't depend on the summary, so the later checks still run.
+        r.keep_going = True
+        stored = current if isinstance(current, dict) else {}
+        added = ("required_gap_count", "required_gaps")
+        if all(stored.get(k) == v for k, v in correct.items() if k not in added) and                 not any(k in stored for k in added):
+            r.note = (f"counts match; {', '.join(added)} not stored (analysed before they existed - "
+                      "a run without --check adds them)")
+        else:
+            r.errors.append(f"match_summary is stale: stored {current}, matches[] give {correct} "
+                            "(--check: file not changed; run without --check to fix it)")
     else:
         data["match_summary"] = correct
         with target.open("w", encoding="utf-8", newline="\n") as f:
@@ -367,21 +383,26 @@ def _interview_prep(ctx: Ctx) -> Result:
     if not banner:
         r.errors.append("no fit score banner ('## Fit Score: XX% — LEVEL')")
     else:
+        from scripts.common import recount_match_summary
+
         stated = float(banner.group(1).replace(",", "."))
-        summary = json.loads(ctx.path("match_analysis.json").read_text(encoding="utf-8")).get("match_summary") or {}
+        analysis = json.loads(ctx.path("match_analysis.json").read_text(encoding="utf-8"))
+        summary = analysis.get("match_summary") or {}
         actual = summary.get("overall_fit_pct")
         if actual is not None and abs(float(actual) - stated) >= FIT_BANNER_TOLERANCE:
             r.errors.append(f"fit score banner says {banner.group(1)}% but match_analysis.json says "
                             f"{actual}% - the prep is stale or from another run")
-        expected_gaps = summary.get("required_gap_count")
-        if expected_gaps is not None:  # packs analysed before 2026-11-17 have no count
-            line = _REQUIRED_GAPS_LINE.search(text)
-            if not line:
-                r.errors.append(f"no 'Required skills missing: {expected_gaps}' line under the fit banner "
-                                "(French: 'Compétences requises manquantes')")
-            elif int(line.group(1)) != expected_gaps:
-                r.errors.append(f"banner says {line.group(1)} required skills missing but match_analysis.json "
-                                f"says {expected_gaps} - the prep is stale or from another run")
+        # Counted from matches[], not read from match_summary: the stored count
+        # exists only once `gate match` has recounted the file, so reading it made
+        # this check pass or fail on the same prep depending on which gate ran first.
+        expected_gaps = recount_match_summary(analysis.get("matches") or [])["required_gap_count"]
+        line = _REQUIRED_GAPS_LINE.search(text)
+        if not line:
+            r.errors.append(f"no 'Required skills missing: {expected_gaps}' line under the fit banner "
+                            "(French: 'Compétences requises manquantes')")
+        elif int(line.group(1)) != expected_gaps:
+            r.errors.append(f"banner says {line.group(1)} required skills missing but match_analysis.json "
+                            f"says {expected_gaps} - the prep is stale or from another run")
     return r
 
 
@@ -606,7 +627,7 @@ def run_stage(stage: str, ctx: Ctx) -> int:
             print(f"[WARN] {r.name} (non-blocking)")
             for w in r.warnings:
                 print(f"    - {w}")
-        if r.errors and stop_on_failure:
+        if r.errors and stop_on_failure and not r.keep_going:
             skipped = len(STAGES[stage]) - ran
             if skipped:
                 print(f"(stopped: {skipped} later check(s) skipped until this passes)")
@@ -624,13 +645,17 @@ def cmd_gate(db, args: argparse.Namespace) -> None:
     prep = _prep_dir(args.folder)  # exits 2 when there is no _prep/
     cv = Path(args.cv) if args.cv else resolve_user_data_dir() / "MASTER_CV.docx"
     draft = bool(getattr(args, "draft", False))
+    check = bool(getattr(args, "check", False))
     if draft and args.stage not in HUMANIZED_STAGES:
         print(f"--draft only applies to the humanized stages: {', '.join(HUMANIZED_STAGES)}", file=sys.stderr)
+        sys.exit(2)
+    if draft and check:
+        print("--draft saves a snapshot and --check writes nothing - use one or the other", file=sys.stderr)
         sys.exit(2)
     if draft:
         # a snapshot of an older draft must not outlive a new draft that fails
         clear_draft_snapshot(args.stage, prep)
-    code = run_stage(args.stage, Ctx(prep=prep, cv=cv, draft=draft))
+    code = run_stage(args.stage, Ctx(prep=prep, cv=cv, draft=draft, check=check))
     if draft and code == 0:
         copied = save_draft_snapshot(args.stage, prep)
         print(f"draft snapshot saved ({', '.join(copied)}) - run the humanizer pass, then this gate without --draft")
@@ -642,7 +667,7 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "Run every deterministic check for one pipeline stage. Stages: "
         "factbase (schema + verify vs master CV), offer (schema + every technology named in "
         "raw_offer.md; warns when an English text is analysed as French), "
-        "match (recount in place + schema + one row per offer item + grounding), "
+        "match (recount in place, or a failure under --check + schema + one row per offer item + grounding), "
         "cv (schema + forbidden labels + timeline: every role ending in or after "
         "the compression cutoff is a full entry, no training in experience, a dateless "
         "earlier-experience line + claims on tailored_cv.json), letters "
@@ -650,8 +675,8 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
         "on those two + humanizer guard), linkedin (schema + "
         "message lengths: connection request <= 300, direct message <= 700 + "
         "claims on linkedin.json + humanizer guard), interview (interview_prep.md is complete: "
-        "length, sections, Quick Reference, fit banner and required-skills-missing count "
-        "matching match_analysis.json), "
+        "length, sections, Quick Reference, fit banner matching match_analysis.json, and the "
+        "required-skills-missing count its matches give), "
         "dossier (cold: company_dossier.md is complete - length, 9 sections, Quick Reference, "
         "Why you, Research gaps, source links - plus a warning when the letter's opening and the first "
         "connection request share few words), "
@@ -673,6 +698,9 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
     p.add_argument("--draft", action="store_true",
                    help="letters / linkedin only: this is the draft, before the humanizer pass - "
                         "run the checks and, if they pass, save the snapshot the later run compares with")
+    p.add_argument("--check", action="store_true",
+                   help="audit only: change no file. `match` then reports a stale match_summary as a "
+                        "failure instead of rewriting it - use it to inspect an archived pack")
 
 
 COMMANDS = [

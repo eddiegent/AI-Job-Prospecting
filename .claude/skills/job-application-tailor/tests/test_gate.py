@@ -106,6 +106,59 @@ def test_gate_match_recounts_in_place_and_passes(tmp_path, home, capsys):
     assert "[PASS] recount match_summary: unchanged" in out
 
 
+def _gate_check(stage: str, folder: Path, capsys, **extra) -> tuple[int, str]:
+    with pytest.raises(SystemExit) as e:
+        cmd_gate(None, Namespace(stage=stage, folder=str(folder), cv=None, check=True, **extra))
+    return e.value.code, capsys.readouterr().out
+
+
+def test_gate_match_check_reports_a_stale_summary_and_writes_nothing(tmp_path, home, capsys):
+    ma = load_fixture("sample_match_analysis.json")
+    ma["match_summary"]["overall_fit_pct"] = 12
+    for m in ma["matches"]:
+        if m["requirement"] == "Distributed systems":
+            m["match_type"] = "gap"
+    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer_for(ma),
+                          "cv_fact_base_merged.json": load_fixture("sample_fact_base.json")})
+    target = run / "_prep" / "match_analysis.json"
+    before = target.read_bytes()
+    code, out = _gate_check("match", run, capsys)
+    assert code == 1
+    assert "[FAIL] recount match_summary" in out and "--check: file not changed" in out
+    assert target.read_bytes() == before
+
+
+def test_gate_match_check_passes_a_pack_analysed_before_the_required_gap_fields(tmp_path, home, capsys):
+    ma = load_fixture("sample_match_analysis.json")
+    for m in ma["matches"]:
+        if m["requirement"] == "Distributed systems":
+            m["match_type"] = "gap"
+    from scripts.common import recount_match_summary
+    ma["match_summary"] = {k: v for k, v in recount_match_summary(ma["matches"]).items()
+                           if k not in ("required_gap_count", "required_gaps")}
+    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer_for(ma),
+                          "cv_fact_base_merged.json": load_fixture("sample_fact_base.json")})
+    code, out = _gate_check("match", run, capsys)
+    assert code == 0, out
+    assert "counts match" in out and "[PASS] match grounding" in out
+
+
+def test_gate_match_check_keeps_auditing_after_a_stale_summary(tmp_path, home, capsys):
+    ma = load_fixture("sample_match_analysis.json")
+    ma["match_summary"]["overall_fit_pct"] = 12
+    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer_for(ma),
+                          "cv_fact_base_merged.json": load_fixture("sample_fact_base.json")})
+    code, out = _gate_check("match", run, capsys)
+    assert code == 1 and "match_summary is stale" in out
+    assert "match rows = offer items" in out and "skipped" not in out
+
+
+def test_gate_check_and_draft_together_are_refused(tmp_path, home, capsys):
+    run = _run(tmp_path, {})
+    code, _ = _gate_check("letters", run, capsys, draft=True)
+    assert code == 2
+
+
 def _direct(req: str) -> dict:
     return {"match_summary": {}, "matches": [
         {"requirement": req, "category": "technology", "match_type": "direct", "evidence": "x"}]}
@@ -486,9 +539,12 @@ def test_gate_linkedin_offer_messages_only_warn_over_500(tmp_path, home, capsys)
 
 
 def _interview_md(*, fit: str = "72", banner: str = "## Fit Score: {fit}% — GOOD",
-                  quick: str = "## Quick Reference", sections: int = 10, filler: int = 600) -> str:
+                  quick: str = "## Quick Reference", sections: int = 10, filler: int = 600,
+                  gaps_line: str | None = "Required skills missing: 0") -> str:
     parts = ["# Interview Preparation", quick, "- **Job offer**: https://example.com/job",
              banner.format(fit=fit), "Direct matches: 5 | Transferable: 3 | Gaps: 2"]
+    if gaps_line is not None:
+        parts.append(gaps_line)
     for i in range(sections):
         parts += [f"## Section {i}", "x" * filler]
     return "\n\n".join(parts) + "\n"
@@ -545,9 +601,12 @@ def test_gate_interview_fails_without_a_fit_banner(tmp_path, home, capsys):
 
 
 def _required_gaps_run(tmp_path: Path, md: str) -> Path:
+    """A run whose matches[] rate two required skills `gap`; match_summary is
+    left as the fixture has it (no required_gap_count), as before `gate match`."""
     run = _interview_run(tmp_path, md)
     ma = json.loads((run / "_prep" / "match_analysis.json").read_text(encoding="utf-8"))
-    ma["match_summary"].update(required_gap_count=2, required_gaps=["Kubernetes", "Master's degree"])
+    ma["matches"] += [{"requirement": r, "category": "required_skill", "match_type": "gap", "evidence": ""}
+                      for r in ("Kubernetes", "Master's degree")]
     (run / "_prep" / "match_analysis.json").write_text(json.dumps(ma), encoding="utf-8")
     return run
 
@@ -557,20 +616,24 @@ def _required_gaps_run(tmp_path: Path, md: str) -> Path:
     "**Compétences requises manquantes : 2** (Kubernetes, Master)",
 ])
 def test_gate_interview_checks_the_required_skills_missing_line(tmp_path, home, capsys, line):
-    md = _interview_md().replace("Gaps: 2", "Gaps: 2\n" + line)
-    code, out = _gate("interview", _required_gaps_run(tmp_path, md), capsys)
+    code, out = _gate("interview", _required_gaps_run(tmp_path, _interview_md(gaps_line=line)), capsys)
     assert code == 0, out
 
 
 def test_gate_interview_fails_on_a_missing_or_wrong_required_gaps_line(tmp_path, home, capsys):
-    code, out = _gate("interview", _required_gaps_run(tmp_path, _interview_md()), capsys)
+    code, out = _gate("interview", _required_gaps_run(tmp_path, _interview_md(gaps_line=None)), capsys)
     assert code == 1 and "no 'Required skills missing: 2' line" in out
-    md = _interview_md().replace("Gaps: 2", "Gaps: 2\nRequired skills missing: 0")
+    md = _interview_md(gaps_line="Required skills missing: 0")
     code, out = _gate("interview", _required_gaps_run(tmp_path / "b", md), capsys)
     assert code == 1 and "banner says 0 required skills missing but match_analysis.json says 2" in out
 
 
-def test_gate_interview_skips_the_line_for_packs_analysed_before_the_count(tmp_path, home, capsys):
-    # sample_match_analysis.json has no required_gap_count, like every pack before 2026-11-17
-    code, out = _gate("interview", _interview_run(tmp_path, _interview_md()), capsys)
-    assert code == 0, out
+def test_gate_interview_counts_required_gaps_from_the_rows_not_the_stored_summary(tmp_path, home, capsys):
+    # The result must not depend on whether `gate match` has written required_gap_count yet.
+    md = _interview_md(gaps_line=None)
+    run = _interview_run(tmp_path, md)  # fixture summary has no required_gap_count
+    code, out = _gate("interview", run, capsys)
+    assert code == 1 and "no 'Required skills missing: 0' line" in out
+    _gate("match", run, capsys)  # whatever it writes, the interview result is the same
+    code2, out2 = _gate("interview", run, capsys)
+    assert code2 == code and "no 'Required skills missing: 0' line" in out2

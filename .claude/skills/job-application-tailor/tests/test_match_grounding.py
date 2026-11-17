@@ -546,3 +546,66 @@ def test_lead_in_does_not_hide_a_missing_technology(tmp_path):
         {"requirement": req, "category": "required_skill", "match_type": "direct", "evidence": "x"}]}
     errors, _ = check(_write(tmp_path, "ma.json", ma), off, _write(tmp_path, "fb.json", _fact_base()))
     assert any("kubernetes" in e.lower() for e in _other(errors))
+
+
+# ---------------------------------------------------------------------------
+# Lists of examples ("etc.", "e.g.", "such as", "comme") - 2026-11-17
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("requirement", [
+    "No-code automation tools (Zapier, n8n, Make, etc.)",
+    "Outils d'automatisation (e.g. Zapier, Make)",
+    "Automation tools such as Zapier, Make",
+    "Outils no-code tels que Zapier, Make",
+])
+def test_a_list_of_examples_is_satisfied_by_one_grounded_member(tmp_path, requirement):
+    errors, warnings = _direct_errors(tmp_path, requirement)
+    assert _other(errors) == [], errors
+
+
+def test_a_list_of_examples_with_no_grounded_member_warns_instead_of_blocking(tmp_path):
+    errors, warnings = _direct_errors(tmp_path, "Outils (Zapier, Cursor, etc.)")
+    assert _other(errors) == []
+    assert any("accepts equivalents" in w for w in warnings)
+
+
+def test_a_bracketed_list_without_a_marker_still_requires_every_member(tmp_path):
+    errors, _ = _direct_errors(tmp_path, "Outils (Zapier, Make)")
+    assert any("'zapier'" in e for e in _other(errors))
+
+
+# ---------------------------------------------------------------------------
+# A technology a skill item names has no row of its own (scripts/match_rows.py)
+# ---------------------------------------------------------------------------
+
+
+def _absorbed(tmp_path, match_type: str) -> list[str]:
+    off = {**_automation_offer(), "technologies": ["Supabase"],
+           "required_skills": ["Bases de données avec Supabase"]}
+    ma = {"match_summary": {}, "matches": [{"requirement": "Bases de données avec Supabase",
+                                            "category": "required_skill", "match_type": match_type,
+                                            "evidence": "SQL Server", "notes": "SQL Server, pas Supabase"}]}
+    errors, _ = check(_write(tmp_path, "ma.json", ma), _write(tmp_path, "off.json", off),
+                      _write(tmp_path, "fb.json", _automation_fact_base()))
+    return errors
+
+
+def test_missing_tech_named_in_a_skill_item_needs_no_gap_row_of_its_own(tmp_path):
+    assert _absorbed(tmp_path, "transferable") == []
+
+
+def test_missing_tech_named_in_a_skill_item_still_keeps_the_row_off_direct(tmp_path):
+    errors = _absorbed(tmp_path, "direct")
+    assert any("'supabase'" in e and "at most transferable" in e for e in errors)
+    assert not [e for e in errors if "rate its own row" in e or "no row assesses" in e]
+
+
+def test_absorbed_member_of_a_satisfied_alternatives_list_can_be_direct(tmp_path):
+    req = "Vibe coding avec des outils comme Replit ou Claude"  # Claude Code is held, Replit is not
+    off = {**_automation_offer(), "technologies": ["Replit", "Claude"], "required_skills": [req]}
+    ma = {"match_summary": {}, "matches": [
+        {"requirement": req, "category": "required_skill", "match_type": "direct", "evidence": "Claude Code"}]}
+    errors, _ = check(_write(tmp_path, "ma.json", ma), _write(tmp_path, "off.json", off),
+                      _write(tmp_path, "fb.json", _automation_fact_base()))
+    assert errors == []

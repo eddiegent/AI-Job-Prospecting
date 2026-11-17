@@ -99,7 +99,7 @@ Writes `$PREP_DIR/cv_fact_base_merged.json`: cached fact base + addendum bullets
 
 ### Step 4 — Match/gap analysis
 
-Follow `prompts/match_analysis.md` to produce a requirement-by-requirement matrix (direct / transferable / gap), then run **`gate match`**. The rows are fixed: one per offer item, printed by `match-rows "$OUTPUT_DIR"`, and the gate blocks any other row set, so the fit score doesn't depend on how a run split the offer. The gate recounts `match_summary` from `matches[]` (the model regularly miscounts it), validates, and rejects any `direct` match whose technology isn't in the fact base — a false direct inflates the fit score past the 50% gate and the CV inherits the claim — and any offer technology the candidate lacks that isn't rated `gap`. On a grounding failure, downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`, and re-run.
+Follow `prompts/match_analysis.md` to produce a requirement-by-requirement matrix (direct / transferable / gap), then run **`gate match`**. The rows are fixed: one per offer item, printed by `match-rows "$OUTPUT_DIR"`, and the gate blocks any other row set, so the fit score doesn't depend on how a run split the offer. A technology a skill item already names has no row of its own, so one fact isn't scored twice. The gate recounts `match_summary` from `matches[]` (the model regularly miscounts it), validates, and rejects any `direct` match whose technology isn't in the fact base — a false direct inflates the fit score past the 50% gate and the CV inherits the claim — and any offer technology the candidate lacks that isn't rated `gap`. On a grounding failure, downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`, and re-run.
 
 Then rename the folder — this adds the fit-level prefix (`low` / `medium` / `good` / `very_good`, thresholds in settings) and rebuilds the slug from `job_title` + `company_name`:
 
@@ -207,5 +207,7 @@ cd "$SKILL_BASE" && python scripts/cli.py record-application "$OUTPUT_DIR" --upd
 ```
 
 It rewrites the fit %, fit level, match counts, skills, title, company, domain and folder from `_prep/`, and prints each change (`--dry-run` previews). It refuses (exit 2, nothing written) when the id is another company or flow, or when the folder's fit prefix doesn't match the new score — run `rename-with-fit` first in that case.
+
+To inspect a pack without changing it (an archived or already-sent pack), add `--check` to any gate: it writes nothing, so `gate match` reports a stale `match_summary` as a failure instead of rewriting the file.
 
 For anything that fails outside the gates (DB errors, no PDF, DOCX build errors), read `references/troubleshooting.md`.

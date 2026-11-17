@@ -14,6 +14,13 @@ Rule: one row per item of `required_skills`, `preferred_skills`,
 required_skills and technologies) gets one row, under the first list. The
 model only judges each row (match_type, evidence, notes); `gate match` blocks
 a missing, extra or recategorised row.
+
+A technology a skill item already names gets no row of its own: the offer
+asks for it once. Without this, "Jira, Confluence" (a required skill) plus
+"Jira" and "Confluence" (technologies) scored one fact three times, and on
+the 2026-11-17 comparison runs that alone moved a pack from 67% (medium) to
+71% (good). The skill row rates the technology; a missing one keeps that row
+off `direct` (scripts/check_match_grounding.py).
 """
 from __future__ import annotations
 
@@ -31,18 +38,46 @@ LISTS: tuple[tuple[str, str], ...] = (
 
 
 def row_key(text: str) -> str:
-    """Comparison key for a requirement: case, accents, spacing and trailing
-    punctuation don't count ("Maîtrise de C# ." == "maitrise de c#")."""
+    """Comparison key for a requirement: case, accents, spacing, spaces around
+    a slash and trailing punctuation don't count ("Maîtrise de C# ." == "maitrise de c#")."""
     s = unicodedata.normalize("NFKD", text or "")
     s = "".join(c for c in s if not unicodedata.combining(c)).casefold()
     s = s.replace("’", "'")
+    s = re.sub(r"\s*/\s*", "/", s)  # "Claude Cowork / skills" == "Claude Cowork/skills"
     return re.sub(r"\s+", " ", s).strip(" .;:,")
+
+
+# Lists whose items can name a technology the offer also lists on its own.
+SKILL_LISTS = ("required_skills", "preferred_skills")
+
+
+def _named_in(tech_key: str, text_key: str) -> bool:
+    """``tech_key`` appears in ``text_key`` as a whole term, plural allowed:
+    "apis" in "api design", "jira" in "jira, confluence", "claude" in
+    "claude- and openai-based"; "c" is not in "c#" and "java" not in "javascript"."""
+    stem = tech_key[:-1] if tech_key.endswith("s") and len(tech_key) > 3 else tech_key
+    pattern = r"(?<![\w#+.])" + re.escape(stem) + r"s?(?![\w#+])"
+    return re.search(pattern, text_key) is not None
+
+
+def absorbed_technologies(offer: dict[str, Any]) -> set[str]:
+    """Row keys of the ``technologies`` items a required or preferred skill
+    item already names: they get no row of their own."""
+    skills = [row_key(i) for key in SKILL_LISTS for i in offer.get(key) or [] if isinstance(i, str)]
+    out: set[str] = set()
+    for item in offer.get("technologies") or []:
+        if not isinstance(item, str):
+            continue
+        k = row_key(item)
+        if k and any(s != k and _named_in(k, s) for s in skills):
+            out.add(k)
+    return out
 
 
 def expected_rows(offer: dict[str, Any]) -> list[dict[str, str]]:
     """``[{requirement, category}]`` - the rows a match analysis must have."""
     rows: list[dict[str, str]] = []
-    seen: set[str] = set()
+    seen: set[str] = set(absorbed_technologies(offer))
     for key, category in LISTS:
         for item in offer.get(key) or []:
             if not isinstance(item, str):
