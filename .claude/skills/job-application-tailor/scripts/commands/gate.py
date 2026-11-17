@@ -156,6 +156,23 @@ def _recount_match(ctx: Ctx) -> Result:
     return r
 
 
+def _match_rows(ctx: Ctx) -> Result:
+    """The rows are the offer's items, one each (scripts/match_rows.py), so the
+    fit score's denominator doesn't depend on how a run split the offer."""
+    from scripts.match_rows import coverage_problems
+
+    r = Result("match rows = offer items")
+    r.errors = _missing(ctx, "job_offer_analysis.json")
+    if r.errors:
+        return r
+    offer = json.loads(ctx.path("job_offer_analysis.json").read_text(encoding="utf-8"))
+    matches = json.loads(ctx.path("match_analysis.json").read_text(encoding="utf-8")).get("matches", [])
+    r.errors = coverage_problems(offer, matches)
+    if r.errors:
+        r.errors.append("`python scripts/cli.py match-rows <folder>` prints the expected rows; then re-run the gate")
+    return r
+
+
 def _match_grounding(ctx: Ctx) -> Result:
     from scripts.check_match_grounding import check
 
@@ -431,6 +448,7 @@ STAGES: dict[str, list[Step]] = {
     "match": [
         (_recount_match, True),
         (_schema("match_analysis.json", TAILOR_SCHEMAS / "match_analysis.schema.json"), True),
+        (_match_rows, False),
         (_match_grounding, False),
     ],
     "cv": [
@@ -528,7 +546,7 @@ def _configure_gate(p: argparse.ArgumentParser) -> None:
     p.description = (
         "Run every deterministic check for one pipeline stage. Stages: "
         "factbase (schema + verify vs master CV), offer (schema), "
-        "match (recount in place + schema + grounding), "
+        "match (recount in place + schema + one row per offer item + grounding), "
         "cv (schema + forbidden labels + timeline: every role ending in or after "
         "the compression cutoff is a full entry, no training in experience, a dateless "
         "earlier-experience line + claims on tailored_cv.json), letters "

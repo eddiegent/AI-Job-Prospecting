@@ -48,7 +48,7 @@ _ORDER = [
     "regenerate-outputs", "record-application",
     "rename-application",
     # pipeline-support commands (no DB)
-    "probe-url", "cache-raw-offer", "detect-platform", "rename-with-fit",
+    "probe-url", "cache-raw-offer", "detect-platform", "match-rows", "rename-with-fit",
     "rename-cold-folder", "check-forbidden-labels", "save-cv-cache",
     "read-cv", "gate",
 ]

@@ -58,6 +58,18 @@ def _offer() -> dict:
             "ats_keywords": []}
 
 
+def _offer_for(ma: dict) -> dict:
+    """An offer whose items are exactly the rows of ``ma`` (one row per offer
+    item, scripts/match_rows.py), so a match test checks grounding alone."""
+    lists = {"required_skill": "required_skills", "preferred_skill": "preferred_skills",
+             "technology": "technologies", "responsibility": "responsibilities"}
+    offer = {"job_title": "Dev", "company_name": "Acme", "required_skills": [], "preferred_skills": [],
+             "responsibilities": [], "technologies": [], "ats_keywords": []}
+    for m in ma["matches"]:
+        offer[lists[m["category"]]].append(m["requirement"])
+    return offer
+
+
 def test_gate_unknown_folder_exits_2(tmp_path, home):
     with pytest.raises(SystemExit) as e:
         cmd_gate(None, Namespace(stage="cv", folder=str(tmp_path / "nope"), cv=None))
@@ -76,10 +88,14 @@ def test_gate_missing_input_fails_and_stops(tmp_path, home, capsys):
 def test_gate_match_recounts_in_place_and_passes(tmp_path, home, capsys):
     ma = load_fixture("sample_match_analysis.json")
     ma["match_summary"]["overall_fit_pct"] = 12  # LLM drift
-    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer(),
+    for m in ma["matches"]:  # a technology the fact base lacks is a gap, never half credit
+        if m["requirement"] == "Distributed systems":
+            m["match_type"] = "gap"
+    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": _offer_for(ma),
                           "cv_fact_base_merged.json": load_fixture("sample_fact_base.json")})
     code, out = _gate("match", run, capsys)
     assert code == 0, out
+    assert "[PASS] match rows = offer items" in out
     assert "[PASS] recount match_summary: updated" in out
     assert "[PASS] schema match_analysis.json" in out
     assert "[PASS] match grounding (vs cv_fact_base_merged.json)" in out
@@ -95,6 +111,27 @@ def _direct(req: str) -> dict:
         {"requirement": req, "category": "technology", "match_type": "direct", "evidence": "x"}]}
 
 
+def test_gate_match_blocks_rows_that_are_not_the_offer_items(tmp_path, home, capsys):
+    offer = {**_offer(), "responsibilities": ["Concevoir des API"]}
+    ma = {"match_summary": {}, "matches": [
+        {"requirement": "c++ ", "category": "required_skill", "match_type": "direct", "evidence": "x"},
+        {"requirement": "Kubernetes", "category": "required_skill", "match_type": "gap"},
+        {"requirement": "Leadership", "category": "responsibility", "match_type": "gap"},
+    ]}
+    run = _run(tmp_path, {"match_analysis.json": ma, "job_offer_analysis.json": offer,
+                          "cv_fact_base_merged.json": load_fixture("sample_fact_base.json")})
+    code, out = _gate("match", run, capsys)
+    assert code == 1
+    assert "[FAIL] match rows = offer items" in out
+    assert "'Kubernetes' has category 'required_skill', expected 'technology'" in out
+    assert "'Leadership' is not an item of the offer analysis" in out
+    assert "no row for offer item 'Concevoir des API' (responsibility)" in out
+    assert "match-rows" in out
+    # "c++ " is the offer's "C++" (case and spacing don't count), and listed twice in the
+    # offer it still needs one row only
+    assert "C++" not in out.split("[FAIL] match rows")[1].split("[")[0]
+
+
 def test_gate_match_fails_without_merged_fact_base(tmp_path, home, capsys):
     """No silent fallback to cv_fact_base.json: the addendum would be ignored."""
     run = _run(tmp_path, {"match_analysis.json": _direct("C++"), "job_offer_analysis.json": _offer(),
@@ -108,7 +145,8 @@ def test_gate_match_fails_without_merged_fact_base(tmp_path, home, capsys):
 
 def test_gate_match_grounds_against_merged_fact_base(tmp_path, home, capsys):
     fb = load_fixture("sample_fact_base.json")
-    run = _run(tmp_path, {"match_analysis.json": _direct("Kubernetes"), "job_offer_analysis.json": _offer(),
+    run = _run(tmp_path, {"match_analysis.json": _direct("Kubernetes"),
+                          "job_offer_analysis.json": _offer_for(_direct("Kubernetes")),
                           "cv_fact_base_merged.json": fb})
     code, out = _gate("match", run, capsys)
     assert code == 1 and "[FAIL] match grounding (vs cv_fact_base_merged.json)" in out
@@ -132,7 +170,8 @@ def test_gate_match_negated_addendum_detail_does_not_ground(tmp_path, home, caps
     merged = load_fixture("sample_fact_base.json")
     if detail:
         merged["experience"][0]["details"].append(detail)  # where merge_addendum_into_fact_base puts it
-    run = _run(tmp_path, {"match_analysis.json": _direct("Kubernetes"), "job_offer_analysis.json": _offer(),
+    run = _run(tmp_path, {"match_analysis.json": _direct("Kubernetes"),
+                          "job_offer_analysis.json": _offer_for(_direct("Kubernetes")),
                           "cv_fact_base_merged.json": merged})
     code, out = _gate("match", run, capsys)
     assert (code == 0) is passes, out

@@ -99,7 +99,7 @@ Writes `$PREP_DIR/cv_fact_base_merged.json`: cached fact base + addendum bullets
 
 ### Step 4 — Match/gap analysis
 
-Follow `prompts/match_analysis.md` to produce a requirement-by-requirement matrix (direct / transferable / gap), then run **`gate match`**. The gate recounts `match_summary` from `matches[]` (the model regularly miscounts it), validates, and rejects any `direct` match whose technology isn't in the fact base — a false direct inflates the fit score past the 50% gate and the CV inherits the claim. On a grounding failure, downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`, and re-run.
+Follow `prompts/match_analysis.md` to produce a requirement-by-requirement matrix (direct / transferable / gap), then run **`gate match`**. The rows are fixed: one per offer item, printed by `match-rows "$OUTPUT_DIR"`, and the gate blocks any other row set, so the fit score doesn't depend on how a run split the offer. The gate recounts `match_summary` from `matches[]` (the model regularly miscounts it), validates, and rejects any `direct` match whose technology isn't in the fact base — a false direct inflates the fit score past the 50% gate and the CV inherits the claim — and any offer technology the candidate lacks that isn't rated `gap`. On a grounding failure, downgrade the flagged requirements to `transferable` (with a concrete `notes`) or `gap`, and re-run.
 
 Then rename the folder — this adds the fit-level prefix (`low` / `medium` / `good` / `very_good`, thresholds in settings) and rebuilds the slug from `job_title` + `company_name`:
 

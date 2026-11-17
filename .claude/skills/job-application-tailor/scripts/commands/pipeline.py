@@ -112,6 +112,22 @@ def _configure_detect_platform(p: argparse.ArgumentParser) -> None:
     p.add_argument("target", help="Output folder for this run (or its _prep/ subfolder)")
 
 
+# ----------------------------------------------------------------- match-rows
+
+def cmd_match_rows(db, args: argparse.Namespace) -> None:
+    """Print the rows Step 4's match analysis must have, as a JSON array of
+    {requirement, category}: one per offer item (scripts/match_rows.py)."""
+    from scripts.match_rows import expected_rows
+
+    prep = _prep_dir(args.target)
+    job = _load_prep_json(prep, "job_offer_analysis.json")
+    print(json.dumps(expected_rows(job), ensure_ascii=False, indent=2))
+
+
+def _configure_match_rows(p: argparse.ArgumentParser) -> None:
+    p.add_argument("target", help="Output folder for this run (or its _prep/ subfolder)")
+
+
 # ------------------------------------------------------------ rename-with-fit
 
 def cmd_rename_with_fit(db, args: argparse.Namespace) -> None:
@@ -277,6 +293,9 @@ COMMANDS = [
     Command("detect-platform",
             help="Print the known aggregator matching the offer's company_name (empty if none)",
             configure=_configure_detect_platform, handler=cmd_detect_platform, needs_db=False),
+    Command("match-rows",
+            help="Offer Step 4 — print the match rows the offer analysis defines (one per offer item), as JSON",
+            configure=_configure_match_rows, handler=cmd_match_rows, needs_db=False),
     Command("rename-with-fit",
             help="Offer Step 4 — rename the run folder with the fit prefix + rebuilt slug; prints the new path",
             configure=_configure_rename_with_fit, handler=cmd_rename_with_fit, needs_db=False),

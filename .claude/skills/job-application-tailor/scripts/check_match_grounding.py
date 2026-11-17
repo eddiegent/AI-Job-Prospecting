@@ -89,10 +89,33 @@ _ALTERNATIVES_MARKER = re.compile(
 )
 
 
+# Wording that introduces a skill without being part of its name. Splitting
+# "Experience or strong interest in SaaS, cloud platforms" on "or" leaves
+# "strong interest in SaaS" as one token; with the lead-in glued on it is
+# never found in the fact base, so a well-evidenced row was blocked as a
+# false direct (both runs of the 2026-11-17 reproducibility test hit it).
+_LEAD_IN = re.compile(
+    r"^(?:(?:a|an|une?|very|tres|très|strong|solid|good|deep|bonne|solide|forte?)\s+)*"
+    r"(?:interest\s+(?:in|for)|experience\s+(?:in|with|of)|knowledge\s+of|understanding\s+of|"
+    r"familiarity\s+with|exposure\s+to|expertise\s+in|"
+    r"int[ée]r[êe]t\s+pour|exp[ée]rience\s+(?:en|de|du|des|avec|dans|sur)|"
+    r"connaissances?\s+(?:en|de|du|des)|ma[îi]trise\s+(?:de|du|des)|app[ée]tence\s+pour)\s+",
+    re.IGNORECASE,
+)
+
+
 def _tokens(text: str) -> list[str]:
-    """split_tokens, also splitting on "ou" / "or", without alternatives markers."""
-    return [t for part in _OR.split(text) for t in split_tokens(part)
-            if not _ALTERNATIVES_MARKER.fullmatch(t.strip())]
+    """split_tokens, also splitting on "ou" / "or", without alternatives markers
+    or a lead-in ("strong interest in", "maîtrise de") glued to the skill."""
+    out = []
+    for part in _OR.split(text):
+        for t in split_tokens(part):
+            if _ALTERNATIVES_MARKER.fullmatch(t.strip()):
+                continue
+            t = _LEAD_IN.sub("", t.strip())
+            if t:
+                out.append(t)
+    return out
 
 
 def _is_familiar(canon: str, familiar: list[str]) -> bool:
@@ -322,16 +345,20 @@ def check(
                 f"{', '.join(repr(t) for t in named)} is in cv_fact_base - the offer accepts "
                 "equivalents, so check the evidence names a genuine one"
             )
+    # Blocking since 2026-11-17 (was a warning): with one row per offer item
+    # (scripts/match_rows.py) the technology always has its own row, so a
+    # missing technology rated anything but `gap` is the half-credit inflation
+    # this check exists for.
     for tech, rows in _check_unrowed_tech_gaps(offer, matches, alternatives, vocab, prose,
                                                 _familiar_canon(familiar)):
         if rows:
             where = ", ".join(f"matches[{i}] ({matches[i].get('match_type')})" for i in rows)
-            warnings.append(
-                f"  - offer technology '{tech}' is not in cv_fact_base but only appears inside {where} - "
-                "give it its own `gap` row so the fit score counts it"
+            errors.append(
+                f"  - offer technology '{tech}' is not in cv_fact_base but is rated in {where} with no "
+                "`gap` row - rate its own row `gap`"
             )
         else:
-            warnings.append(
+            errors.append(
                 f"  - offer technology '{tech}' is not in cv_fact_base and no row assesses it - add a `gap` row"
             )
     for i, requirement in _check_transferable_notes(matches):

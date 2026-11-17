@@ -289,6 +289,20 @@ list [--status <status>] [--company <company>] [--limit <limit>] [--since <since
 | `--org-type` | optional | Only include cold-flow rows with this organisation type — choices: `end_employer`, `esn`, `staffing_agency`, `recruitment_agency`, `unknown` |
 | `--json` | flag | Output as JSON |
 
+### `match-rows`
+
+Offer Step 4 — print the match rows the offer analysis defines (one per offer item), as JSON
+
+**Signature:**
+
+```
+match-rows <target>
+```
+
+| Arg | Kind | Description |
+| --- | --- | --- |
+| `target` | positional | Output folder for this run (or its _prep/ subfolder) |
+
 ### `probe-url`
 
 HEAD-probe an offer URL before WebFetch (prints OK / BLOCKED <code> / OTHER_*)

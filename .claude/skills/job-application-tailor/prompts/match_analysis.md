@@ -7,8 +7,17 @@ You will receive:
 ## Goal
 Produce a requirement-by-requirement match matrix that shows where the candidate is strong, where skills are transferable, and where there are gaps. This matrix feeds into CV tailoring and appears in the interview prep, so accuracy and honesty matter.
 
+## Rows — fixed by the offer analysis, not chosen here
+The rows are **one per item** of `required_skills`, `preferred_skills`, `technologies` and `responsibilities` (every responsibility, not a selection), in that order. Get the exact list with:
+
+```bash
+cd "$SKILL_BASE" && python scripts/cli.py match-rows "$OUTPUT_DIR"
+```
+
+It prints `[{"requirement", "category"}]`. Copy each `requirement` and `category` as printed: don't merge items, split them, reword them or add rows of your own. An item that appears in two lists is printed once. Your job is to judge each row. `gate match` blocks a missing, extra, duplicated or recategorised row, because the fit score's denominator is the row count: when runs chose their own rows, the same offer scored differently from run to run.
+
 ## Method
-For each requirement (from `required_skills`, `preferred_skills`, `technologies`, and key `responsibilities`):
+For each row:
 1. Search the CV fact base for direct evidence
 2. If no direct match, look for adjacent or transferable experience
 3. If neither, mark as a gap
@@ -38,7 +47,7 @@ In addition to the skills matrix, produce a `location_analysis` object that comp
 - **No false directs.** A `direct` match means the candidate has the requirement, not that the JD lists it. For each requirement you are about to mark `direct`, locate the matching token (or close synonym) in `cv_fact_base.{technologies, skills, methodologies}` or in an `experience[*].details` bullet — if you can't, downgrade to `transferable` with a concrete `notes` explanation, or to `gap`. Concrete failures to avoid: marking "Kubernetes" direct when the fact base only has Docker; marking "Hibernate" direct when the fact base only has plain JDBC. A deterministic post-check (`scripts/check_match_grounding.py`) runs after this prompt and rejects the output when a `direct` requirement contains a tech token from the JD that isn't in the fact base.
 - **Direct ≠ partial.** When a requirement combines several tokens (e.g. "C# / Kubernetes"), `direct` requires ALL tokens to be grounded. If only some are grounded, downgrade to `transferable` and explain which token is the partial-match gap.
 - **Compound concept-list phrases.** When a requirement is a comma-list of multiple distinct concept tokens (e.g. `"OOP, design patterns, data structures, algorithms"`, `"reliability, performance, scalability, maintainability"`), apply the same all-or-nothing rule as `"C# / Kubernetes"`: every token must have a literal counterpart (or close synonym) in `cv_fact_base.{technologies, skills, methodologies}` or in `experience[*].details`. Even one ungrounded token in the list demotes the whole row to `transferable` with a `notes` explanation. The `check_match_grounding` script will block the row when any token is tech-shaped (acronyms, CamelCase, dot/hash/slash/plus); soft-skill tokens become warnings. Don't rely on the warning-vs-error split — the prompt should produce honest classifications either way.
-- **A missing technology gets its own `gap` row.** For every item in `job_offer_analysis.technologies` that the fact base lacks (and that is not familiar-only), write a separate `gap` row named after it — even when the offer groups it with skills the candidate has ("PostgreSQL, Edge Functions, modélisation de données"). Folding it into a broader `transferable` row gives it half credit and inflates `overall_fit_pct`. The grouped row may stay, rated on what the candidate does have. Exception: a member of an alternatives list another member satisfies (below). The grounding check warns on any technology left without a `gap` row.
+- **A technology the candidate lacks is a `gap`.** Every item of `job_offer_analysis.technologies` has its own row; when the fact base lacks it (and it is not familiar-only), that row is `gap`, not `transferable` — adjacent experience goes in `notes`. A grouped required-skill row ("PostgreSQL, Edge Functions, modélisation de données") is still rated on what the candidate does have. Exception: a member of an alternatives list another member satisfies (below). The grounding check blocks a missing technology rated anything but `gap`.
 - **Alternatives are not compounds.** A list that asks for *one of* its items — joined by "ou" / "or", or ending in "ou équivalents" / "or similar" / "ou alternatives" (e.g. `"Make, Zapier, n8n ou équivalents"`, `"PostgreSQL or MySQL"`) — is `direct` when **one** member is grounded and not familiar-only. Name that member in `evidence`. A familiar-only member alone cannot make it `direct`. An "et" / "and" still joins requirements that are each needed (`"C# ou Java, et Kubernetes"` needs Kubernetes too).
 
 **Example structure** (abbreviated):
