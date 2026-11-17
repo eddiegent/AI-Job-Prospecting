@@ -141,7 +141,7 @@ Each subagent returns only once its gate passes. Wait for all three, then **run 
 cd "$SKILL_BASE" && python scripts/cli.py regenerate-outputs "$OUTPUT_DIR"
 ```
 
-Reads everything it needs from `_prep/` (title and language from `job_offer_analysis.json`) and produces the CV DOCX + PDF, letter DOCX, short-letter and LinkedIn TXT, interview-prep HTML and `run_summary.json`. The same command rebuilds a pack later. If it reports missing inputs, `--check` lists them.
+Reads everything it needs from `_prep/` (title and language from `job_offer_analysis.json`) and produces the CV and letter DOCX + PDF, short-letter and LinkedIn TXT, interview-prep HTML and `run_summary.json`. The same command rebuilds a pack later. If it reports missing inputs, `--check` lists them.
 
 ### Step 10 — Record in job history
 
@@ -158,7 +158,7 @@ All files land in `$PROJECT_ROOT/output/[fit_level]-[date]-[job-slug]/`:
 | File | Format |
 |------|--------|
 | CV | DOCX + PDF |
-| Motivation letter | DOCX |
+| Motivation letter | DOCX + PDF |
 | Short motivation letter | TXT (500-750 chars, for online forms) |
 | LinkedIn messages | TXT (with contact names and LinkedIn URLs) |
 | Interview prep | HTML (responsive; quick reference links and fit score banner) |

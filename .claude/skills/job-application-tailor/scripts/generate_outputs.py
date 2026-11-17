@@ -40,7 +40,7 @@ def main() -> None:
     parser.add_argument("--naming-rules", default="config/naming_rules.yaml")
     parser.add_argument("--match-analysis-json", default=None, help="Path to match_analysis.json for run summary enrichment")
     parser.add_argument("--language", default="fr")
-    parser.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion of the CV (DOCX only)")
+    parser.add_argument("--skip-pdf", action="store_true", help="Skip PDF conversion of the CV and letter (DOCX only)")
     args = parser.parse_args()
 
     from scripts.paths import load_settings
@@ -97,12 +97,16 @@ def main() -> None:
     cv_path = generate_cv_docx(out_dir / cv_name, cv_data, settings, language=args.language)
     letter_path = generate_letter_docx(out_dir / letter_name, letter_data, settings)
 
-    # Generate PDF version of the CV via the cross-platform pipeline
-    # (docx2pdf → LibreOffice → pandoc). The DOCX is always preserved.
+    # PDF versions of the CV and the motivation letter via the cross-platform
+    # pipeline (docx2pdf → LibreOffice → pandoc). The DOCX is always preserved.
+    # The letter PDF matters on rebuilds: without it, a PDF left by an earlier
+    # build would sit next to the new DOCX with stale text.
     cv_pdf_path = None
+    letter_pdf_path = None
     if not args.skip_pdf:
         try:
             cv_pdf_path = convert_docx_to_pdf(cv_path)
+            letter_pdf_path = convert_docx_to_pdf(letter_path)
         except PdfConversionError as exc:
             print(f"PDF conversion skipped: {exc}", file=sys.stderr)
 
@@ -178,6 +182,7 @@ def main() -> None:
         "cv_file": str(cv_path),
         "cv_pdf_file": str(cv_pdf_path) if cv_pdf_path else None,
         "letter_file": str(letter_path),
+        "letter_pdf_file": str(letter_pdf_path) if letter_pdf_path else None,
         "short_letter_file": str(short_letter_path) if short_letter_path else None,
         "linkedin_file": str(linkedin_path) if linkedin_path else None,
         "interview_file": str(interview_path) if interview_path else None,

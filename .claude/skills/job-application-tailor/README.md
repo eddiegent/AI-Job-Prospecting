@@ -16,7 +16,7 @@ A Claude Code plugin that takes a job offer and a master CV, then generates a co
 | File | Format | Purpose |
 |------|--------|---------|
 | Tailored CV | DOCX + PDF | CV restructured to emphasise relevant experience |
-| Motivation letter | DOCX | Full cover letter (3-4 paragraphs) |
+| Motivation letter | DOCX + PDF | Full cover letter (3-4 paragraphs) |
 | Short motivation letter | TXT | Concise version (500-750 chars) for online forms |
 | LinkedIn messages | TXT | Personalised messages with real contact names and LinkedIn URLs |
 | Interview prep | HTML | Fit score, company context, anticipated questions, talking points |
@@ -137,6 +137,7 @@ project/
 │   │   ├── CV_Name_Title.docx
 │   │   ├── CV_Name_Title.pdf
 │   │   ├── Lettre_de_motivation_Name_Title.docx
+│   │   ├── Lettre_de_motivation_Name_Title.pdf
 │   │   ├── Lettre_courte_Name_Title.txt
 │   │   ├── LinkedIn_message_Name_Title.txt
 │   │   ├── Interview_prep_Name_Title.html

@@ -132,3 +132,45 @@ def test_dossier_omitted_when_flag_absent(tmp_path: Path) -> None:
     assert not (out_dir / "company_dossier.html").exists()
     summary = json.loads((out_dir / "run_summary.json").read_text(encoding="utf-8"))
     assert summary["dossier_file"] is None
+
+
+def test_pdf_built_for_cv_and_letter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both the CV and the motivation letter get a PDF, so a rebuild never
+    leaves an earlier build's letter PDF beside the new DOCX. The converter
+    is stubbed: this checks the wiring, not Word/LibreOffice."""
+    monkeypatch.syspath_prepend(str(SKILL_BASE))
+    monkeypatch.syspath_prepend(str(SKILL_BASE / "scripts"))
+    import scripts.generate_outputs as gen
+
+    converted: list[str] = []
+
+    def fake_convert(docx: Path) -> Path:
+        converted.append(docx.name)
+        pdf = docx.with_suffix(".pdf")
+        pdf.write_bytes(b"%PDF-1.4 stub")
+        return pdf
+
+    monkeypatch.setattr(gen, "convert_docx_to_pdf", fake_convert)
+
+    out_dir = tmp_path / "medium-08062026-acme"
+    prep = out_dir / "_prep"
+    _write_fixtures(prep)
+    monkeypatch.setattr(sys, "argv", [
+        "generate_outputs.py",
+        "--tailored-cv-json", str(prep / "tailored_cv.json"),
+        "--letter-json", str(prep / "letter.json"),
+        "--output-dir", str(out_dir),
+        "--job-title", "Test Role",
+        "--settings", str(SETTINGS),
+        "--naming-rules", str(NAMING),
+        "--language", "fr",
+    ])
+    gen.main()
+
+    assert len(converted) == 2
+    assert any(n.startswith("CV_") for n in converted)
+    assert any(n.startswith("Lettre_de_motivation_") for n in converted)
+    summary = json.loads((out_dir / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary["cv_pdf_file"].endswith(".pdf")
+    assert summary["letter_pdf_file"].endswith(".pdf")
+    assert Path(summary["letter_pdf_file"]).exists()

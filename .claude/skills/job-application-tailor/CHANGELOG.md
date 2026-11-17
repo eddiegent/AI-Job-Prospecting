@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Changed — Step 9 also converts the motivation letter to PDF (2026-11-17)
+- `generate_outputs.py` (behind `regenerate-outputs`) used to convert only the CV. A rebuild of a pack whose letter PDF came from an earlier build left that PDF beside the new DOCX with stale text, an easy wrong attachment. The letter DOCX now goes through the same `convert_docx_to_pdf()` fallback chain, `run_summary.json` gains `letter_pdf_file`, and `--skip-pdf` skips both. Applies to offer and cold packs.
+- **Tests** — `test_pdf_built_for_cv_and_letter` in `tests/test_generate_outputs_html.py` (converter stubbed).
+
+### Added — humanizer pass on letters and LinkedIn messages (2026-11-17)
+- Letters, short letter and LinkedIn messages (offer and cold flows) go through the `humanizer:humanizer` skill after drafting and before their gate, per the shared `prompts/humanize_pass.md`. Style only: facts, length limits, team scope and the cold-flow hook are kept; skipped when the plugin isn't installed.
+
 ### Fixed — `list --company` required the full company name (2026-10-19)
 - `JobHistoryDB.list_applications(company=...)` compared `company_norm` with `=`, so `list --company "opus"` returned "No applications found." while "Opus Recruitment Solutions" was in the DB. Resolving an application by company before a status change (the `job-status` workflow) then fell back to scanning the whole list. It is now a substring `LIKE` on the normalised name. `%` and `_` in the query are escaped and match literally; a query that normalises to an empty string (e.g. `_`) still matches nothing rather than every row. A short query can now return several companies — `job-status` already asks the user to pick when a lookup is ambiguous.
 - **Tests** — `test_list_applications_company_matches_partial_name` in `tests/test_job_history_db_v3.py`.
